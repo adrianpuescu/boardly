@@ -157,8 +157,8 @@ export function DashboardClient({ games, currentUser }: Props) {
               <div className="flex items-center bg-white border border-gray-200 rounded-xl p-0.5 shadow-sm">
                 <button
                   onClick={() => switchView("grid")}
-                  aria-label="Grid view"
-                  title="Grid view"
+                  aria-label={t("gridView")}
+                  title={t("gridView")}
                   className={`p-2 rounded-lg transition-all ${
                     viewMode === "grid"
                       ? "bg-orange-500 text-white shadow-sm"
@@ -169,8 +169,8 @@ export function DashboardClient({ games, currentUser }: Props) {
                 </button>
                 <button
                   onClick={() => switchView("multiboard")}
-                  aria-label="Multi-board view"
-                  title="Multi-board view"
+                  aria-label={t("multiBoardView")}
+                  title={t("multiBoardView")}
                   className={`p-2 rounded-lg transition-all ${
                     viewMode === "multiboard"
                       ? "bg-orange-500 text-white shadow-sm"

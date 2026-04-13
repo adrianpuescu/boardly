@@ -41,10 +41,13 @@ function formatDate(iso: string, locale: string) {
   });
 }
 
-function formatTimeControl(tc: { type: string; minutes?: number }): string {
-  if (tc.type === "unlimited") return "Unlimited";
-  if (tc.type === "per_turn") return `${tc.minutes}m / move`;
-  if (tc.type === "per_game") return `${tc.minutes}m total`;
+function formatTimeControl(
+  tc: { type: string; minutes?: number },
+  t: (key: string, values?: Record<string, string | number>) => string
+): string {
+  if (tc.type === "unlimited") return t("unlimited");
+  if (tc.type === "per_turn") return t("minPerMove", { minutes: tc.minutes ?? 0 });
+  if (tc.type === "per_game") return t("minPerGame", { minutes: tc.minutes ?? 0 });
   return tc.type;
 }
 
@@ -512,7 +515,7 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
                         {game.opponent?.username ?? t("unknownOpponent")}
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {formatTimeControl(game.time_control)} ·{" "}
+                        {formatTimeControl(game.time_control, t)} ·{" "}
                         {formatDate(game.played_at, locale)}
                       </p>
                     </div>

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { Chess } from "chess.js";
@@ -36,6 +37,7 @@ function BoardItem({ game }: BoardItemProps) {
   const { pieceSet } = usePieceSet(game.id);
   const customPieces = buildPieces(pieceSet);
   const router = useRouter();
+  const t = useTranslations("game");
   const boardControls = useAnimation();
 
   const { fen, setFen, gameStatus, gameOver } = useGameRealtime(
@@ -53,7 +55,7 @@ function BoardItem({ game }: BoardItemProps) {
   const isMyTurn = fenTurn === game.my_color && isActive;
   const canMove = isMyTurn && !submitting;
 
-  const opponentName = game.opponent?.username ?? "Waiting for opponent…";
+  const opponentName = game.opponent?.username ?? t("waitingForOpponent") + "…";
   const opponentInitials = game.opponent
     ? opponentName.slice(0, 2).toUpperCase()
     : "?";
@@ -168,9 +170,9 @@ function BoardItem({ game }: BoardItemProps) {
         <span className="text-sm font-semibold text-gray-800 truncate flex-1 min-w-0">
           {opponentName}
         </span>
-        <span className="flex items-center gap-1 text-xs text-gray-400 flex-shrink-0 capitalize">
+        <span className="flex items-center gap-1 text-xs text-gray-400 flex-shrink-0">
           <span className="text-base chess-sym">{game.my_color === "white" ? "♔" : "♚"}</span>
-          {game.my_color}
+          {game.my_color === "white" ? t("white") : t("black")}
         </span>
       </div>
 
@@ -227,17 +229,17 @@ function BoardItem({ game }: BoardItemProps) {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
             </span>
-            Your turn!
+            {t("yourTurn")}
           </>
         ) : isActive ? (
           <>
             <span className="h-2 w-2 rounded-full bg-blue-300 flex-shrink-0 inline-block" />
-            Opponent&apos;s turn
+            {t("opponentsTurn")}
           </>
         ) : (
           <>
             <span className="h-2 w-2 rounded-full bg-gray-300 flex-shrink-0 inline-block" />
-            Waiting
+            {t("waiting")}
           </>
         )}
       </div>
@@ -251,6 +253,8 @@ interface MultiBoardViewProps {
 }
 
 export function MultiBoardView({ games, onShowAll }: MultiBoardViewProps) {
+  const tDashboard = useTranslations("dashboard");
+
   // Prioritise games where it's my turn
   const sorted = [...games].sort((a, b) => {
     const aMyTurn =
@@ -329,7 +333,7 @@ export function MultiBoardView({ games, onShowAll }: MultiBoardViewProps) {
               onClick={() => goTo(Math.max(0, currentIndex - 1))}
               disabled={currentIndex === 0}
               className="p-1.5 rounded-full bg-white shadow border border-gray-100 disabled:opacity-30 transition-opacity"
-              aria-label="Previous game"
+              aria-label={tDashboard("previousGame")}
             >
               <ChevronLeft className="w-4 h-4 text-gray-600" />
             </button>
@@ -339,7 +343,7 @@ export function MultiBoardView({ games, onShowAll }: MultiBoardViewProps) {
                 <button
                   key={i}
                   onClick={() => goTo(i)}
-                  aria-label={`Go to game ${i + 1}`}
+                  aria-label={tDashboard("goToGameN", { n: i + 1 })}
                   className={`h-2 rounded-full transition-all duration-200 ${
                     i === currentIndex ? "w-4 bg-orange-500" : "w-2 bg-gray-300"
                   }`}
@@ -353,7 +357,7 @@ export function MultiBoardView({ games, onShowAll }: MultiBoardViewProps) {
               }
               disabled={currentIndex === displayed.length - 1}
               className="p-1.5 rounded-full bg-white shadow border border-gray-100 disabled:opacity-30 transition-opacity"
-              aria-label="Next game"
+              aria-label={tDashboard("nextGame")}
             >
               <ChevronRight className="w-4 h-4 text-gray-600" />
             </button>
@@ -370,7 +374,7 @@ export function MultiBoardView({ games, onShowAll }: MultiBoardViewProps) {
             className="rounded-2xl border-orange-200 text-orange-600 hover:bg-orange-50 font-semibold"
             style={{ fontFamily: "var(--font-nunito), sans-serif" }}
           >
-            + {extraCount} more game{extraCount !== 1 ? "s" : ""}
+            {tDashboard("moreGames", { count: extraCount })}
           </Button>
         </div>
       )}

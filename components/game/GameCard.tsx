@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
+import { enUS, ro } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import type { DashboardGame } from "@/lib/types";
 import { usePieceSet } from "@/hooks/usePieceSet";
@@ -25,6 +26,7 @@ interface Props {
 export function GameCard({ game }: Props) {
   const router = useRouter();
   const t = useTranslations("gameCard");
+  const locale = useLocale();
   const [avatarError, setAvatarError] = useState(false);
   const { pieceSet } = usePieceSet();
   const customPieces = buildPieces(pieceSet);
@@ -51,6 +53,7 @@ export function GameCard({ game }: Props) {
 
   const ago = formatDistanceToNow(new Date(game.created_at), {
     addSuffix: true,
+    locale: locale === "ro" ? ro : enUS,
   });
 
   const fen = game.state?.fen || "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -82,9 +85,9 @@ export function GameCard({ game }: Props) {
         </div>
 
         {/* Color badge */}
-        <span className="absolute top-2 right-2 flex items-center gap-1 text-xs font-semibold bg-white/80 backdrop-blur-sm text-gray-700 rounded-full px-2.5 py-0.5 capitalize shadow-sm">
+        <span className="absolute top-2 right-2 flex items-center gap-1 text-xs font-semibold bg-white/80 backdrop-blur-sm text-gray-700 rounded-full px-2.5 py-0.5 shadow-sm">
           <span className="text-base chess-sym">{game.my_color === "white" ? "♔" : "♚"}</span>
-          {game.my_color}
+          {game.my_color === "white" ? t("white") : t("black")}
         </span>
 
         {/* Turn indicator stripe */}

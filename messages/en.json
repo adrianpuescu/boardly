@@ -5,7 +5,8 @@
     "signOut": "Sign out",
     "games": "Games",
     "viewProfile": "View profile",
-    "profile": "Profile"
+    "profile": "Profile",
+    "language": "Language"
   },
   "dashboard": {
     "title": "Your Games",
@@ -15,7 +16,13 @@
     "noGamesDesc": "Challenge a friend and find out who's the real grandmaster. 🏆",
     "startFirstGame": "Start your first game 🎉",
     "newGame": "+ New Game",
-    "newGameShort": "+ New"
+    "newGameShort": "+ New",
+    "moreGames": "{count, plural, one {+ # more game} other {+ # more games}}",
+    "previousGame": "Previous game",
+    "nextGame": "Next game",
+    "goToGameN": "Go to game {n}",
+    "gridView": "Grid view",
+    "multiBoardView": "Multi-board view"
   },
   "game": {
     "yourTurn": "Your turn!",
@@ -34,7 +41,8 @@
     "draw": "Draw",
     "drawOffered": "Draw offered…",
     "offered": "Offered…",
-    "games": "Games"
+    "games": "Games",
+    "waiting": "Waiting"
   },
   "gameOver": {
     "wonOnTime": "You won on time!",
@@ -96,7 +104,9 @@
     "copied": "Copied!",
     "goToGame": "Go to game",
     "somethingWentWrong": "Something went wrong. Please try again.",
-    "networkError": "Network error. Please check your connection."
+    "networkError": "Network error. Please check your connection.",
+    "min": "min",
+    "friendEmailPlaceholder": "friend@example.com"
   },
   "login": {
     "tagline": "Chess with friends ♟  Your rules. Your pace.",
@@ -135,7 +145,10 @@
     "imageSizeError": "Image must be under 2 MB",
     "uploadFailed": "Upload failed",
     "networkError": "Network error. Please try again.",
-    "failedToSave": "Failed to save username"
+    "failedToSave": "Failed to save username",
+    "unlimited": "Unlimited",
+    "minPerMove": "{minutes}m / move",
+    "minPerGame": "{minutes}m total"
   },
   "gameCard": {
     "yourTurn": "Your turn!",
@@ -146,7 +159,9 @@
     "perTurn": "Per turn ⏱",
     "perGame": "Per game ⏳",
     "timeBased": "Timed ⏱",
-    "turnBased": "Turn based 🔄"
+    "turnBased": "Turn based 🔄",
+    "white": "White",
+    "black": "Black"
   },
   "join": {
     "invited": "You're invited!",

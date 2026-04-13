@@ -235,7 +235,7 @@ export default function LobbyPage() {
               </span>
               <Input
                 type="email"
-                placeholder="friend@example.com"
+                placeholder={t("friendEmailPlaceholder")}
                 value={opponentEmail}
                 onChange={(e) => setOpponentEmail(e.target.value)}
                 className="h-11 rounded-xl border-gray-200 focus:border-orange-400 focus:ring-orange-400"
@@ -315,13 +315,13 @@ export default function LobbyPage() {
                               >
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs text-gray-500">
-                                    {card.min} min
+                                    {card.min} {t("min")}
                                   </span>
                                   <span className="text-sm font-bold text-orange-600 tabular-nums">
                                     {currentMinutes} {meta.unit}
                                   </span>
                                   <span className="text-xs text-gray-500">
-                                    {card.max} min
+                                    {card.max} {t("min")}
                                   </span>
                                 </div>
                                 <Slider

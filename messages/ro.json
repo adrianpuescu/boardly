@@ -5,7 +5,8 @@
     "signOut": "Deconectare",
     "games": "Jocuri",
     "viewProfile": "Vezi profilul",
-    "profile": "Profil"
+    "profile": "Profil",
+    "language": "Limbă"
   },
   "dashboard": {
     "title": "Jocurile tale",
@@ -15,7 +16,13 @@
     "noGamesDesc": "Provoacă un prieten și află cine e adevăratul mare maestru. 🏆",
     "startFirstGame": "Începe primul tău joc 🎉",
     "newGame": "+ Joc nou",
-    "newGameShort": "+ Nou"
+    "newGameShort": "+ Nou",
+    "moreGames": "{count, plural, one {+ # joc în plus} other {+ # jocuri în plus}}",
+    "previousGame": "Jocul anterior",
+    "nextGame": "Jocul următor",
+    "goToGameN": "Mergi la jocul {n}",
+    "gridView": "Vizualizare grilă",
+    "multiBoardView": "Vizualizare multi-tablă"
   },
   "game": {
     "yourTurn": "Rândul tău!",
@@ -34,7 +41,8 @@
     "draw": "Remiză",
     "drawOffered": "Remiză propusă…",
     "offered": "Propusă…",
-    "games": "Jocuri"
+    "games": "Jocuri",
+    "waiting": "Așteptare"
   },
   "gameOver": {
     "wonOnTime": "Ai câștigat la timp!",
@@ -96,7 +104,9 @@
     "copied": "Copiat!",
     "goToGame": "Mergi la joc",
     "somethingWentWrong": "Ceva nu a mers bine. Încearcă din nou.",
-    "networkError": "Eroare de rețea. Verifică conexiunea."
+    "networkError": "Eroare de rețea. Verifică conexiunea.",
+    "min": "min",
+    "friendEmailPlaceholder": "prieten@exemplu.com"
   },
   "login": {
     "tagline": "Șah cu prietenii ♟  Regulile tale. Ritmul tău.",
@@ -135,7 +145,10 @@
     "imageSizeError": "Imaginea trebuie să fie sub 2 MB",
     "uploadFailed": "Încărcare eșuată",
     "networkError": "Eroare de rețea. Încearcă din nou.",
-    "failedToSave": "Salvarea numelui de utilizator a eșuat"
+    "failedToSave": "Salvarea numelui de utilizator a eșuat",
+    "unlimited": "Nelimitat",
+    "minPerMove": "{minutes}m / mutare",
+    "minPerGame": "{minutes}m total"
   },
   "gameCard": {
     "yourTurn": "Rândul tău!",
@@ -146,7 +159,9 @@
     "perTurn": "Pe mutare ⏱",
     "perGame": "Pe joc ⏳",
     "timeBased": "Cronometrat ⏱",
-    "turnBased": "Pe rând 🔄"
+    "turnBased": "Pe rând 🔄",
+    "white": "Alb",
+    "black": "Negru"
   },
   "join": {
     "invited": "Ești invitat!",
