@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Boardly 🎲
 
-## Getting Started
+A friendly, Duolingo-inspired platform for turn-based board games. Chess is just the beginning.
 
-First, run the development server:
+## Tech Stack
+
+| Layer | Tools |
+|---|---|
+| Framework | Next.js 14 (App Router), TypeScript |
+| Styling | Tailwind CSS, shadcn/ui, Framer Motion |
+| Backend | Supabase (Auth · Postgres · Realtime) |
+| Chess | chess.js, react-chessboard |
+
+## Setup
 
 ```bash
+# 1. Clone the repo
+git clone https://github.com/your-username/boardly.git
+cd boardly
+
+# 2. Install dependencies
+npm install
+
+# 3. Configure environment variables
+cp .env.local.example .env.local
+# Fill in your Supabase project URL, anon key, and service role key
+
+# 4. Apply the database migration
+# Run the SQL in supabase/migrations/001_initial_schema.sql
+# in the Supabase SQL editor (or via the Supabase CLI)
+
+# 5. Start the dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.local.example` to `.env.local` and fill in the values from your [Supabase project settings](https://supabase.com/dashboard/project/_/settings/api).
 
-## Learn More
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key (safe to expose) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key — **keep secret, server-only** |
+| `NEXT_PUBLIC_APP_URL` | App base URL (e.g. `http://localhost:3000`) |
 
-To learn more about Next.js, take a look at the following resources:
+## Features (MVP)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Google OAuth + Magic Link** — passwordless auth via Supabase
+- **Multi-game dashboard** — manage and play multiple games simultaneously
+- **Real-time board sync** — moves appear instantly for both players via Supabase Realtime
+- **Time controls** — unlimited, per-turn, or per-game clocks
+- **Invite by email** — send invite links to opponents; unknown emails get an invite record
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project Structure
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+app/
+  (auth)/login/         # Login page (magic link + Google OAuth)
+  (protected)/
+    dashboard/          # Active games grid
+    lobby/              # New game setup
+    game/[id]/          # Live chess board
+  api/
+    games/              # Create / list games
+    moves/[id]/         # Submit / fetch moves
+  auth/callback/        # OAuth + magic link redirect handler
+components/
+  game/                 # Board, game card, dashboard client, game page client
+  layout/               # Shared navbar
+  ui/                   # shadcn/ui primitives
+hooks/
+  useGameRealtime.ts    # Supabase Realtime subscription (moves + game status)
+  useTimer.ts           # Countdown timer hook
+lib/
+  supabase/             # Browser, server, and admin Supabase clients
+  types.ts              # Shared TypeScript types
+supabase/
+  migrations/           # SQL migrations
+```
