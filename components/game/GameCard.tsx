@@ -97,7 +97,7 @@ export function GameCard({ game }: Props) {
       </div>
 
       {/* Card body */}
-      <div className="p-4 space-y-3">
+      <div className="px-4 pt-4 pb-2.5 space-y-3">
         {/* Status badge */}
         {isMyTurn ? (
           <div className="flex items-center gap-2">
@@ -152,7 +152,7 @@ export function GameCard({ game }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-1 border-t border-gray-50">
+        <div className="flex items-center justify-between border-t border-gray-50 pt-3">
           <span className="text-xs text-gray-400">{timeLabel}</span>
           <span className="text-xs text-gray-400">{ago}</span>
         </div>
