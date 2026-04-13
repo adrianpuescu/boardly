@@ -99,31 +99,32 @@ export function DashboardClient({ games, currentUser }: Props) {
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex items-center justify-between mb-8"
+          className="flex items-center justify-between gap-3 mb-8"
         >
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <span className="text-2xl select-none" aria-hidden="true">♟</span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3 mb-1">
+              <span className="text-xl sm:text-2xl select-none flex-shrink-0" aria-hidden="true">♟</span>
               <h1
-                className="text-3xl font-black text-gray-900 tracking-tight"
+                className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight truncate"
                 style={{ fontFamily: "var(--font-nunito), sans-serif" }}
               >
                 Your Games
               </h1>
             </div>
-            <p className="text-gray-500 text-sm pl-9">
+            <p className="text-gray-500 text-sm pl-8 sm:pl-9 truncate">
               {games.length === 0
-                ? "Ready to play? Start a new game below."
-                : `${games.length} active game${games.length !== 1 ? "s" : ""} in progress`}
+                ? "Ready to play? Start a new game."
+                : `${games.length} game${games.length !== 1 ? "s" : ""} in progress`}
             </p>
           </div>
 
           <Button
             onClick={() => router.push("/lobby")}
-            className="rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold px-5 shadow-md shadow-orange-200 hover:shadow-lg transition-all"
+            className="rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold px-4 sm:px-5 min-h-[44px] shadow-md shadow-orange-200 hover:shadow-lg transition-all flex-shrink-0"
             style={{ fontFamily: "var(--font-nunito), sans-serif" }}
           >
-            + New Game
+            <span className="hidden sm:inline">+ New Game</span>
+            <span className="sm:hidden">+ New</span>
           </Button>
         </motion.div>
 

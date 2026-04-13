@@ -6,7 +6,7 @@ import { Chessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import type { Square, PieceSymbol } from "chess.js";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
-import { ArrowLeft, ChevronDown, ChevronUp, Flag, Handshake } from "lucide-react";
+import { ArrowLeft, ChevronUp, Flag, Handshake, X } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { useGameRealtime } from "@/hooks/useGameRealtime";
@@ -83,7 +83,9 @@ function ChessTimer({
 
   return (
     <span
-      className={`font-mono font-bold tabular-nums text-sm transition-colors ${
+      className={`font-mono font-bold tabular-nums transition-colors ${
+        isActive ? "text-base sm:text-sm" : "text-sm"
+      } ${
         isLow && isActive
           ? "text-red-500 animate-pulse"
           : isActive
@@ -116,7 +118,7 @@ function PlayerStrip({
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-colors ${
+      className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 rounded-2xl border transition-colors ${
         isCurrentUser
           ? "bg-orange-50 border-orange-200"
           : "bg-white border-gray-100"
@@ -128,11 +130,11 @@ function PlayerStrip({
           <img
             src={avatarUrl}
             alt={username}
-            className="w-10 h-10 rounded-full ring-2 ring-orange-100 object-cover"
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full ring-2 ring-orange-100 object-cover"
           />
         ) : (
           <div
-            className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ring-2 ${
+            className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold ring-2 ${
               isCurrentUser
                 ? "bg-orange-500 ring-orange-200 text-white"
                 : "bg-gray-200 ring-gray-100 text-gray-600"
@@ -165,10 +167,10 @@ function PlayerStrip({
       </div>
 
       {/* Right side: timer + turn badge */}
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
         {timer && (
           <div
-            className={`px-2.5 py-1 rounded-xl border text-xs font-medium ${
+            className={`px-2 sm:px-2.5 py-1 rounded-xl border font-medium ${
               isTheirTurn
                 ? "bg-orange-50 border-orange-200"
                 : "bg-gray-50 border-gray-100"
@@ -178,7 +180,7 @@ function PlayerStrip({
           </div>
         )}
         {isTheirTurn && (
-          <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+          <span className="hidden sm:inline text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
             {isCurrentUser ? "Your turn!" : "Thinking…"}
           </span>
         )}
@@ -441,9 +443,11 @@ function buildMovePairs(moves: MoveRecord[]): MovePair[] {
 function MoveHistoryPanel({
   moves,
   className,
+  hideHeader,
 }: {
   moves: MoveRecord[];
   className?: string;
+  hideHeader?: boolean;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const pairs = buildMovePairs(moves);
@@ -455,9 +459,11 @@ function MoveHistoryPanel({
 
   return (
     <div className={`flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden ${className ?? ""}`}>
-      <div className="px-4 py-3 border-b border-gray-100 flex-shrink-0">
-        <h3 className="text-sm font-semibold text-gray-700">Moves</h3>
-      </div>
+      {!hideHeader && (
+        <div className="px-4 py-3 border-b border-gray-100 flex-shrink-0">
+          <h3 className="text-sm font-semibold text-gray-700">Moves</h3>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto min-h-0 p-2">
         {pairs.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-6">No moves yet</p>
@@ -595,7 +601,7 @@ export function GamePageClient({ game, currentUser }: Props) {
   const [showResignDialog, setShowResignDialog] = useState(false);
   const [resignLoading, setResignLoading] = useState(false);
   const [drawLoading, setDrawLoading] = useState(false);
-  const [movesOpen, setMovesOpen] = useState(false); // mobile collapsible
+  const [movesSheetOpen, setMovesSheetOpen] = useState(false);
 
   // Fetch initial move history on load
   useEffect(() => {
@@ -912,70 +918,52 @@ export function GamePageClient({ game, currentUser }: Props) {
               timer={buildTimer(game.my_color)}
             />
 
-            {/* Resign + Draw buttons */}
-            {isActiveGame && !showModal && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowResignDialog(true)}
-                  disabled={resignLoading}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-500 border border-red-200 hover:bg-red-50 transition-colors disabled:opacity-40"
-                >
-                  <Flag className="w-3.5 h-3.5" />
-                  Resign
-                </button>
-                <button
-                  onClick={() =>
-                    iOfferedDraw ? undefined : handleDrawAction("offer")
-                  }
-                  disabled={drawLoading || iOfferedDraw || opponentOfferedDraw}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-500 border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  title={
-                    iOfferedDraw
-                      ? "Draw offer sent — waiting for opponent"
-                      : opponentOfferedDraw
-                      ? "Opponent already offered a draw"
-                      : "Offer a draw"
-                  }
-                >
-                  <Handshake className="w-3.5 h-3.5" />
-                  {iOfferedDraw ? "Draw offered…" : "Offer Draw"}
-                </button>
-              </div>
-            )}
+            {/* Resign + Draw + Moves row */}
+            <div className="flex gap-2">
+              {isActiveGame && !showModal && (
+                <>
+                  <button
+                    onClick={() => setShowResignDialog(true)}
+                    disabled={resignLoading}
+                    className="flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm font-semibold text-red-500 border border-red-200 hover:bg-red-50 active:bg-red-100 transition-colors disabled:opacity-40"
+                  >
+                    <Flag className="w-4 h-4" />
+                    <span>Resign</span>
+                  </button>
+                  <button
+                    onClick={() =>
+                      iOfferedDraw ? undefined : handleDrawAction("offer")
+                    }
+                    disabled={drawLoading || iOfferedDraw || opponentOfferedDraw}
+                    className="flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm font-semibold text-gray-500 border border-gray-200 hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={
+                      iOfferedDraw
+                        ? "Draw offer sent — waiting for opponent"
+                        : opponentOfferedDraw
+                        ? "Opponent already offered a draw"
+                        : "Offer a draw"
+                    }
+                  >
+                    <Handshake className="w-4 h-4" />
+                    <span className="hidden sm:inline">{iOfferedDraw ? "Draw offered…" : "Offer Draw"}</span>
+                    <span className="sm:hidden">{iOfferedDraw ? "Offered…" : "Draw"}</span>
+                  </button>
+                </>
+              )}
 
-            {/* Mobile: collapsible move history */}
-            <div className="lg:hidden">
+              {/* Mobile: Moves button — opens bottom sheet */}
               <button
-                onClick={() => setMovesOpen((v) => !v)}
-                className="w-full flex items-center justify-between px-4 py-2.5 bg-white border border-gray-100 rounded-2xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                onClick={() => setMovesSheetOpen(true)}
+                className="lg:hidden ml-auto flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 active:bg-gray-100 transition-colors"
               >
-                <span>
-                  Moves{" "}
-                  {moves.length > 0 && (
-                    <span className="text-gray-400 font-normal">
-                      ({moves.length})
-                    </span>
-                  )}
-                </span>
-                {movesOpen ? (
-                  <ChevronUp className="w-4 h-4 text-gray-400" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                <ChevronUp className="w-4 h-4 text-gray-400" />
+                Moves
+                {moves.length > 0 && (
+                  <span className="ml-0.5 text-gray-400 font-normal text-xs">
+                    ({moves.length})
+                  </span>
                 )}
               </button>
-              <AnimatePresence>
-                {movesOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <MoveHistoryPanel moves={moves} className="mt-2 max-h-56" />
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
           </div>
 
@@ -1007,6 +995,56 @@ export function GamePageClient({ game, currentUser }: Props) {
             onCancel={() => setShowResignDialog(false)}
             loading={resignLoading}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Mobile: Move history bottom sheet */}
+      <AnimatePresence>
+        {movesSheetOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMovesSheetOpen(false)}
+              className="lg:hidden fixed inset-0 z-30 bg-black/40 backdrop-blur-sm"
+            />
+            {/* Sheet */}
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-2xl max-h-[70vh] flex flex-col"
+            >
+              {/* Drag handle */}
+              <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+                <div className="w-10 h-1 rounded-full bg-gray-300" />
+              </div>
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 flex-shrink-0">
+                <h3 className="text-base font-bold text-gray-900">
+                  Moves
+                  {moves.length > 0 && (
+                    <span className="ml-2 text-sm font-normal text-gray-400">
+                      ({moves.length})
+                    </span>
+                  )}
+                </h3>
+                <button
+                  onClick={() => setMovesSheetOpen(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <X className="w-4 h-4 text-gray-500" />
+                </button>
+              </div>
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto min-h-0">
+                <MoveHistoryPanel moves={moves} className="border-0 rounded-none h-full" hideHeader />
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>
