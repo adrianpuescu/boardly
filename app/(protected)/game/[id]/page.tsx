@@ -46,10 +46,11 @@ export default async function GamePage({ params }: Props) {
 
   if (!game) redirect("/dashboard");
 
+  // Supabase returns related rows as arrays even for FK-based to-one joins.
   const players = (game.game_players ?? []) as Array<{
     user_id: string;
     color: string;
-    users: { id: string; username: string; avatar_url: string | null } | null;
+    users: { id: string; username: string; avatar_url: string | null }[];
   }>;
 
   // Verify current user is actually in this game
@@ -71,7 +72,7 @@ export default async function GamePage({ params }: Props) {
     time_control: game.time_control as GamePageData["time_control"],
     winner_id: (game.winner_id as string | null) ?? null,
     my_color: myPlayerRow.color as "white" | "black",
-    opponent: opponentRow?.users ?? null,
+    opponent: opponentRow?.users?.[0] ?? null,
   };
 
   const currentUser: CurrentUser = {

@@ -53,10 +53,11 @@ export default async function DashboardPage() {
       .order("updated_at", { ascending: false });
 
     games = (gameRows ?? []).map((g) => {
+      // Supabase returns related rows as arrays even for FK-based to-one joins.
       const players = (g.game_players ?? []) as Array<{
         user_id: string;
         color: string;
-        users: { id: string; username: string; avatar_url: string | null } | null;
+        users: { id: string; username: string; avatar_url: string | null }[];
       }>;
 
       const opponentRow = players.find((p) => p.user_id !== user.id);
@@ -69,7 +70,7 @@ export default async function DashboardPage() {
         state: g.state as { turn?: "white" | "black"; fen?: string },
         created_at: g.created_at as string,
         my_color: myColorMap[g.id] ?? "white",
-        opponent: opponentRow?.users ?? null,
+        opponent: opponentRow?.users?.[0] ?? null,
       };
     });
   }
