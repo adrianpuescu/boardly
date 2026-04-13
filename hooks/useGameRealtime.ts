@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 const INITIAL_FEN =
@@ -29,6 +29,13 @@ export function useGameRealtime(
   initialStatus: string = "waiting",
   initialTimerState: TimerState = {}
 ) {
+  // Unique suffix per hook instance — prevents Supabase from reusing an
+  // already-subscribed channel when multiple instances run for the same gameId
+  // (e.g. multi-board dashboard view) or when React StrictMode double-invokes effects.
+  const channelSuffix = useRef(
+    `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+  );
+
   const [fen, setFen] = useState(initialFen);
   const [gameStatus, setGameStatus] = useState(initialStatus);
   const [gameOver, setGameOver] = useState(false);
@@ -42,7 +49,7 @@ export function useGameRealtime(
     const supabase = createClient();
 
     const channel = supabase
-      .channel(`game-realtime:${gameId}`)
+      .channel(`game-realtime:${gameId}:${channelSuffix.current}`)
       // New move → update live FEN and append to move list
       .on(
         "postgres_changes",

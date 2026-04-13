@@ -1,12 +1,18 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
+import { LayoutGrid, LayoutDashboard } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { GameCard } from "@/components/game/GameCard";
+import { MultiBoardView } from "@/components/game/MultiBoardView";
 import { Button } from "@/components/ui/button";
 import type { DashboardGame, CurrentUser } from "@/lib/types";
+
+type ViewMode = "grid" | "multiboard";
+const VIEW_MODE_KEY = "boardly-dashboard-view";
 
 interface Props {
   games: DashboardGame[];
@@ -82,6 +88,26 @@ function EmptyState({ onNewGame }: { onNewGame: () => void }) {
 export function DashboardClient({ games, currentUser }: Props) {
   const router = useRouter();
   const t = useTranslations("dashboard");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+
+  // Hydrate from localStorage once on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(VIEW_MODE_KEY) as ViewMode | null;
+      if (saved === "grid" || saved === "multiboard") setViewMode(saved);
+    } catch {
+      // localStorage unavailable
+    }
+  }, []);
+
+  const switchView = (mode: ViewMode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem(VIEW_MODE_KEY, mode);
+    } catch {
+      // ignore
+    }
+  };
 
   return (
     <div
@@ -125,19 +151,57 @@ export function DashboardClient({ games, currentUser }: Props) {
             </p>
           </div>
 
-          <Button
-            onClick={() => router.push("/lobby")}
-            className="rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold px-4 sm:px-5 min-h-[44px] shadow-md shadow-orange-200 hover:shadow-lg transition-all flex-shrink-0"
-            style={{ fontFamily: "var(--font-nunito), sans-serif" }}
-          >
-            <span className="hidden sm:inline">{t("newGame")}</span>
-            <span className="sm:hidden">{t("newGameShort")}</span>
-          </Button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* View toggle — only shown when there are games */}
+            {games.length > 0 && (
+              <div className="flex items-center bg-white border border-gray-200 rounded-xl p-0.5 shadow-sm">
+                <button
+                  onClick={() => switchView("grid")}
+                  aria-label="Grid view"
+                  title="Grid view"
+                  className={`p-2 rounded-lg transition-all ${
+                    viewMode === "grid"
+                      ? "bg-orange-500 text-white shadow-sm"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => switchView("multiboard")}
+                  aria-label="Multi-board view"
+                  title="Multi-board view"
+                  className={`p-2 rounded-lg transition-all ${
+                    viewMode === "multiboard"
+                      ? "bg-orange-500 text-white shadow-sm"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            <Button
+              onClick={() => router.push("/lobby")}
+              className="rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold px-4 sm:px-5 min-h-[44px] shadow-md shadow-orange-200 hover:shadow-lg transition-all"
+              style={{ fontFamily: "var(--font-nunito), sans-serif" }}
+            >
+              <span className="hidden sm:inline">{t("newGame")}</span>
+              <span className="sm:hidden">{t("newGameShort")}</span>
+            </Button>
+          </div>
         </motion.div>
 
         {/* Empty state */}
         {games.length === 0 ? (
           <EmptyState onNewGame={() => router.push("/lobby")} />
+        ) : viewMode === "multiboard" ? (
+          /* Multi-board view */
+          <MultiBoardView
+            games={games}
+            onShowAll={() => switchView("grid")}
+          />
         ) : (
           /* Game grid */
           <motion.div
