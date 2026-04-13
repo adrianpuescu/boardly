@@ -48,9 +48,6 @@ export function PiecePicker({
     if (!hasGameId) setTab("global");
   }, [hasGameId]);
 
-  const currentForTab: PieceSet | null =
-    tab === "game" ? (gamePieceSet ?? null) : globalPieceSet;
-
   function handleSelect(set: PieceSet) {
     if (tab === "game") {
       onChangeGame?.(set);

@@ -42,7 +42,14 @@
     "drawOffered": "Remiză propusă…",
     "offered": "Propusă…",
     "games": "Jocuri",
-    "waiting": "Așteptare"
+    "waiting": "Așteptare",
+    "promotionTitle": "Promovare pion",
+    "promotionDesc": "Alege piesa pentru promovare.",
+    "promoteQueen": "Regină",
+    "promoteRook": "Turn",
+    "promoteBishop": "Nebun",
+    "promoteKnight": "Cal",
+    "promotionCancel": "Renunță"
   },
   "gameOver": {
     "wonOnTime": "Ai câștigat la timp!",

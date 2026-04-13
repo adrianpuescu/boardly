@@ -1,5 +1,5 @@
 // PieceRenderObject: map of piece codes to render functions (from react-chessboard internals)
-type PieceRenderObject = Record<
+export type PieceRenderObject = Record<
   string,
   (props?: { fill?: string; square?: string; svgStyle?: React.CSSProperties }) => React.JSX.Element
 >;

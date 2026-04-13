@@ -13,10 +13,18 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { useGameRealtime } from "@/hooks/useGameRealtime";
 import { usePieceSet } from "@/hooks/usePieceSet";
-import { buildPieces } from "@/lib/chess/pieces";
+import { buildPieces, type PieceRenderObject } from "@/lib/chess/pieces";
 import { PiecePicker } from "@/components/game/PiecePicker";
 import type { GameResult, MoveRecord } from "@/hooks/useGameRealtime";
 import type { GamePageData, CurrentUser } from "@/lib/types";
+
+type PromotionPiece = "q" | "r" | "b" | "n";
+
+function needsPromotionChoice(fen: string, from: Square, to: Square): boolean {
+  const chess = new Chess(fen);
+  const moves = chess.moves({ square: from, verbose: true });
+  return moves.some((m) => m.to === to && m.promotion !== undefined);
+}
 
 interface Props {
   game: GamePageData;
@@ -434,6 +442,85 @@ function ResignDialog({
   );
 }
 
+// ── Pawn promotion (modal styled like the rest of the app) ───────────────────
+function PromotionDialog({
+  myColor,
+  customPieces,
+  onSelect,
+  onCancel,
+}: {
+  myColor: "white" | "black";
+  customPieces: PieceRenderObject;
+  onSelect: (piece: PromotionPiece) => void;
+  onCancel: () => void;
+}) {
+  const t = useTranslations("game");
+  const prefix = myColor === "white" ? "w" : "b";
+  const choices: {
+    piece: PromotionPiece;
+    code: string;
+    label: "promoteQueen" | "promoteRook" | "promoteBishop" | "promoteKnight";
+  }[] = [
+    { piece: "q", code: `${prefix}Q`, label: "promoteQueen" },
+    { piece: "r", code: `${prefix}R`, label: "promoteRook" },
+    { piece: "b", code: `${prefix}B`, label: "promoteBishop" },
+    { piece: "n", code: `${prefix}N`, label: "promoteKnight" },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[50] flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="promotion-dialog-title"
+    >
+      <motion.div
+        initial={{ scale: 0.88, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ type: "spring", damping: 26, stiffness: 360 }}
+        className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-orange-100"
+      >
+        <h3
+          id="promotion-dialog-title"
+          className="text-lg font-bold text-gray-900 text-center mb-1"
+        >
+          {t("promotionTitle")}
+        </h3>
+        <p className="text-sm text-gray-500 text-center mb-5">{t("promotionDesc")}</p>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {choices.map(({ piece, code, label }) => (
+            <button
+              key={piece}
+              type="button"
+              onClick={() => onSelect(piece)}
+              className="flex flex-col items-center gap-2 rounded-2xl border-2 border-orange-100 bg-orange-50/40 hover:bg-orange-50 hover:border-orange-200 active:scale-[0.98] transition-all py-4 px-2"
+            >
+              <div className="w-14 h-14 flex items-center justify-center">
+                {customPieces[code]?.({
+                  svgStyle: { width: "100%", height: "100%" },
+                })}
+              </div>
+              <span className="text-xs font-semibold text-gray-700">{t(label)}</span>
+            </button>
+          ))}
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          className="w-full rounded-xl border-gray-200 text-gray-600"
+        >
+          {t("promotionCancel")}
+        </Button>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ── Move history panel ────────────────────────────────────────────────────────
 interface MovePair {
   moveNumber: number;
@@ -630,6 +717,10 @@ export function GamePageClient({ game, currentUser }: Props) {
   const [resignLoading, setResignLoading] = useState(false);
   const [drawLoading, setDrawLoading] = useState(false);
   const [movesSheetOpen, setMovesSheetOpen] = useState(false);
+  const [promotionAt, setPromotionAt] = useState<{
+    from: string;
+    to: string;
+  } | null>(null);
 
   // Fetch initial move history on load
   useEffect(() => {
@@ -701,9 +792,8 @@ export function GamePageClient({ game, currentUser }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.id, showModal]);
 
-  const handlePieceDrop = useCallback(
-    (sourceSquare: string, targetSquare: string): boolean => {
-      console.log("[onPieceDrop]", sourceSquare, "->", targetSquare, "| isMyTurn:", isMyTurn, "| canSubmitMove:", canSubmitMove);
+  const applyMove = useCallback(
+    (sourceSquare: string, targetSquare: string, promotion?: PromotionPiece) => {
       if (!canSubmitMove) return false;
 
       const chess = new Chess(fen);
@@ -713,7 +803,7 @@ export function GamePageClient({ game, currentUser }: Props) {
         chess.move({
           from: sourceSquare as Square,
           to: targetSquare as Square,
-          promotion: "q" as PieceSymbol,
+          ...(promotion ? { promotion: promotion as PieceSymbol } : {}),
         });
         newFen = chess.fen();
       } catch {
@@ -728,7 +818,11 @@ export function GamePageClient({ game, currentUser }: Props) {
       fetch(`/api/moves/${game.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ from: sourceSquare, to: targetSquare }),
+        body: JSON.stringify({
+          from: sourceSquare,
+          to: targetSquare,
+          ...(promotion ? { promotion } : {}),
+        }),
       })
         .then(async (res) => {
           const data = (await res.json()) as {
@@ -767,7 +861,23 @@ export function GamePageClient({ game, currentUser }: Props) {
       return true;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [canSubmitMove, isMyTurn, fen, game.id]
+    [canSubmitMove, fen, game.id]
+  );
+
+  const handlePieceDrop = useCallback(
+    (sourceSquare: string, targetSquare: string): boolean => {
+      if (!canSubmitMove) return false;
+
+      if (
+        needsPromotionChoice(fen, sourceSquare as Square, targetSquare as Square)
+      ) {
+        setPromotionAt({ from: sourceSquare, to: targetSquare });
+        return false;
+      }
+
+      return applyMove(sourceSquare, targetSquare);
+    },
+    [canSubmitMove, fen, applyMove]
   );
 
   // ── Resign ───────────────────────────────────────────────────────────────
@@ -933,11 +1043,11 @@ export function GamePageClient({ game, currentUser }: Props) {
                   boardOrientation: game.my_color,
                   pieces: customPieces,
                   canDragPiece: ({ piece }) => {
+                    if (promotionAt) return false;
                     const isWhitePiece = piece.pieceType.startsWith("w");
                     return game.my_color === "white" ? isWhitePiece : !isWhitePiece;
                   },
                   onPieceDrop: ({ sourceSquare, targetSquare }) => {
-                    console.log("[onPieceDrop]", sourceSquare, "->", targetSquare ?? "off-board");
                     if (!targetSquare) return false;
                     return handlePieceDrop(sourceSquare, targetSquare);
                   },
@@ -1034,6 +1144,22 @@ export function GamePageClient({ game, currentUser }: Props) {
             onConfirm={handleResign}
             onCancel={() => setShowResignDialog(false)}
             loading={resignLoading}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Pawn promotion */}
+      <AnimatePresence>
+        {promotionAt && (
+          <PromotionDialog
+            myColor={game.my_color}
+            customPieces={customPieces}
+            onSelect={(piece) => {
+              const { from, to } = promotionAt;
+              setPromotionAt(null);
+              applyMove(from, to, piece);
+            }}
+            onCancel={() => setPromotionAt(null)}
           />
         )}
       </AnimatePresence>

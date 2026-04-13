@@ -22,10 +22,37 @@ const nunito = Nunito({
   display: "swap",
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
-  title: "Boardly — Play chess with friends",
-  description: "Play chess with friends, your way.",
+  metadataBase: new URL(siteUrl),
+  title: "Boardly — Play board games with friends",
+  description:
+    "A friendly platform for turn-based board games. Chess is just the beginning.",
   manifest: "/manifest.webmanifest",
+  openGraph: {
+    title: "Boardly — Play board games with friends",
+    description:
+      "A friendly platform for turn-based board games. Chess is just the beginning.",
+    type: "website",
+    url: "/",
+    siteName: "Boardly",
+    images: [
+      {
+        url: "/icons/icon-512.png",
+        width: 512,
+        height: 512,
+        alt: "Boardly",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Boardly — Play board games with friends",
+    description:
+      "A friendly platform for turn-based board games. Chess is just the beginning.",
+    images: ["/icons/icon-512.png"],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

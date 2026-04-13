@@ -42,7 +42,14 @@
     "drawOffered": "Draw offered…",
     "offered": "Offered…",
     "games": "Games",
-    "waiting": "Waiting"
+    "waiting": "Waiting",
+    "promotionTitle": "Promote pawn",
+    "promotionDesc": "Choose the piece to promote to.",
+    "promoteQueen": "Queen",
+    "promoteRook": "Rook",
+    "promoteBishop": "Bishop",
+    "promoteKnight": "Knight",
+    "promotionCancel": "Cancel"
   },
   "gameOver": {
     "wonOnTime": "You won on time!",

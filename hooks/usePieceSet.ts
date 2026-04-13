@@ -36,11 +36,13 @@ export function usePieceSet(gameId?: string) {
     }
     setLoadingGame(true);
     const supabase = createClient();
-    supabase
-      .from("user_game_preferences")
-      .select("piece_set")
-      .eq("game_id", gameId)
-      .maybeSingle()
+    void Promise.resolve(
+      supabase
+        .from("user_game_preferences")
+        .select("piece_set")
+        .eq("game_id", gameId)
+        .maybeSingle()
+    )
       .then(({ data, error }) => {
         if (error) {
           console.error("[usePieceSet] load game pref error:", error.message);
