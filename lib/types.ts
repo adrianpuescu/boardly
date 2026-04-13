@@ -71,7 +71,14 @@ export interface GamePageData {
   id: string;
   status: "waiting" | "active" | "completed" | "abandoned";
   game_type: string;
-  state: { fen: string; turn: "white" | "black"; result?: string };
+  state: {
+    fen: string;
+    turn: "white" | "black";
+    result?: string;
+    turn_started_at?: string;
+    white_time_ms?: number;
+    black_time_ms?: number;
+  };
   time_control: { type: string; minutes?: number };
   winner_id: string | null;
   my_color: "white" | "black";

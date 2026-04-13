@@ -305,10 +305,13 @@ export default function LobbyPage() {
                               animate={{ opacity: 1, height: "auto" }}
                               exit={{ opacity: 0, height: 0 }}
                               transition={{ duration: 0.2 }}
-                              className="overflow-hidden"
+                              // overflow-hidden is required for height:0→auto animation.
+                              // The extra pb/px below ensures the slider thumb's
+                              // ::after (-inset-2 = 8 px bleed) is never clipped.
+                              style={{ overflow: "hidden" }}
                             >
                               <div
-                                className="mt-4 space-y-2"
+                                className="mt-4 space-y-3 px-2 pb-5"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <div className="flex items-center justify-between">
@@ -327,15 +330,11 @@ export default function LobbyPage() {
                                   max={card.max}
                                   step={card.type === "per_turn" ? 1 : 5}
                                   value={[currentMinutes]}
-                                  onValueChange={(raw) => {
-                                    const val = Array.isArray(raw)
-                                      ? raw[0]
-                                      : (raw as number);
+                                  onValueChange={(val) => {
                                     if (card.type === "per_turn")
-                                      setPerTurnMinutes(val);
-                                    else setPerGameMinutes(val);
+                                      setPerTurnMinutes(val[0]);
+                                    else setPerGameMinutes(val[0]);
                                   }}
-                                  className="[&_[role=slider]]:bg-orange-500 [&_[role=slider]]:border-orange-500 [&_.bg-primary]:bg-orange-500"
                                 />
                               </div>
                             </motion.div>

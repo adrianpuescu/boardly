@@ -59,7 +59,13 @@ export default async function GamePage({ params }: Props) {
 
   const opponentRow = players.find((p) => p.user_id !== user.id);
 
-  const state = (game.state ?? {}) as { fen?: string; turn?: string };
+  const state = (game.state ?? {}) as {
+    fen?: string;
+    turn?: string;
+    turn_started_at?: string;
+    white_time_ms?: number;
+    black_time_ms?: number;
+  };
 
   const gameData: GamePageData = {
     id: game.id as string,
@@ -68,6 +74,9 @@ export default async function GamePage({ params }: Props) {
     state: {
       fen: state.fen ?? INITIAL_FEN,
       turn: (state.turn ?? "white") as "white" | "black",
+      turn_started_at: state.turn_started_at,
+      white_time_ms: state.white_time_ms,
+      black_time_ms: state.black_time_ms,
     },
     time_control: game.time_control as GamePageData["time_control"],
     winner_id: (game.winner_id as string | null) ?? null,

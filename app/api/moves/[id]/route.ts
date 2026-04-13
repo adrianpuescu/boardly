@@ -58,7 +58,7 @@ export async function POST(
     .from("games")
     .select(
       `
-      id, status, state,
+      id, status, state, time_control,
       game_players ( user_id, color )
     `
     )
@@ -109,7 +109,13 @@ export async function POST(
   }
 
   // Authoritative FEN from the DB state column
-  const state = game.state as { fen?: string; turn?: string };
+  const state = game.state as {
+    fen?: string;
+    turn?: string;
+    turn_started_at?: string;
+    white_time_ms?: number;
+    black_time_ms?: number;
+  };
   const currentFen = (state?.fen && state.fen.trim() !== "")
     ? state.fen
     : INITIAL_FEN;
@@ -190,11 +196,39 @@ export async function POST(
 
   // Update games row
   const newTurn = chess.turn() === "w" ? "white" : "black";
+  const now = new Date().toISOString();
+  const timeControl = game.time_control as { type: string; minutes?: number } | null;
+
   const newState: Record<string, unknown> = {
     fen: newFen,
     turn: newTurn,
     ...(result ? { result } : {}),
   };
+
+  // Attach timer fields based on time control type
+  if (!isOver && timeControl?.type === "per_turn") {
+    newState.turn_started_at = now;
+  } else if (!isOver && timeControl?.type === "per_game") {
+    const totalMs = (timeControl.minutes ?? 10) * 60 * 1000;
+
+    // Carry forward existing banks, or initialise them on the first move
+    let whiteMs = state.white_time_ms ?? totalMs;
+    let blackMs = state.black_time_ms ?? totalMs;
+
+    // Deduct elapsed time from the player who just moved
+    if (state.turn_started_at) {
+      const elapsed = Date.now() - new Date(state.turn_started_at).getTime();
+      if (playerRow.color === "white") {
+        whiteMs = Math.max(0, whiteMs - elapsed);
+      } else {
+        blackMs = Math.max(0, blackMs - elapsed);
+      }
+    }
+
+    newState.white_time_ms = whiteMs;
+    newState.black_time_ms = blackMs;
+    newState.turn_started_at = now;
+  }
 
   const gameUpdate: Record<string, unknown> = { state: newState };
   if (isOver) {

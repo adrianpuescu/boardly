@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Chessboard } from "react-chessboard";
 import { Chess } from "chess.js";
@@ -18,6 +18,83 @@ interface Props {
   currentUser: CurrentUser;
 }
 
+// ── Time formatting ───────────────────────────────────────────────────────────
+function formatTime(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+// ── Chess timer ───────────────────────────────────────────────────────────────
+function ChessTimer({
+  remainingMs,
+  turnStartedAt,
+  isActive,
+  onExpire,
+}: {
+  remainingMs: number;
+  turnStartedAt: string | null;
+  isActive: boolean;
+  onExpire?: () => void;
+}) {
+  const expiredRef = useRef(false);
+  const onExpireRef = useRef(onExpire);
+  useEffect(() => {
+    onExpireRef.current = onExpire;
+  }, [onExpire]);
+
+  // Reset expired flag each time the turn changes
+  useEffect(() => {
+    expiredRef.current = false;
+  }, [turnStartedAt, remainingMs]);
+
+  const calcRemaining = useCallback(() => {
+    if (!isActive || !turnStartedAt) return remainingMs;
+    const elapsed = Date.now() - new Date(turnStartedAt).getTime();
+    return Math.max(0, remainingMs - elapsed);
+  }, [isActive, turnStartedAt, remainingMs]);
+
+  const [displayMs, setDisplayMs] = useState(calcRemaining);
+
+  // Sync immediately when props change (new turn / new state from realtime)
+  useEffect(() => {
+    setDisplayMs(calcRemaining());
+  }, [calcRemaining]);
+
+  // Tick every second while it's this player's turn
+  useEffect(() => {
+    if (!isActive || !turnStartedAt) return;
+
+    const interval = setInterval(() => {
+      const next = calcRemaining();
+      setDisplayMs(next);
+      if (next === 0 && !expiredRef.current) {
+        expiredRef.current = true;
+        onExpireRef.current?.();
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isActive, turnStartedAt, calcRemaining]);
+
+  const isLow = displayMs > 0 && displayMs < 30_000;
+
+  return (
+    <span
+      className={`font-mono font-bold tabular-nums text-sm transition-colors ${
+        isLow && isActive
+          ? "text-red-500 animate-pulse"
+          : isActive
+          ? "text-orange-500"
+          : "text-gray-400"
+      }`}
+    >
+      {formatTime(displayMs)}
+    </span>
+  );
+}
+
 // ── Player strip ─────────────────────────────────────────────────────────────
 function PlayerStrip({
   username,
@@ -25,12 +102,14 @@ function PlayerStrip({
   color,
   isCurrentUser,
   isTheirTurn,
+  timer,
 }: {
   username: string;
   avatarUrl: string | null;
   color: "white" | "black";
   isCurrentUser: boolean;
   isTheirTurn: boolean;
+  timer?: React.ReactNode;
 }) {
   const initials = username.slice(0, 2).toUpperCase();
 
@@ -84,11 +163,25 @@ function PlayerStrip({
         </p>
       </div>
 
-      {isTheirTurn && (
-        <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-          {isCurrentUser ? "Your turn!" : "Thinking…"}
-        </span>
-      )}
+      {/* Right side: timer + turn badge */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {timer && (
+          <div
+            className={`px-2.5 py-1 rounded-xl border text-xs font-medium ${
+              isTheirTurn
+                ? "bg-orange-50 border-orange-200"
+                : "bg-gray-50 border-gray-100"
+            }`}
+          >
+            {timer}
+          </div>
+        )}
+        {isTheirTurn && (
+          <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+            {isCurrentUser ? "Your turn!" : "Thinking…"}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -189,7 +282,19 @@ function GameOverModal({
         transition={{ type: "spring", damping: 22, stiffness: 320 }}
         className="bg-white rounded-3xl p-8 max-w-xs w-full shadow-2xl text-center"
       >
-        {isDraw ? (
+        {result === "timeout" ? (
+          <>
+            <div className="text-6xl mb-4 select-none">{iWon ? "⏰" : "⌛"}</div>
+            <h2 className="text-2xl font-extrabold text-gray-900 mb-2">
+              {iWon ? "You won on time!" : "Time's up!"}
+            </h2>
+            <p className="text-gray-500 text-sm mb-6">
+              {iWon
+                ? "Your opponent ran out of time."
+                : "Your clock ran out. Better luck next time!"}
+            </p>
+          </>
+        ) : isDraw ? (
           <>
             <div className="text-6xl mb-4 select-none">🤝</div>
             <h2 className="text-2xl font-extrabold text-gray-900 mb-2">
@@ -203,7 +308,6 @@ function GameOverModal({
           </>
         ) : iWon ? (
           <>
-            {/* Celebratory burst of emojis */}
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: [0, 1.3, 1] }}
@@ -266,18 +370,26 @@ export function GamePageClient({ game, currentUser }: Props) {
     setGameResult,
     winnerId: realtimeWinnerId,
     setWinnerId,
-  } = useGameRealtime(game.id, game.state.fen, game.status);
+    timerState,
+  } = useGameRealtime(
+    game.id,
+    game.state.fen,
+    game.status,
+    {
+      turn_started_at: game.state.turn_started_at,
+      white_time_ms: game.state.white_time_ms,
+      black_time_ms: game.state.black_time_ms,
+    }
+  );
 
   const [submitting, setSubmitting] = useState(false);
 
   // ── Game-over resolution ─────────────────────────────────────────────────
-  // Combine: server-rendered initial state + realtime updates + API response
   const isAlreadyOver =
     game.status === "completed" || game.status === "abandoned";
 
   const showModal = isAlreadyOver || realtimeGameOver;
 
-  // Prefer realtime/API result over the server-rendered initial state
   const displayResult: string | null =
     realtimeGameResult ?? game.state.result ?? null;
   const displayWinnerId: string | null =
@@ -292,13 +404,9 @@ export function GamePageClient({ game, currentUser }: Props) {
   const opponentColor: "white" | "black" =
     game.my_color === "white" ? "black" : "white";
 
-  // Compare FEN active-colour ('w'/'b') against our color ('white'/'black')
   const fenTurn = fen.split(" ")[1] === "b" ? "black" : "white";
   const isMyTurn = fenTurn === game.my_color;
 
-  // Gate move *submission* (not dragging) on these conditions.
-  // Dragging is always allowed so pieces feel responsive; the handler
-  // returns false early when it's not the player's turn.
   const canSubmitMove = isMyTurn && !submitting && !showModal;
 
   async function shake() {
@@ -308,12 +416,31 @@ export function GamePageClient({ game, currentUser }: Props) {
     });
   }
 
+  // ── Timeout handler ──────────────────────────────────────────────────────
+  const handleTimeout = useCallback(async () => {
+    if (showModal) return;
+    try {
+      const res = await fetch(`/api/moves/${game.id}/timeout`, { method: "POST" });
+      if (res.ok) {
+        const data = (await res.json()) as {
+          winnerId?: string;
+          loserId?: string;
+        };
+        setGameOver(true);
+        setGameResult(null);
+        setWinnerId(data.winnerId ?? null);
+      }
+    } catch (err) {
+      console.error("[timer] timeout request failed:", err);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game.id, showModal]);
+
   const handlePieceDrop = useCallback(
     (sourceSquare: string, targetSquare: string): boolean => {
       console.log("[onPieceDrop]", sourceSquare, "->", targetSquare, "| isMyTurn:", isMyTurn, "| canSubmitMove:", canSubmitMove);
       if (!canSubmitMove) return false;
 
-      // Local chess.js validation
       const chess = new Chess(fen);
       let newFen: string;
 
@@ -321,7 +448,7 @@ export function GamePageClient({ game, currentUser }: Props) {
         chess.move({
           from: sourceSquare as Square,
           to: targetSquare as Square,
-          promotion: "q" as PieceSymbol, // auto-promote to queen
+          promotion: "q" as PieceSymbol,
         });
         newFen = chess.fen();
       } catch {
@@ -329,7 +456,6 @@ export function GamePageClient({ game, currentUser }: Props) {
         return false;
       }
 
-      // Optimistic update
       const prevFen = fen;
       setFen(newFen);
       setSubmitting(true);
@@ -350,11 +476,9 @@ export function GamePageClient({ game, currentUser }: Props) {
           };
 
           if (!res.ok) {
-            // Server rejected — revert and shake
             setFen(prevFen);
             void shake();
           } else {
-            // Sync with server-confirmed FEN (handles en passant, clock, etc.)
             if (data.fen) setFen(data.fen);
 
             if (data.gameOver) {
@@ -375,13 +499,59 @@ export function GamePageClient({ game, currentUser }: Props) {
           setSubmitting(false);
         });
 
-      return true; // let the board render the optimistic piece position
+      return true;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [canSubmitMove, isMyTurn, fen, game.id]
   );
 
   const opponentUsername = game.opponent?.username ?? "Waiting…";
+  const timeControlType = game.time_control?.type;
+  const hasTimer = timeControlType === "per_turn" || timeControlType === "per_game";
+
+  // Resolved timer state: prefer realtime updates, fall back to initial props
+  const resolvedTimerState = {
+    turn_started_at: timerState.turn_started_at ?? game.state.turn_started_at,
+    white_time_ms: timerState.white_time_ms ?? game.state.white_time_ms,
+    black_time_ms: timerState.black_time_ms ?? game.state.black_time_ms,
+  };
+
+  // For per_turn: each player gets the same fresh allocation each turn
+  const perTurnMs = (game.time_control?.minutes ?? 1) * 60 * 1000;
+
+  // Build timer nodes for each player
+  function buildTimer(playerColor: "white" | "black"): React.ReactNode {
+    if (!hasTimer || showModal) return undefined;
+
+    const isThisPlayersTurn = fenTurn === playerColor && gameStatus === "active";
+    const turnStartedAt = resolvedTimerState.turn_started_at ?? null;
+
+    if (timeControlType === "per_turn") {
+      return (
+        <ChessTimer
+          remainingMs={perTurnMs}
+          turnStartedAt={isThisPlayersTurn ? turnStartedAt : null}
+          isActive={isThisPlayersTurn}
+          onExpire={handleTimeout}
+        />
+      );
+    }
+
+    // per_game
+    const remainingMs =
+      playerColor === "white"
+        ? (resolvedTimerState.white_time_ms ?? perTurnMs)
+        : (resolvedTimerState.black_time_ms ?? perTurnMs);
+
+    return (
+      <ChessTimer
+        remainingMs={remainingMs}
+        turnStartedAt={isThisPlayersTurn ? turnStartedAt : null}
+        isActive={isThisPlayersTurn}
+        onExpire={handleTimeout}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex flex-col">
@@ -414,6 +584,7 @@ export function GamePageClient({ game, currentUser }: Props) {
             color={opponentColor}
             isCurrentUser={false}
             isTheirTurn={fenTurn === opponentColor && gameStatus === "active"}
+            timer={buildTimer(opponentColor)}
           />
         </div>
 
@@ -426,12 +597,7 @@ export function GamePageClient({ game, currentUser }: Props) {
             options={{
               position: fen,
               boardOrientation: game.my_color,
-              // allowDragging intentionally omitted — defaults to true.
-              // Piece pickup is always allowed; the handler returns false
-              // when it's not the player's turn (better UX than locking all pieces).
               canDragPiece: ({ piece }) => {
-                // react-chessboard v5 encodes pieces as 'wP','wR','bP','bR' etc.
-                // The first character is the colour: 'w' = white, 'b' = black.
                 const isWhitePiece = piece.pieceType.startsWith("w");
                 return game.my_color === "white" ? isWhitePiece : !isWhitePiece;
               },
@@ -455,6 +621,7 @@ export function GamePageClient({ game, currentUser }: Props) {
             color={game.my_color}
             isCurrentUser
             isTheirTurn={isMyTurn}
+            timer={buildTimer(game.my_color)}
           />
         </div>
       </main>

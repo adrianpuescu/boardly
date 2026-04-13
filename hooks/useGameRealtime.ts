@@ -8,16 +8,24 @@ const INITIAL_FEN =
 
 export type GameResult = "checkmate" | "stalemate" | "draw" | null;
 
+export interface TimerState {
+  turn_started_at?: string;
+  white_time_ms?: number;
+  black_time_ms?: number;
+}
+
 export function useGameRealtime(
   gameId: string,
   initialFen: string = INITIAL_FEN,
-  initialStatus: string = "waiting"
+  initialStatus: string = "waiting",
+  initialTimerState: TimerState = {}
 ) {
   const [fen, setFen] = useState(initialFen);
   const [gameStatus, setGameStatus] = useState(initialStatus);
   const [gameOver, setGameOver] = useState(false);
   const [gameResult, setGameResult] = useState<GameResult>(null);
   const [winnerId, setWinnerId] = useState<string | null>(null);
+  const [timerState, setTimerState] = useState<TimerState>(initialTimerState);
 
   useEffect(() => {
     const supabase = createClient();
@@ -38,7 +46,7 @@ export function useGameRealtime(
           if (move.fen_after) setFen(move.fen_after);
         }
       )
-      // Game row updated → catch status changes (e.g. opponent checkmates)
+      // Game row updated → catch status + timer state changes
       .on(
         "postgres_changes",
         {
@@ -51,10 +59,23 @@ export function useGameRealtime(
           const updated = payload.new as {
             status: string;
             winner_id: string | null;
-            state: { fen?: string; result?: string };
+            state: {
+              fen?: string;
+              result?: string;
+              turn_started_at?: string;
+              white_time_ms?: number;
+              black_time_ms?: number;
+            };
           };
 
           setGameStatus(updated.status);
+
+          // Sync timer state from the updated game row
+          setTimerState({
+            turn_started_at: updated.state?.turn_started_at,
+            white_time_ms: updated.state?.white_time_ms,
+            black_time_ms: updated.state?.black_time_ms,
+          });
 
           if (updated.status === "completed") {
             setGameOver(true);
@@ -87,5 +108,7 @@ export function useGameRealtime(
     setGameResult,
     winnerId,
     setWinnerId,
+    timerState,
+    setTimerState,
   };
 }
