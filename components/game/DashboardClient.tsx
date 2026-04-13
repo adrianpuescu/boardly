@@ -81,19 +81,22 @@ export function DashboardClient({ games, currentUser }: Props) {
 
   return (
     <div
-      className="min-h-screen relative overflow-hidden"
-      style={{ background: "linear-gradient(160deg, #FAF7F2 0%, #FFF8F0 50%, #FAF7F2 100%)" }}
+      className="min-h-screen relative"
+      style={{ background: "#FAF7F2" }}
     >
-      {/* Animated chess background */}
-      <div
-        className="absolute inset-0 chess-bg opacity-[0.028] pointer-events-none"
+      {/* Knight watermark */}
+      <span
+        className="fixed bottom-0 right-0 select-none pointer-events-none"
         aria-hidden="true"
-      />
+        style={{ fontSize: 400, lineHeight: 1, opacity: 0.04, transform: "translate(10%, 10%)" }}
+      >
+        ♞
+      </span>
 
       <Navbar currentUser={currentUser} />
 
       {/* ── Main content ───────────────────────────────────────── */}
-      <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
         {/* Heading row */}
         <motion.div
           initial={{ opacity: 0, y: -12 }}

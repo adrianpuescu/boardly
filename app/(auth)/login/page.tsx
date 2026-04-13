@@ -15,16 +15,6 @@ function KnightIllustration() {
 
       {/* Floating piece */}
       <div className="animate-float relative z-10">
-        {/* Board square tiles behind the piece */}
-        <div className="absolute -inset-3 grid grid-cols-4 grid-rows-4 opacity-20 rounded-2xl overflow-hidden pointer-events-none">
-          {Array.from({ length: 16 }).map((_, i) => (
-            <div
-              key={i}
-              className={(Math.floor(i / 4) + (i % 4)) % 2 === 0 ? "bg-amber-800" : "bg-amber-100"}
-            />
-          ))}
-        </div>
-
         {/* Knight piece circle */}
         <div className="w-28 h-28 rounded-[2rem] bg-gradient-to-br from-orange-400 to-orange-600 shadow-2xl flex items-center justify-center ring-4 ring-orange-200">
           {/* Chess knight SVG */}
@@ -116,14 +106,8 @@ function LoginForm() {
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden"
-      style={{ background: "linear-gradient(135deg, #FAF7F2 0%, #FFF3E0 50%, #FAF7F2 100%)" }}
+      style={{ background: "radial-gradient(ellipse at 50% 40%, #FFF8F0 0%, #F5EFE6 100%)" }}
     >
-      {/* Faint animated chess background */}
-      <div
-        className="absolute inset-0 opacity-[0.035] pointer-events-none chess-bg"
-        aria-hidden="true"
-      />
-
       {/* Decorative blobs */}
       <div className="absolute top-0 -left-20 w-72 h-72 bg-orange-200 rounded-full blur-3xl opacity-20 pointer-events-none" />
       <div className="absolute bottom-0 -right-20 w-96 h-96 bg-amber-200 rounded-full blur-3xl opacity-20 pointer-events-none" />

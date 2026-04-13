@@ -61,19 +61,10 @@ export function GameCard({ game }: Props) {
       className="bg-white rounded-3xl shadow-md hover:shadow-xl transition-shadow cursor-pointer overflow-hidden border border-orange-50"
     >
       {/* Mini board preview */}
-      <div className="relative bg-amber-50 flex items-center justify-center overflow-hidden select-none"
-           style={{ height: "148px" }}>
-        {/* Very faint chess pattern in background */}
-        <div
-          className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage: "repeating-conic-gradient(#92400e 0% 25%, transparent 0% 50%)",
-            backgroundSize: "20px 20px",
-          }}
-        />
-
+      <div className="relative flex items-center justify-center overflow-hidden select-none"
+           style={{ height: "148px", background: "linear-gradient(160deg, #FFF8F0 0%, #F0E8DC 100%)" }}>
         {/* Actual board — pointer-events-none keeps it non-interactive */}
-        <div className="pointer-events-none relative z-10" style={{ width: 120, height: 120 }}>
+        <div className="pointer-events-none" style={{ width: 120, height: 120 }}>
           <Chessboard
             options={{
               position: fen,
