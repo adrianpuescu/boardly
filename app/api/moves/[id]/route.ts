@@ -23,7 +23,7 @@ export async function POST(
 ) {
   const gameId = params.id;
 
-  // Auth
+  // Auth — user-scoped client only for identity verification.
   const supabase = createClient();
   const {
     data: { user },
@@ -31,6 +31,9 @@ export async function POST(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Admin client — used for ALL database operations.
+  const adminClient = createAdminClient();
 
   // Validate body
   let body: unknown;
@@ -50,9 +53,7 @@ export async function POST(
 
   const { from, to, promotion = "q" } = parsed.data;
 
-  // Fetch game + players — use admin client so RLS never silently filters
-  // out the opponent's game_players row (which would break turn-notification logic)
-  const adminClient = createAdminClient();
+  // Fetch game + players
   const { data: game } = await adminClient
     .from("games")
     .select(
@@ -93,7 +94,7 @@ export async function POST(
   // Games start as "waiting"; the moves-INSERT RLS policy requires
   // status = 'active', so we must flip it before recording the first move.
   if (game.status === "waiting") {
-    const { error: activateErr } = await supabase
+    const { error: activateErr } = await adminClient
       .from("games")
       .update({ status: "active" })
       .eq("id", gameId);
@@ -163,7 +164,7 @@ export async function POST(
   }
 
   // Get sequential move number
-  const { count: moveCount } = await supabase
+  const { count: moveCount } = await adminClient
     .from("moves")
     .select("*", { count: "exact", head: true })
     .eq("game_id", gameId);
@@ -171,7 +172,7 @@ export async function POST(
   const moveNumber = (moveCount ?? 0) + 1;
 
   // Insert move record
-  const { error: moveError } = await supabase.from("moves").insert({
+  const { error: moveError } = await adminClient.from("moves").insert({
     game_id: gameId,
     user_id: user.id,
     move_san: moveSan,
@@ -201,7 +202,7 @@ export async function POST(
     if (winnerId) gameUpdate.winner_id = winnerId;
   }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await adminClient
     .from("games")
     .update(gameUpdate)
     .eq("id", gameId);
@@ -279,8 +280,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const gameId = params.id;
-  const supabase = createClient();
 
+  // Auth — user-scoped client only for identity verification.
+  const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -288,8 +290,11 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Ensure the requester is a player in this game
-  const { data: playerRow } = await supabase
+  // Admin client — used for ALL database operations.
+  const adminClient = createAdminClient();
+
+  // Ensure the requester is a player in this game.
+  const { data: playerRow } = await adminClient
     .from("game_players")
     .select("id")
     .eq("game_id", gameId)
@@ -300,7 +305,7 @@ export async function GET(
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
 
-  const { data: moves, error } = await supabase
+  const { data: moves, error } = await adminClient
     .from("moves")
     .select("id, move_san, fen_after, move_number, created_at, user_id")
     .eq("game_id", gameId)

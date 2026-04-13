@@ -21,6 +21,7 @@ const bodySchema = z.object({
 
 export async function POST(request: NextRequest) {
   // ── Auth ───────────────────────────────────────────────────────────────────
+  // User-scoped client: only used to verify the caller's identity.
   const supabase = createClient();
   const {
     data: { user },
@@ -29,6 +30,10 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Admin client: used for ALL database operations so that RLS policies on
+  // games, game_players, moves, and invites never block server-side writes.
+  const adminClient = createAdminClient();
 
   // ── Validate body ──────────────────────────────────────────────────────────
   let body: unknown;
@@ -49,7 +54,7 @@ export async function POST(request: NextRequest) {
   const { opponentEmail, timeControl } = parsed.data;
 
   // ── Insert game ────────────────────────────────────────────────────────────
-  const { data: game, error: gameError } = await supabase
+  const { data: game, error: gameError } = await adminClient
     .from("games")
     .insert({
       game_type: "chess",
@@ -69,7 +74,7 @@ export async function POST(request: NextRequest) {
   const gameId = game.id as string;
 
   // ── Add creator as white player ────────────────────────────────────────────
-  const { error: creatorPlayerError } = await supabase
+  const { error: creatorPlayerError } = await adminClient
     .from("game_players")
     .insert({ game_id: gameId, user_id: user.id, color: "white" });
 
@@ -85,23 +90,21 @@ export async function POST(request: NextRequest) {
   if (!opponentEmail) {
     // No opponent provided — add the same user as black so the game is
     // immediately playable for solo testing (play-against-yourself mode).
-    const { error: selfBlackError } = await supabase
+    const { error: selfBlackError } = await adminClient
       .from("game_players")
       .insert({ game_id: gameId, user_id: user.id, color: "black" });
 
     if (!selfBlackError) {
-      await supabase
+      await adminClient
         .from("games")
         .update({ status: "active" })
         .eq("id", gameId);
     }
-  } else if (opponentEmail) {
-    const admin = createAdminClient();
-
+  } else {
     // Look up opponent in auth.users via admin API.
     // listUsers doesn't filter by email, so we page through users.
     // For production: add email to public.users or use an RPC function.
-    const { data: usersPage } = await admin.auth.admin.listUsers({
+    const { data: usersPage } = await adminClient.auth.admin.listUsers({
       perPage: 1000,
     });
 
@@ -110,11 +113,8 @@ export async function POST(request: NextRequest) {
     );
 
     if (opponentAuthUser) {
-      // Opponent already has an account — add as black player.
-      // Must use the admin client here: RLS on game_players only allows a user
-      // to insert rows where user_id = auth.uid(), so the creator cannot insert
-      // a row on behalf of the opponent using the user-scoped client.
-      const { error: opponentPlayerError } = await admin
+      // Opponent already has an account — add as black player directly.
+      const { error: opponentPlayerError } = await adminClient
         .from("game_players")
         .insert({
           game_id: gameId,
@@ -125,15 +125,15 @@ export async function POST(request: NextRequest) {
       if (opponentPlayerError) {
         console.error("game_players insert (opponent) error:", opponentPlayerError);
       } else {
-        // Both players present — move to active (admin bypasses RLS update check)
-        await admin
+        // Both players present — move game to active.
+        await adminClient
           .from("games")
           .update({ status: "active" })
           .eq("id", gameId);
       }
     } else {
-      // Unknown email — create an invite
-      const { error: inviteError } = await supabase.from("invites").insert({
+      // Unknown email — create an invite.
+      const { error: inviteError } = await adminClient.from("invites").insert({
         game_id: gameId,
         inviter_id: user.id,
         invitee_email: opponentEmail,
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
 
       if (inviteError) {
         console.error("invites insert error:", inviteError);
-        // Non-fatal: game still created, invite just won't be sent
+        // Non-fatal: game is still created, invite just won't be sent.
       }
     }
   }
