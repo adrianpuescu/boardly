@@ -43,26 +43,32 @@ export function Navbar({ currentUser }: Props) {
 
         {/* User area */}
         <div className="flex items-center gap-3">
-          <span className="hidden sm:block text-sm font-medium text-gray-800">
-            {currentUser.email}
-          </span>
+          <button
+            onClick={() => router.push("/profile")}
+            title="View profile"
+            className="flex items-center gap-2.5 rounded-2xl px-2 py-1 hover:bg-orange-50 transition-colors group"
+          >
+            <span className="hidden sm:block text-sm font-medium text-gray-800 group-hover:text-orange-600 transition-colors">
+              {currentUser.email}
+            </span>
 
-          {showAvatar ? (
-            <div className="relative w-9 h-9 rounded-full ring-2 ring-orange-200 overflow-hidden flex-shrink-0">
-              <Image
-                src={currentUser.avatar_url!}
-                alt="avatar"
-                fill
-                sizes="36px"
-                className="object-cover"
-                onError={() => setAvatarError(true)}
-              />
-            </div>
-          ) : (
-            <div className="w-9 h-9 rounded-full bg-orange-500 ring-2 ring-orange-200 flex items-center justify-center text-white text-sm font-bold select-none flex-shrink-0">
-              {initials}
-            </div>
-          )}
+            {showAvatar ? (
+              <div className="relative w-9 h-9 rounded-full ring-2 ring-orange-200 overflow-hidden flex-shrink-0">
+                <Image
+                  src={currentUser.avatar_url!}
+                  alt="avatar"
+                  fill
+                  sizes="36px"
+                  className="object-cover"
+                  onError={() => setAvatarError(true)}
+                />
+              </div>
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-orange-500 ring-2 ring-orange-200 flex items-center justify-center text-white text-sm font-bold select-none flex-shrink-0">
+                {initials}
+              </div>
+            )}
+          </button>
 
           <Button
             variant="outline"

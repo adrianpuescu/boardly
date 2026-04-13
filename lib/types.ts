@@ -67,6 +67,22 @@ export interface DashboardGame {
   } | null;
 }
 
+export interface ProfileStats {
+  total: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  win_rate: number;
+}
+
+export interface RecentGame {
+  id: string;
+  opponent: { id: string; username: string; avatar_url: string | null } | null;
+  result: "win" | "loss" | "draw";
+  time_control: { type: string; minutes?: number };
+  played_at: string;
+}
+
 export interface GamePageData {
   id: string;
   status: "waiting" | "active" | "completed" | "abandoned";
