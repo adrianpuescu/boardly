@@ -85,8 +85,8 @@ export async function POST(
   }
 
   if (action === "decline") {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { draw_offered_by: _removed, ...stateWithoutOffer } = currentState as Record<string, unknown> & { draw_offered_by?: string };
+    const stateWithoutOffer = { ...currentState };
+    delete stateWithoutOffer.draw_offered_by;
     const { error } = await adminClient
       .from("games")
       .update({ state: stateWithoutOffer })
@@ -108,8 +108,8 @@ export async function POST(
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { draw_offered_by: _dropped, ...stateWithoutOffer } = currentState as Record<string, unknown> & { draw_offered_by?: string };
+  const stateWithoutOffer = { ...currentState };
+  delete stateWithoutOffer.draw_offered_by;
 
   const { error } = await adminClient
     .from("games")

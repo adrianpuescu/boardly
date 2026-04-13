@@ -44,7 +44,6 @@ const TIME_CARD_CONFIG = [
 
 // ── Share step ─────────────────────────────────────────────────────────────
 interface ShareStepProps {
-  gameId: string;
   inviteToken: string;
   onGoToGame: () => void;
 }
@@ -214,7 +213,6 @@ export default function LobbyPage() {
         <AnimatePresence mode="wait">
           {createdGame && (
             <ShareStep
-              gameId={createdGame.gameId}
               inviteToken={createdGame.inviteToken}
               onGoToGame={() => router.push(`/game/${createdGame.gameId}`)}
             />
