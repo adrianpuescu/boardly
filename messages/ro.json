@@ -49,7 +49,10 @@
     "promoteRook": "Turn",
     "promoteBishop": "Nebun",
     "promoteKnight": "Cal",
-    "promotionCancel": "Renunță"
+    "promotionCancel": "Renunță",
+    "muteSound": "Dezactivează sunetele mutărilor",
+    "unmuteSound": "Activează sunetele mutărilor",
+    "soundSystemMuted": "Sunete dezactivate (preferința de mișcare redusă)"
   },
   "gameOver": {
     "wonOnTime": "Ai câștigat la timp!",

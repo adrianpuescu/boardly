@@ -49,7 +49,10 @@
     "promoteRook": "Rook",
     "promoteBishop": "Bishop",
     "promoteKnight": "Knight",
-    "promotionCancel": "Cancel"
+    "promotionCancel": "Cancel",
+    "muteSound": "Mute move sounds",
+    "unmuteSound": "Unmute move sounds",
+    "soundSystemMuted": "Sounds muted (reduced motion is on)"
   },
   "gameOver": {
     "wonOnTime": "You won on time!",

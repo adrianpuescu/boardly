@@ -18,8 +18,10 @@ import {
   getCheckHighlight,
   getLastMoveSquaresFromMoves,
   getSquareStyles,
+  INITIAL_FEN,
   type LastMoveSquares,
 } from "@/lib/chess/squareHighlight";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { PiecePicker } from "@/components/game/PiecePicker";
 import type { GameResult, MoveRecord } from "@/hooks/useGameRealtime";
 import type { GamePageData, CurrentUser } from "@/lib/types";
@@ -30,6 +32,38 @@ function needsPromotionChoice(fen: string, from: Square, to: Square): boolean {
   const chess = new Chess(fen);
   const moves = chess.moves({ square: from, verbose: true });
   return moves.some((m) => m.to === to && m.promotion !== undefined);
+}
+
+type Sfx = Pick<
+  ReturnType<typeof useSoundEffects>,
+  "playMove" | "playCapture" | "playCheck" | "playDraw" | "playGameOver"
+>;
+
+function playPieceMoveSounds(prevFen: string, san: string, sfx: Sfx): void {
+  const c = new Chess(prevFen);
+  const mv = c.move(san);
+  if (!mv) return;
+  if (c.isCheckmate()) return;
+  if (mv.captured) void sfx.playCapture();
+  else if (c.inCheck()) void sfx.playCheck();
+  else void sfx.playMove();
+}
+
+function playGameEndFromChessResult(
+  result: string | null | undefined,
+  winnerId: string | null | undefined,
+  myId: string,
+  sfx: Sfx
+): void {
+  if (result === "stalemate" || result === "draw") {
+    void sfx.playDraw();
+    return;
+  }
+  if (result === "checkmate") {
+    void sfx.playGameOver(winnerId === myId ? "win" : "loss");
+    return;
+  }
+  void sfx.playDraw();
 }
 
 interface Props {
@@ -717,6 +751,16 @@ export function GamePageClient({ game, currentUser }: Props) {
   } = usePieceSet(game.id);
   const customPieces = buildPieces(pieceSet);
 
+  const sfx = useSoundEffects();
+  const sfxRef = useRef(sfx);
+  sfxRef.current = sfx;
+
+  /** Avoid duplicate end-game sounds (local action + realtime update). */
+  const endSoundPlayedRef = useRef(false);
+  useEffect(() => {
+    endSoundPlayedRef.current = false;
+  }, [game.id]);
+
   const [submitting, setSubmitting] = useState(false);
   const [showResignDialog, setShowResignDialog] = useState(false);
   const [resignLoading, setResignLoading] = useState(false);
@@ -756,6 +800,50 @@ export function GamePageClient({ game, currentUser }: Props) {
     [lastMove, inCheck, kingSquare]
   );
 
+  // Opponent moves (and sync’d batches): play once per new move, skip initial history load
+  const movesSyncRef = useRef({ ready: false, prevLen: 0 });
+  useEffect(() => {
+    if (!movesSyncRef.current.ready) {
+      if (moves.length > 0) {
+        movesSyncRef.current = { ready: true, prevLen: moves.length };
+      }
+      return;
+    }
+    if (moves.length < movesSyncRef.current.prevLen) {
+      movesSyncRef.current.prevLen = moves.length;
+      return;
+    }
+    if (moves.length === movesSyncRef.current.prevLen) return;
+
+    const base = movesSyncRef.current.prevLen;
+    const chunk = moves.slice(base);
+    movesSyncRef.current.prevLen = moves.length;
+
+    const api = sfxRef.current;
+    for (let i = 0; i < chunk.length; i++) {
+      const m = chunk[i];
+      if (m.user_id === currentUser.id) continue;
+
+      const idx = base + i;
+      const prevFen = idx === 0 ? INITIAL_FEN : moves[idx - 1].fen_after;
+      const after = new Chess(m.fen_after);
+
+      if (after.isGameOver()) {
+        if (!endSoundPlayedRef.current) {
+          endSoundPlayedRef.current = true;
+          if (after.isCheckmate()) {
+            void api.playGameOver(m.user_id === currentUser.id ? "win" : "loss");
+          } else {
+            void api.playDraw();
+          }
+        }
+        continue;
+      }
+
+      playPieceMoveSounds(prevFen, m.move_san, api);
+    }
+  }, [moves, currentUser.id]);
+
   // ── Game-over resolution ─────────────────────────────────────────────────
   const isAlreadyOver =
     game.status === "completed" || game.status === "abandoned";
@@ -771,6 +859,16 @@ export function GamePageClient({ game, currentUser }: Props) {
     displayResult === "draw" || displayResult === "stalemate";
   const iWon =
     !isDraw && displayWinnerId !== null && displayWinnerId === currentUser.id;
+
+  // Opponent resigned via games row update (no new move in the same event)
+  useEffect(() => {
+    if (!realtimeGameOver || endSoundPlayedRef.current) return;
+    const r = realtimeGameResult ?? game.state.result;
+    if (r !== "resignation") return;
+    endSoundPlayedRef.current = true;
+    const win = displayWinnerId === currentUser.id;
+    void sfxRef.current.playGameOver(win ? "win" : "loss");
+  }, [realtimeGameOver, realtimeGameResult, game.state.result, displayWinnerId, currentUser.id]);
 
   // ── Board interactivity ──────────────────────────────────────────────────
   const opponentColor: "white" | "black" =
@@ -805,6 +903,11 @@ export function GamePageClient({ game, currentUser }: Props) {
           winnerId?: string;
           loserId?: string;
         };
+        if (!endSoundPlayedRef.current) {
+          endSoundPlayedRef.current = true;
+          const win = data.winnerId === currentUser.id;
+          void sfxRef.current.playGameOver(win ? "win" : "loss");
+        }
         setGameOver(true);
         setGameResult(null);
         setWinnerId(data.winnerId ?? null);
@@ -851,6 +954,7 @@ export function GamePageClient({ game, currentUser }: Props) {
           const data = (await res.json()) as {
             success?: boolean;
             fen?: string;
+            san?: string;
             gameOver?: boolean;
             result?: string;
             winnerId?: string | null;
@@ -866,6 +970,23 @@ export function GamePageClient({ game, currentUser }: Props) {
               to: targetSquare as Square,
             });
             if (data.fen) setFen(data.fen);
+
+            const api = sfxRef.current;
+            if (data.san) {
+              if (data.gameOver) {
+                if (!endSoundPlayedRef.current) {
+                  endSoundPlayedRef.current = true;
+                  playGameEndFromChessResult(
+                    data.result,
+                    data.winnerId,
+                    currentUser.id,
+                    api
+                  );
+                }
+              } else {
+                playPieceMoveSounds(prevFen, data.san, api);
+              }
+            }
 
             if (data.gameOver) {
               setGameOver(true);
@@ -915,6 +1036,11 @@ export function GamePageClient({ game, currentUser }: Props) {
       const res = await fetch(`/api/games/${game.id}/resign`, { method: "POST" });
       if (res.ok) {
         const data = (await res.json()) as { winnerId?: string | null };
+        if (!endSoundPlayedRef.current) {
+          endSoundPlayedRef.current = true;
+          const win = data.winnerId === currentUser.id;
+          void sfxRef.current.playGameOver(win ? "win" : "loss");
+        }
         setShowResignDialog(false);
         setGameOver(true);
         setGameResult("resignation");
@@ -937,6 +1063,10 @@ export function GamePageClient({ game, currentUser }: Props) {
         body: JSON.stringify({ action }),
       });
       if (res.ok && action === "accept") {
+        if (!endSoundPlayedRef.current) {
+          endSoundPlayedRef.current = true;
+          void sfxRef.current.playDraw();
+        }
         setGameOver(true);
         setGameResult("draw");
         setWinnerId(null);
@@ -1027,7 +1157,31 @@ export function GamePageClient({ game, currentUser }: Props) {
                 submitting={submitting}
               />
 
-              <div className="ml-auto flex-shrink-0">
+              <div className="ml-auto flex items-center gap-1 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void sfx.primeAudio();
+                    sfx.toggleSound();
+                  }}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 bg-white text-lg hover:bg-gray-50 transition-colors"
+                  title={
+                    sfx.respectReducedMotion
+                      ? t("soundSystemMuted")
+                      : sfx.soundEnabled
+                      ? t("muteSound")
+                      : t("unmuteSound")
+                  }
+                  aria-label={
+                    sfx.respectReducedMotion
+                      ? t("soundSystemMuted")
+                      : sfx.soundEnabled
+                      ? t("muteSound")
+                      : t("unmuteSound")
+                  }
+                >
+                  {sfx.soundEnabled && !sfx.respectReducedMotion ? "🔊" : "🔇"}
+                </button>
                 <PiecePicker
                   gameId={game.id}
                   gamePieceSet={gamePieceSet}
