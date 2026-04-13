@@ -1,10 +1,17 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import type { DashboardGame } from "@/lib/types";
+
+// Chessboard is client-only (no SSR)
+const Chessboard = dynamic(
+  () => import("react-chessboard").then((m) => m.Chessboard),
+  { ssr: false, loading: () => <div className="w-full h-full bg-amber-100 animate-pulse" /> }
+);
 
 interface Props {
   game: DashboardGame;
@@ -37,6 +44,8 @@ export function GameCard({ game }: Props) {
     addSuffix: true,
   });
 
+  const fen = game.state?.fen || "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
   return (
     <motion.div
       variants={{
@@ -49,22 +58,37 @@ export function GameCard({ game }: Props) {
       className="bg-white rounded-3xl shadow-md hover:shadow-xl transition-shadow cursor-pointer overflow-hidden border border-orange-50"
     >
       {/* Mini board preview */}
-      <div className="relative bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center h-36 select-none">
-        {/* Checkerboard pattern using CSS */}
+      <div className="relative bg-amber-50 flex items-center justify-center overflow-hidden select-none"
+           style={{ height: "148px" }}>
+        {/* Very faint chess pattern in background */}
         <div
-          className="absolute inset-0 opacity-20"
+          className="absolute inset-0 opacity-10"
           style={{
-            backgroundImage:
-              "repeating-conic-gradient(#92400e 0% 25%, transparent 0% 50%)",
-            backgroundSize: "24px 24px",
+            backgroundImage: "repeating-conic-gradient(#92400e 0% 25%, transparent 0% 50%)",
+            backgroundSize: "20px 20px",
           }}
         />
-        <span className="relative text-6xl drop-shadow-sm">♟️</span>
+
+        {/* Actual board — pointer-events-none keeps it non-interactive */}
+        <div className="pointer-events-none relative z-10" style={{ width: 120, height: 120 }}>
+          <Chessboard
+            options={{
+              position: fen,
+              boardOrientation: game.my_color,
+              allowDragging: false,
+            }}
+          />
+        </div>
 
         {/* Color badge */}
-        <span className="absolute top-2 right-2 text-xs font-semibold bg-white/70 backdrop-blur-sm text-gray-700 rounded-full px-2 py-0.5 capitalize">
-          {game.my_color}
+        <span className="absolute top-2 right-2 text-xs font-semibold bg-white/80 backdrop-blur-sm text-gray-700 rounded-full px-2.5 py-0.5 capitalize shadow-sm">
+          {game.my_color === "white" ? "♔" : "♚"} {game.my_color}
         </span>
+
+        {/* Turn indicator stripe */}
+        {isMyTurn && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-green-400 to-emerald-500" />
+        )}
       </div>
 
       {/* Card body */}
@@ -106,7 +130,7 @@ export function GameCard({ game }: Props) {
               className="w-8 h-8 rounded-full ring-1 ring-orange-100 object-cover flex-shrink-0"
             />
           ) : (
-            <div className="w-8 h-8 rounded-full bg-orange-200 flex items-center justify-center text-orange-700 text-xs font-bold flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-xs font-bold flex-shrink-0">
               {game.opponent ? opponentInitials : "?"}
             </div>
           )}

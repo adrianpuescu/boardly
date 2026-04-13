@@ -97,7 +97,7 @@ export default function LobbyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 px-4 py-8">
+    <div className="min-h-screen px-4 py-8" style={{ background: "linear-gradient(160deg, #FAF7F2 0%, #FFF8F0 50%, #FAF7F2 100%)" }}>
       <div className="max-w-lg mx-auto">
         {/* Back button */}
         <button

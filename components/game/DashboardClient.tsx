@@ -7,64 +7,129 @@ import { GameCard } from "@/components/game/GameCard";
 import { Button } from "@/components/ui/button";
 import type { DashboardGame, CurrentUser } from "@/lib/types";
 
-
 interface Props {
   games: DashboardGame[];
   currentUser: CurrentUser;
+}
+
+function EmptyState({ onNewGame }: { onNewGame: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="flex flex-col items-center justify-center py-20 text-center relative"
+    >
+      {/* Floating chess pieces decoration */}
+      <div className="relative mb-8">
+        {/* Outer ring */}
+        <div className="w-36 h-36 rounded-full bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center shadow-inner">
+          {/* Subtle board grid inside the circle */}
+          <div className="absolute inset-4 rounded-full overflow-hidden opacity-20">
+            <div
+              className="w-full h-full"
+              style={{
+                backgroundImage: "repeating-conic-gradient(#92400e 0% 25%, transparent 0% 50%)",
+                backgroundSize: "20px 20px",
+              }}
+            />
+          </div>
+
+          {/* Knight piece */}
+          <span
+            className="relative z-10 text-6xl animate-float select-none"
+            style={{ filter: "drop-shadow(0 4px 8px rgba(234,88,12,0.25))" }}
+          >
+            ♞
+          </span>
+        </div>
+
+        {/* Orbiting dots */}
+        <span className="absolute top-0 right-2 text-xl animate-bounce" style={{ animationDelay: "0.1s" }}>♙</span>
+        <span className="absolute bottom-1 left-0 text-base animate-bounce" style={{ animationDelay: "0.4s" }}>♗</span>
+        <span className="absolute top-4 left-0 text-sm animate-bounce text-amber-400" style={{ animationDelay: "0.7s" }}>★</span>
+      </div>
+
+      <h2
+        className="text-3xl font-black text-gray-800 mb-3 tracking-tight"
+        style={{ fontFamily: "var(--font-nunito), sans-serif" }}
+      >
+        No games yet!
+      </h2>
+      <p className="text-gray-500 mb-8 max-w-xs leading-relaxed text-base">
+        Challenge a friend and find out who&apos;s the real grandmaster. 🏆
+      </p>
+
+      <Button
+        onClick={onNewGame}
+        className="rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold px-8 py-3 text-base shadow-lg shadow-orange-200 hover:shadow-xl hover:shadow-orange-200 transition-all"
+        style={{ fontFamily: "var(--font-nunito), sans-serif" }}
+      >
+        Start your first game 🎉
+      </Button>
+
+      {/* Decorative scattered pieces */}
+      <div className="flex gap-4 mt-10 text-gray-200 text-3xl select-none pointer-events-none" aria-hidden="true">
+        <span>♜</span><span>♝</span><span>♛</span><span>♝</span><span>♜</span>
+      </div>
+    </motion.div>
+  );
 }
 
 export function DashboardClient({ games, currentUser }: Props) {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
+    <div
+      className="min-h-screen relative overflow-hidden"
+      style={{ background: "linear-gradient(160deg, #FAF7F2 0%, #FFF8F0 50%, #FAF7F2 100%)" }}
+    >
+      {/* Animated chess background */}
+      <div
+        className="absolute inset-0 chess-bg opacity-[0.028] pointer-events-none"
+        aria-hidden="true"
+      />
+
       <Navbar currentUser={currentUser} />
 
       {/* ── Main content ───────────────────────────────────────── */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-10">
         {/* Heading row */}
-        <div className="flex items-center justify-between mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex items-center justify-between mb-8"
+        >
           <div>
-            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-              Your Games
-            </h1>
-            <p className="mt-1 text-gray-500 text-sm">
+            <div className="flex items-center gap-3 mb-1">
+              <span className="text-2xl select-none" aria-hidden="true">♟</span>
+              <h1
+                className="text-3xl font-black text-gray-900 tracking-tight"
+                style={{ fontFamily: "var(--font-nunito), sans-serif" }}
+              >
+                Your Games
+              </h1>
+            </div>
+            <p className="text-gray-500 text-sm pl-9">
               {games.length === 0
-                ? "You have no active games yet."
-                : `${games.length} active game${games.length !== 1 ? "s" : ""}`}
+                ? "Ready to play? Start a new game below."
+                : `${games.length} active game${games.length !== 1 ? "s" : ""} in progress`}
             </p>
           </div>
 
           <Button
             onClick={() => router.push("/lobby")}
-            className="rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 shadow-md hover:shadow-lg transition-all"
+            className="rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold px-5 shadow-md shadow-orange-200 hover:shadow-lg transition-all"
+            style={{ fontFamily: "var(--font-nunito), sans-serif" }}
           >
             + New Game
           </Button>
-        </div>
+        </motion.div>
 
         {/* Empty state */}
         {games.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="flex flex-col items-center justify-center py-24 text-center"
-          >
-            <span className="text-7xl mb-6 select-none">♟️</span>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">
-              No active games
-            </h2>
-            <p className="text-gray-500 mb-8 max-w-xs">
-              Challenge someone to a game and see who reigns supreme!
-            </p>
-            <Button
-              onClick={() => router.push("/lobby")}
-              className="rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3 text-base shadow-md hover:shadow-lg transition-all"
-            >
-              Start your first game 🎉
-            </Button>
-          </motion.div>
+          <EmptyState onNewGame={() => router.push("/lobby")} />
         ) : (
           /* Game grid */
           <motion.div

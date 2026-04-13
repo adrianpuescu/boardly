@@ -2,6 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33%       { transform: translateY(-10px) rotate(-2deg); }
+  66%       { transform: translateY(-6px)  rotate(2deg); }
+}
+
+@keyframes chess-drift {
+  0%   { background-position: 0 0; }
+  100% { background-position: 48px 48px; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s ease-out both;
+}
+
+.chess-bg {
+  background-image: repeating-conic-gradient(#92400e 0% 25%, transparent 0% 50%);
+  background-size: 40px 40px;
+  animation: chess-drift 8s linear infinite;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

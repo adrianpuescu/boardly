@@ -26,10 +26,13 @@ export function Navbar({ currentUser }: Props) {
         {/* Logo */}
         <button
           onClick={() => router.push("/dashboard")}
-          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
         >
-          <span className="text-2xl">🎲</span>
-          <span className="text-xl font-extrabold text-gray-900 tracking-tight">
+          <span className="text-2xl select-none" aria-hidden="true">♞</span>
+          <span
+            className="text-xl font-black text-gray-900"
+            style={{ fontFamily: "var(--font-nunito), sans-serif", letterSpacing: "-0.5px" }}
+          >
             Boardly
           </span>
         </button>
