@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
@@ -11,6 +11,12 @@ import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGameRealtime } from "@/hooks/useGameRealtime";
+import {
+  getCheckHighlight,
+  getLastMoveSquaresFromMoves,
+  getSquareStyles,
+  type LastMoveSquares,
+} from "@/lib/chess/squareHighlight";
 import { usePieceSet } from "@/hooks/usePieceSet";
 import { buildPieces } from "@/lib/chess/pieces";
 import type { DashboardGame } from "@/lib/types";
@@ -40,10 +46,39 @@ function BoardItem({ game }: BoardItemProps) {
   const t = useTranslations("game");
   const boardControls = useAnimation();
 
-  const { fen, setFen, gameStatus, gameOver } = useGameRealtime(
+  const { fen, setFen, gameStatus, gameOver, moves } = useGameRealtime(
     game.id,
     game.state?.fen ?? INITIAL_FEN,
     game.status
+  );
+
+  const [pendingLastMove, setPendingLastMove] = useState<LastMoveSquares | null>(
+    null
+  );
+
+  const lastMoveFromHistory = useMemo(
+    () => getLastMoveSquaresFromMoves(moves),
+    [moves]
+  );
+
+  useEffect(() => {
+    if (
+      lastMoveFromHistory &&
+      pendingLastMove &&
+      lastMoveFromHistory.from === pendingLastMove.from &&
+      lastMoveFromHistory.to === pendingLastMove.to
+    ) {
+      setPendingLastMove(null);
+    }
+  }, [lastMoveFromHistory, pendingLastMove]);
+
+  const lastMove = lastMoveFromHistory ?? pendingLastMove;
+
+  const { inCheck, kingSquare } = useMemo(() => getCheckHighlight(fen), [fen]);
+
+  const squareStyles = useMemo(
+    () => getSquareStyles(lastMove, inCheck, kingSquare),
+    [lastMove, inCheck, kingSquare]
   );
 
   const [submitting, setSubmitting] = useState(false);
@@ -110,12 +145,17 @@ function BoardItem({ game }: BoardItemProps) {
           if (!res.ok) {
             setFen(prevFen);
             void shake();
-          } else if (data.fen) {
-            setFen(data.fen);
+          } else {
+            setPendingLastMove({
+              from: sourceSquare as Square,
+              to: targetSquare as Square,
+            });
+            if (data.fen) setFen(data.fen);
           }
         })
         .catch(() => {
           setFen(prevFen);
+          setPendingLastMove(null);
           void shake();
         })
         .finally(() => setSubmitting(false));
@@ -201,6 +241,7 @@ function BoardItem({ game }: BoardItemProps) {
             onPieceDrop: handlePieceDrop,
             lightSquareStyle: { backgroundColor: "#F0D9B5" },
             darkSquareStyle: { backgroundColor: "#B58863" },
+            squareStyles,
             boardStyle: { borderRadius: "0", boxShadow: "none" },
           }}
         />

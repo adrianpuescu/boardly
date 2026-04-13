@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
@@ -14,6 +14,12 @@ import { Button } from "@/components/ui/button";
 import { useGameRealtime } from "@/hooks/useGameRealtime";
 import { usePieceSet } from "@/hooks/usePieceSet";
 import { buildPieces, type PieceRenderObject } from "@/lib/chess/pieces";
+import {
+  getCheckHighlight,
+  getLastMoveSquaresFromMoves,
+  getSquareStyles,
+  type LastMoveSquares,
+} from "@/lib/chess/squareHighlight";
 import { PiecePicker } from "@/components/game/PiecePicker";
 import type { GameResult, MoveRecord } from "@/hooks/useGameRealtime";
 import type { GamePageData, CurrentUser } from "@/lib/types";
@@ -688,7 +694,6 @@ export function GamePageClient({ game, currentUser }: Props) {
     setWinnerId,
     timerState,
     moves,
-    setMoves,
     drawOfferedBy,
     setDrawOfferedBy,
   } = useGameRealtime(
@@ -722,16 +727,34 @@ export function GamePageClient({ game, currentUser }: Props) {
     to: string;
   } | null>(null);
 
-  // Fetch initial move history on load
+  const [pendingLastMove, setPendingLastMove] = useState<LastMoveSquares | null>(
+    null
+  );
+
+  const lastMoveFromHistory = useMemo(
+    () => getLastMoveSquaresFromMoves(moves),
+    [moves]
+  );
+
   useEffect(() => {
-    fetch(`/api/moves/${game.id}`)
-      .then((r) => r.json())
-      .then((data: { moves?: MoveRecord[] }) => {
-        if (data.moves) setMoves(data.moves);
-      })
-      .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game.id]);
+    if (
+      lastMoveFromHistory &&
+      pendingLastMove &&
+      lastMoveFromHistory.from === pendingLastMove.from &&
+      lastMoveFromHistory.to === pendingLastMove.to
+    ) {
+      setPendingLastMove(null);
+    }
+  }, [lastMoveFromHistory, pendingLastMove]);
+
+  const lastMove = lastMoveFromHistory ?? pendingLastMove;
+
+  const { inCheck, kingSquare } = useMemo(() => getCheckHighlight(fen), [fen]);
+
+  const squareStyles = useMemo(
+    () => getSquareStyles(lastMove, inCheck, kingSquare),
+    [lastMove, inCheck, kingSquare]
+  );
 
   // ── Game-over resolution ─────────────────────────────────────────────────
   const isAlreadyOver =
@@ -838,6 +861,10 @@ export function GamePageClient({ game, currentUser }: Props) {
             setFen(prevFen);
             void shake();
           } else {
+            setPendingLastMove({
+              from: sourceSquare as Square,
+              to: targetSquare as Square,
+            });
             if (data.fen) setFen(data.fen);
 
             if (data.gameOver) {
@@ -852,6 +879,7 @@ export function GamePageClient({ game, currentUser }: Props) {
         })
         .catch(() => {
           setFen(prevFen);
+          setPendingLastMove(null);
           void shake();
         })
         .finally(() => {
@@ -1053,6 +1081,7 @@ export function GamePageClient({ game, currentUser }: Props) {
                   },
                   lightSquareStyle: { backgroundColor: "#F0D9B5" },
                   darkSquareStyle: { backgroundColor: "#B58863" },
+                  squareStyles,
                   boardStyle: { borderRadius: "0", boxShadow: "none" },
                 }}
               />

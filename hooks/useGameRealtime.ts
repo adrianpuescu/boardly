@@ -46,6 +46,15 @@ export function useGameRealtime(
   const [drawOfferedBy, setDrawOfferedBy] = useState<string | null>(null);
 
   useEffect(() => {
+    fetch(`/api/moves/${gameId}`)
+      .then((r) => r.json())
+      .then((data: { moves?: MoveRecord[] }) => {
+        if (data.moves) setMoves(data.moves);
+      })
+      .catch(() => {});
+  }, [gameId]);
+
+  useEffect(() => {
     const supabase = createClient();
 
     const channel = supabase

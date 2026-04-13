@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import dynamic from "next/dynamic";
@@ -12,6 +12,12 @@ import { Badge } from "@/components/ui/badge";
 import type { DashboardGame } from "@/lib/types";
 import { usePieceSet } from "@/hooks/usePieceSet";
 import { buildPieces } from "@/lib/chess/pieces";
+import {
+  getCheckHighlight,
+  getLastMoveSquaresFromMoves,
+  getSquareStyles,
+} from "@/lib/chess/squareHighlight";
+import type { MoveRecord } from "@/hooks/useGameRealtime";
 
 // Chessboard is client-only (no SSR)
 const Chessboard = dynamic(
@@ -30,6 +36,34 @@ export function GameCard({ game }: Props) {
   const [avatarError, setAvatarError] = useState(false);
   const { pieceSet } = usePieceSet();
   const customPieces = buildPieces(pieceSet);
+
+  const [moves, setMoves] = useState<MoveRecord[]>([]);
+
+  useEffect(() => {
+    fetch(`/api/moves/${game.id}`)
+      .then((r) => r.json())
+      .then((data: { moves?: MoveRecord[] }) => {
+        if (data.moves) setMoves(data.moves);
+      })
+      .catch(() => {});
+  }, [game.id]);
+
+  const fen = game.state?.fen || "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+  const lastMove = useMemo(
+    () => getLastMoveSquaresFromMoves(moves),
+    [moves]
+  );
+
+  const { inCheck, kingSquare } = useMemo(
+    () => getCheckHighlight(fen),
+    [fen]
+  );
+
+  const squareStyles = useMemo(
+    () => getSquareStyles(lastMove, inCheck, kingSquare),
+    [lastMove, inCheck, kingSquare]
+  );
 
   const isMyTurn =
     game.status === "active" && game.state?.turn === game.my_color;
@@ -56,8 +90,6 @@ export function GameCard({ game }: Props) {
     locale: locale === "ro" ? ro : enUS,
   });
 
-  const fen = game.state?.fen || "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
   return (
     <motion.div
       variants={{
@@ -80,6 +112,9 @@ export function GameCard({ game }: Props) {
               boardOrientation: game.my_color,
               pieces: customPieces,
               allowDragging: false,
+              lightSquareStyle: { backgroundColor: "#F0D9B5" },
+              darkSquareStyle: { backgroundColor: "#B58863" },
+              squareStyles,
             }}
           />
         </div>

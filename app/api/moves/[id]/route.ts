@@ -248,6 +248,8 @@ export async function POST(
     success: true,
     fen: newFen,
     san: moveSan,
+    from,
+    to,
     gameOver: isOver,
     result,
     winnerId,
