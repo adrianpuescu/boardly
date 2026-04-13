@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Pencil, X, Camera, ArrowLeft } from "lucide-react";
+import { Check, Pencil, X, Camera, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ProfileStats, RecentGame } from "@/lib/types";
 
@@ -172,6 +172,8 @@ function ResultBadge({ result }: { result: "win" | "loss" | "draw" }) {
   );
 }
 
+const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2 MB
+
 // ── Main component ─────────────────────────────────────────────────────────────
 export function ProfileClient({ profile, stats, recentGames, email }: Props) {
   const router = useRouter();
@@ -182,6 +184,52 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
   const [editError, setEditError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatar_url);
+  const [uploading, setUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > MAX_AVATAR_SIZE) {
+      setAvatarError("Image must be under 2 MB");
+      e.target.value = "";
+      return;
+    }
+
+    setAvatarError(null);
+    setUploading(true);
+
+    // Optimistic preview
+    const localPreview = URL.createObjectURL(file);
+    setAvatarUrl(localPreview);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/avatar", { method: "POST", body: formData });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setAvatarError(data.error ?? "Upload failed");
+        setAvatarUrl(profile.avatar_url);
+        return;
+      }
+
+      setAvatarUrl(data.avatar_url);
+    } catch {
+      setAvatarError("Network error. Please try again.");
+      setAvatarUrl(profile.avatar_url);
+    } finally {
+      setUploading(false);
+      URL.revokeObjectURL(localPreview);
+      e.target.value = "";
+    }
+  }
 
   useEffect(() => {
     if (isEditing) {
@@ -270,19 +318,47 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
           className="bg-white rounded-3xl p-6 shadow-md border border-orange-50"
         >
           <div className="flex items-start gap-5">
-            {/* Avatar + edit button */}
-            <div className="relative flex-shrink-0">
-              <Avatar
-                avatarUrl={profile.avatar_url}
-                username={username}
-                size={80}
-              />
-              <button
-                title="Edit avatar (coming soon)"
-                className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-orange-500 hover:bg-orange-600 text-white flex items-center justify-center shadow-md transition-colors"
-              >
-                <Camera className="w-3.5 h-3.5" />
-              </button>
+            {/* Avatar + edit button + error */}
+            <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+              <div className="relative">
+                <Avatar
+                  avatarUrl={avatarUrl}
+                  username={username}
+                  size={80}
+                />
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
+                <button
+                  title="Change avatar"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-orange-500 hover:bg-orange-600 disabled:opacity-70 text-white flex items-center justify-center shadow-md transition-colors"
+                >
+                  {uploading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Camera className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+              <AnimatePresence>
+                {avatarError && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    className="text-xs text-red-500 font-medium text-center max-w-[80px] leading-tight"
+                  >
+                    {avatarError}
+                  </motion.p>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Info */}

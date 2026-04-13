@@ -15,6 +15,13 @@ export default async function DashboardPage() {
 
   if (!user) redirect("/login");
 
+  // Fetch the current user's public profile (has the uploaded avatar_url)
+  const { data: myProfile } = await admin
+    .from("users")
+    .select("username, avatar_url")
+    .eq("id", user.id)
+    .single();
+
   // Step 1: get every game_id + color for this user.
   // Use admin client so the self-referential RLS policy on game_players
   // doesn't filter out opponent rows (recursive RLS issue).
@@ -86,8 +93,8 @@ export default async function DashboardPage() {
   const currentUser: CurrentUser = {
     id: user.id,
     email: user.email ?? "",
-    avatar_url:
-      (user.user_metadata?.avatar_url as string | undefined) ?? null,
+    username: myProfile?.username ?? user.email?.split("@")[0] ?? "",
+    avatar_url: myProfile?.avatar_url ?? null,
   };
 
   return <DashboardClient games={games} currentUser={currentUser} />;

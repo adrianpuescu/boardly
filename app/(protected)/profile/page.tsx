@@ -119,8 +119,8 @@ export default async function ProfilePage() {
   const currentUser: CurrentUser = {
     id: user.id,
     email: user.email ?? "",
-    avatar_url:
-      (user.user_metadata?.avatar_url as string | undefined) ?? null,
+    username: profile.username,
+    avatar_url: profile.avatar_url,
   };
 
   return (

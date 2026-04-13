@@ -49,6 +49,7 @@ export interface GameWithPlayers extends Game {
 export interface CurrentUser {
   id: string;
   email: string;
+  username: string;
   avatar_url: string | null;
 }
 

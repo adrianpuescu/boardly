@@ -46,11 +46,11 @@ export default async function GamePage({ params }: Props) {
 
   if (!game) redirect("/dashboard");
 
-  // Supabase returns related rows as arrays even for FK-based to-one joins.
+  // PostgREST returns FK many-to-one joins as a single object, not an array.
   const players = (game.game_players ?? []) as Array<{
     user_id: string;
     color: string;
-    users: { id: string; username: string; avatar_url: string | null }[];
+    users: { id: string; username: string; avatar_url: string | null } | null;
   }>;
 
   // Verify current user is actually in this game
@@ -67,6 +67,9 @@ export default async function GamePage({ params }: Props) {
     black_time_ms?: number;
   };
 
+  const myProfile = myPlayerRow.users;
+  const opponentProfile = opponentRow?.users ?? null;
+
   const gameData: GamePageData = {
     id: game.id as string,
     status: game.status as GamePageData["status"],
@@ -81,15 +84,20 @@ export default async function GamePage({ params }: Props) {
     time_control: game.time_control as GamePageData["time_control"],
     winner_id: (game.winner_id as string | null) ?? null,
     my_color: myPlayerRow.color as "white" | "black",
-    opponent: opponentRow?.users?.[0] ?? null,
+    opponent: opponentProfile,
   };
 
   const currentUser: CurrentUser = {
     id: user.id,
     email: user.email ?? "",
-    avatar_url:
-      (user.user_metadata?.avatar_url as string | undefined) ?? null,
+    username: myProfile?.username ?? user.email?.split("@")[0] ?? "You",
+    avatar_url: myProfile?.avatar_url ?? null,
   };
+
+  console.log("[game/page] myProfile raw:", myProfile);
+  console.log("[game/page] opponentProfile raw:", opponentProfile);
+  console.log("[game/page] Current user avatar:", currentUser.avatar_url);
+  console.log("[game/page] Opponent avatar:", opponentProfile?.avatar_url);
 
   return <GamePageClient game={gameData} currentUser={currentUser} />;
 }

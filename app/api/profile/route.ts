@@ -3,16 +3,22 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const patchSchema = z.object({
-  username: z
-    .string()
-    .min(3, "Username must be at least 3 characters")
-    .max(20, "Username must be at most 20 characters")
-    .regex(
-      /^[a-zA-Z0-9._]+$/,
-      "Only letters, numbers, dots and underscores allowed"
-    ),
-});
+const patchSchema = z
+  .object({
+    username: z
+      .string()
+      .min(3, "Username must be at least 3 characters")
+      .max(20, "Username must be at most 20 characters")
+      .regex(
+        /^[a-zA-Z0-9._]+$/,
+        "Only letters, numbers, dots and underscores allowed"
+      )
+      .optional(),
+    avatar_url: z.string().url("Invalid avatar URL").optional(),
+  })
+  .refine((d) => d.username !== undefined || d.avatar_url !== undefined, {
+    message: "At least one field must be provided",
+  });
 
 export async function PATCH(request: NextRequest) {
   const supabase = createClient();
@@ -39,36 +45,42 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
-  const { username } = parsed.data;
+  const { username, avatar_url } = parsed.data;
   const admin = createAdminClient();
 
-  // Check uniqueness — exclude the current user
-  const { data: existing } = await admin
-    .from("users")
-    .select("id")
-    .eq("username", username)
-    .neq("id", user.id)
-    .maybeSingle();
+  if (username !== undefined) {
+    // Check uniqueness — exclude the current user
+    const { data: existing } = await admin
+      .from("users")
+      .select("id")
+      .eq("username", username)
+      .neq("id", user.id)
+      .maybeSingle();
 
-  if (existing) {
-    return NextResponse.json(
-      { error: "Username already taken" },
-      { status: 409 }
-    );
+    if (existing) {
+      return NextResponse.json(
+        { error: "Username already taken" },
+        { status: 409 }
+      );
+    }
   }
+
+  const updates: Record<string, string> = {};
+  if (username !== undefined) updates.username = username;
+  if (avatar_url !== undefined) updates.avatar_url = avatar_url;
 
   const { error } = await admin
     .from("users")
-    .update({ username })
+    .update(updates)
     .eq("id", user.id);
 
   if (error) {
     console.error("profile update error:", error);
     return NextResponse.json(
-      { error: "Failed to update username" },
+      { error: "Failed to update profile" },
       { status: 500 }
     );
   }
 
-  return NextResponse.json({ username });
+  return NextResponse.json(updates);
 }

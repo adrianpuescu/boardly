@@ -46,7 +46,7 @@ export function Navbar({ currentUser }: Props) {
           <button
             onClick={() => router.push("/profile")}
             title="View profile"
-            className="flex items-center gap-2.5 rounded-2xl px-2 py-1 hover:bg-orange-50 transition-colors group"
+            className="flex items-center gap-2.5 rounded-full pr-2 pl-4 py-2 transition-colors group"
           >
             <span className="hidden sm:block text-sm font-medium text-gray-800 group-hover:text-orange-600 transition-colors">
               {currentUser.email}

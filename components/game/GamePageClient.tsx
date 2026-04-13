@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Chessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import type { Square, PieceSymbol } from "chess.js";
@@ -115,6 +116,10 @@ function PlayerStrip({
   timer?: React.ReactNode;
 }) {
   const initials = username.slice(0, 2).toUpperCase();
+  const [avatarError, setAvatarError] = useState(false);
+  const showAvatar = !!avatarUrl && !avatarError;
+
+  console.log("[PlayerStrip]", username, "avatarUrl:", avatarUrl, "showAvatar:", showAvatar);
 
   return (
     <div
@@ -125,16 +130,20 @@ function PlayerStrip({
       }`}
     >
       <div className="relative flex-shrink-0">
-        {avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={avatarUrl}
-            alt={username}
-            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full ring-2 ring-orange-100 object-cover"
-          />
+        {showAvatar ? (
+          <div className="w-10 h-10 rounded-full ring-2 ring-orange-100 overflow-hidden flex-shrink-0">
+            <Image
+              src={avatarUrl!}
+              alt={username}
+              width={40}
+              height={40}
+              className="w-full h-full object-cover"
+              onError={() => setAvatarError(true)}
+            />
+          </div>
         ) : (
           <div
-            className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold ring-2 ${
+            className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ring-2 ${
               isCurrentUser
                 ? "bg-orange-500 ring-orange-200 text-white"
                 : "bg-gray-200 ring-gray-100 text-gray-600"
@@ -910,7 +919,7 @@ export function GamePageClient({ game, currentUser }: Props) {
 
             {/* Current user strip — shown at bottom */}
             <PlayerStrip
-              username={currentUser.email.split("@")[0]}
+              username={currentUser.username}
               avatarUrl={currentUser.avatar_url}
               color={game.my_color}
               isCurrentUser
