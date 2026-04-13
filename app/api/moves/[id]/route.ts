@@ -3,6 +3,9 @@ import { z } from "zod";
 import { Chess } from "chess.js";
 import type { Square, PieceSymbol } from "chess.js";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { sendEmail } from "@/lib/resend";
+import { yourTurnEmail, gameOverEmail } from "@/lib/emails/your-turn";
 
 const INITIAL_FEN =
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -47,8 +50,10 @@ export async function POST(
 
   const { from, to, promotion = "q" } = parsed.data;
 
-  // Fetch game + players
-  const { data: game } = await supabase
+  // Fetch game + players — use admin client so RLS never silently filters
+  // out the opponent's game_players row (which would break turn-notification logic)
+  const adminClient = createAdminClient();
+  const { data: game } = await adminClient
     .from("games")
     .select(
       `
@@ -204,6 +209,58 @@ export async function POST(
   if (updateError) {
     console.error("games update error:", updateError);
     // Non-fatal: the move is already recorded; the game state may lag one cycle
+  }
+
+  // Fire-and-forget email notification to the opponent
+  const opponentRow = players.find((p) => p.user_id !== user.id);
+  if (opponentRow) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const gameUrl = `${appUrl}/game/${gameId}`;
+
+    void (async () => {
+      try {
+        const { data: currentUserRecord } = await adminClient
+          .from("users")
+          .select("username")
+          .eq("id", user.id)
+          .single();
+
+        const currentUsername = currentUserRecord?.username ?? "Your opponent";
+
+        const { data: opponentAuthUser } = await adminClient.auth.admin.getUserById(
+          opponentRow.user_id
+        );
+        const opponentEmail = opponentAuthUser?.user?.email;
+
+        if (!opponentEmail) return;
+
+        if (isOver && result) {
+          const didOpponentWin = winnerId !== null && winnerId !== user.id;
+          await sendEmail({
+            to: opponentEmail,
+            subject: didOpponentWin
+              ? "You won your Boardly game! 🏆"
+              : result === "checkmate"
+              ? `${currentUsername} checkmated you — Boardly`
+              : `Game over — ${result} — Boardly`,
+            html: gameOverEmail({
+              opponentName: currentUsername,
+              result: result as "checkmate" | "stalemate" | "draw",
+              didWin: didOpponentWin,
+              gameUrl,
+            }),
+          });
+        } else {
+          await sendEmail({
+            to: opponentEmail,
+            subject: `It's your turn in Boardly! ♟️`,
+            html: yourTurnEmail({ opponentName: currentUsername, gameUrl }),
+          });
+        }
+      } catch (error) {
+        console.error("Notification error:", error);
+      }
+    })();
   }
 
   return NextResponse.json({
