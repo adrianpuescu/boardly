@@ -6,12 +6,21 @@ import { createClient } from "@/lib/supabase/client";
 const INITIAL_FEN =
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-export type GameResult = "checkmate" | "stalemate" | "draw" | null;
+export type GameResult = "checkmate" | "stalemate" | "draw" | "resignation" | null;
 
 export interface TimerState {
   turn_started_at?: string;
   white_time_ms?: number;
   black_time_ms?: number;
+}
+
+export interface MoveRecord {
+  id: string;
+  move_san: string;
+  fen_after: string;
+  move_number: number;
+  created_at: string;
+  user_id: string;
 }
 
 export function useGameRealtime(
@@ -26,13 +35,15 @@ export function useGameRealtime(
   const [gameResult, setGameResult] = useState<GameResult>(null);
   const [winnerId, setWinnerId] = useState<string | null>(null);
   const [timerState, setTimerState] = useState<TimerState>(initialTimerState);
+  const [moves, setMoves] = useState<MoveRecord[]>([]);
+  const [drawOfferedBy, setDrawOfferedBy] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
 
     const channel = supabase
       .channel(`game-realtime:${gameId}`)
-      // New move → update live FEN
+      // New move → update live FEN and append to move list
       .on(
         "postgres_changes",
         {
@@ -42,11 +53,16 @@ export function useGameRealtime(
           filter: `game_id=eq.${gameId}`,
         },
         (payload) => {
-          const move = payload.new as { fen_after: string };
+          const move = payload.new as MoveRecord;
           if (move.fen_after) setFen(move.fen_after);
+          setMoves((prev) => {
+            // Avoid duplicates (realtime can fire twice in dev)
+            if (prev.some((m) => m.id === move.id)) return prev;
+            return [...prev, move];
+          });
         }
       )
-      // Game row updated → catch status + timer state changes
+      // Game row updated → catch status, timer state, and draw offer changes
       .on(
         "postgres_changes",
         {
@@ -65,17 +81,19 @@ export function useGameRealtime(
               turn_started_at?: string;
               white_time_ms?: number;
               black_time_ms?: number;
+              draw_offered_by?: string;
             };
           };
 
           setGameStatus(updated.status);
 
-          // Sync timer state from the updated game row
           setTimerState({
             turn_started_at: updated.state?.turn_started_at,
             white_time_ms: updated.state?.white_time_ms,
             black_time_ms: updated.state?.black_time_ms,
           });
+
+          setDrawOfferedBy(updated.state?.draw_offered_by ?? null);
 
           if (updated.status === "completed") {
             setGameOver(true);
@@ -83,7 +101,7 @@ export function useGameRealtime(
 
             const r = updated.state?.result;
             setGameResult(
-              r === "checkmate" || r === "stalemate" || r === "draw"
+              r === "checkmate" || r === "stalemate" || r === "draw" || r === "resignation"
                 ? (r as GameResult)
                 : null
             );
@@ -110,5 +128,9 @@ export function useGameRealtime(
     setWinnerId,
     timerState,
     setTimerState,
+    moves,
+    setMoves,
+    drawOfferedBy,
+    setDrawOfferedBy,
   };
 }
