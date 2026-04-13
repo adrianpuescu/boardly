@@ -11,6 +11,9 @@ import { ArrowLeft, ChevronUp, Flag, Handshake, X } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { useGameRealtime } from "@/hooks/useGameRealtime";
+import { usePieceSet } from "@/hooks/usePieceSet";
+import { buildPieces } from "@/lib/chess/pieces";
+import { PiecePicker } from "@/components/game/PiecePicker";
 import type { GameResult, MoveRecord } from "@/hooks/useGameRealtime";
 import type { GamePageData, CurrentUser } from "@/lib/types";
 
@@ -606,6 +609,9 @@ export function GamePageClient({ game, currentUser }: Props) {
     }
   );
 
+  const { pieceSet, setPieceSet } = usePieceSet();
+  const customPieces = buildPieces(pieceSet);
+
   const [submitting, setSubmitting] = useState(false);
   const [showResignDialog, setShowResignDialog] = useState(false);
   const [resignLoading, setResignLoading] = useState(false);
@@ -854,7 +860,7 @@ export function GamePageClient({ game, currentUser }: Props) {
           {/* Board column */}
           <div className="w-full lg:max-w-[600px] flex flex-col gap-3">
             {/* Back + status row — inside board column so it aligns with board edges */}
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => router.push("/dashboard")}
                 className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 transition-colors group flex-shrink-0"
@@ -869,6 +875,10 @@ export function GamePageClient({ game, currentUser }: Props) {
                 myColor={game.my_color}
                 submitting={submitting}
               />
+
+              <div className="ml-auto flex-shrink-0">
+                <PiecePicker current={pieceSet} onChange={setPieceSet} />
+              </div>
             </div>
 
             {/* Draw offer banner — shown when opponent offers */}
@@ -901,6 +911,7 @@ export function GamePageClient({ game, currentUser }: Props) {
                 options={{
                   position: fen,
                   boardOrientation: game.my_color,
+                  pieces: customPieces,
                   canDragPiece: ({ piece }) => {
                     const isWhitePiece = piece.pieceType.startsWith("w");
                     return game.my_color === "white" ? isWhitePiece : !isWhitePiece;

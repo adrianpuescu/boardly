@@ -8,6 +8,8 @@ import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import type { DashboardGame } from "@/lib/types";
+import { usePieceSet } from "@/hooks/usePieceSet";
+import { buildPieces } from "@/lib/chess/pieces";
 
 // Chessboard is client-only (no SSR)
 const Chessboard = dynamic(
@@ -30,6 +32,8 @@ const TIME_CONTROL_LABELS: Record<string, string> = {
 export function GameCard({ game }: Props) {
   const router = useRouter();
   const [avatarError, setAvatarError] = useState(false);
+  const { pieceSet } = usePieceSet();
+  const customPieces = buildPieces(pieceSet);
 
   const isMyTurn =
     game.status === "active" && game.state?.turn === game.my_color;
@@ -69,6 +73,7 @@ export function GameCard({ game }: Props) {
             options={{
               position: fen,
               boardOrientation: game.my_color,
+              pieces: customPieces,
               allowDragging: false,
             }}
           />
