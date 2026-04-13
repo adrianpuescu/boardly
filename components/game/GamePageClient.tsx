@@ -614,7 +614,14 @@ export function GamePageClient({ game, currentUser }: Props) {
     }
   );
 
-  const { pieceSet, setPieceSet } = usePieceSet();
+  const {
+    pieceSet,
+    gamePieceSet,
+    globalPieceSet,
+    setGamePieceSet,
+    setGlobalPieceSet,
+    clearGamePieceSet,
+  } = usePieceSet(game.id);
   const customPieces = buildPieces(pieceSet);
 
   const [submitting, setSubmitting] = useState(false);
@@ -882,7 +889,14 @@ export function GamePageClient({ game, currentUser }: Props) {
               />
 
               <div className="ml-auto flex-shrink-0">
-                <PiecePicker current={pieceSet} onChange={setPieceSet} />
+                <PiecePicker
+                  gameId={game.id}
+                  gamePieceSet={gamePieceSet}
+                  globalPieceSet={globalPieceSet}
+                  onChangeGame={setGamePieceSet}
+                  onChangeGlobal={setGlobalPieceSet}
+                  onClearGame={clearGamePieceSet}
+                />
               </div>
             </div>
 

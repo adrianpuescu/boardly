@@ -28,14 +28,13 @@ const INITIAL_FEN =
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const MAX_BOARDS = 4;
 
-type CustomPieces = ReturnType<typeof buildPieces>;
-
 interface BoardItemProps {
   game: DashboardGame;
-  customPieces: CustomPieces;
 }
 
-function BoardItem({ game, customPieces }: BoardItemProps) {
+function BoardItem({ game }: BoardItemProps) {
+  const { pieceSet } = usePieceSet(game.id);
+  const customPieces = buildPieces(pieceSet);
   const router = useRouter();
   const boardControls = useAnimation();
 
@@ -251,9 +250,6 @@ interface MultiBoardViewProps {
 }
 
 export function MultiBoardView({ games, onShowAll }: MultiBoardViewProps) {
-  const { pieceSet } = usePieceSet();
-  const customPieces = buildPieces(pieceSet);
-
   // Prioritise games where it's my turn
   const sorted = [...games].sort((a, b) => {
     const aMyTurn =
@@ -299,7 +295,7 @@ export function MultiBoardView({ games, onShowAll }: MultiBoardViewProps) {
       {/* ── Desktop: 2 × 2 grid ─────────────────────────────── */}
       <div className="hidden sm:grid sm:grid-cols-2 gap-6">
         {displayed.map((game) => (
-          <BoardItem key={game.id} game={game} customPieces={customPieces} />
+          <BoardItem key={game.id} game={game} />
         ))}
       </div>
 
@@ -320,7 +316,6 @@ export function MultiBoardView({ games, onShowAll }: MultiBoardViewProps) {
             {displayed[currentIndex] && (
               <BoardItem
                 game={displayed[currentIndex]}
-                customPieces={customPieces}
               />
             )}
           </motion.div>
