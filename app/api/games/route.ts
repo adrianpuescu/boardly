@@ -110,8 +110,11 @@ export async function POST(request: NextRequest) {
     );
 
     if (opponentAuthUser) {
-      // Opponent already has an account — add as black player
-      const { error: opponentPlayerError } = await supabase
+      // Opponent already has an account — add as black player.
+      // Must use the admin client here: RLS on game_players only allows a user
+      // to insert rows where user_id = auth.uid(), so the creator cannot insert
+      // a row on behalf of the opponent using the user-scoped client.
+      const { error: opponentPlayerError } = await admin
         .from("game_players")
         .insert({
           game_id: gameId,
@@ -119,9 +122,11 @@ export async function POST(request: NextRequest) {
           color: "black",
         });
 
-      if (!opponentPlayerError) {
-        // Both players present — move to active
-        await supabase
+      if (opponentPlayerError) {
+        console.error("game_players insert (opponent) error:", opponentPlayerError);
+      } else {
+        // Both players present — move to active (admin bypasses RLS update check)
+        await admin
           .from("games")
           .update({ status: "active" })
           .eq("id", gameId);
