@@ -82,8 +82,9 @@ export function GameCard({ game }: Props) {
         </div>
 
         {/* Color badge */}
-        <span className="absolute top-2 right-2 text-xs font-semibold bg-white/80 backdrop-blur-sm text-gray-700 rounded-full px-2.5 py-0.5 capitalize shadow-sm">
-          {game.my_color === "white" ? "♔" : "♚"} {game.my_color}
+        <span className="absolute top-2 right-2 flex items-center gap-1 text-xs font-semibold bg-white/80 backdrop-blur-sm text-gray-700 rounded-full px-2.5 py-0.5 capitalize shadow-sm">
+          <span className="text-base chess-sym">{game.my_color === "white" ? "♔" : "♚"}</span>
+          {game.my_color}
         </span>
 
         {/* Turn indicator stripe */}

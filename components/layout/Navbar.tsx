@@ -94,7 +94,7 @@ export function Navbar({ currentUser }: Props) {
           onClick={() => router.push("/dashboard")}
           className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
         >
-          <span className="text-2xl select-none" aria-hidden="true">♞</span>
+          <span className="text-2xl chess-sym select-none" aria-hidden="true">♞</span>
           <span
             className="text-xl font-black text-gray-900"
             style={{ fontFamily: "var(--font-nunito), sans-serif", letterSpacing: "-0.5px" }}

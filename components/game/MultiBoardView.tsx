@@ -168,8 +168,9 @@ function BoardItem({ game }: BoardItemProps) {
         <span className="text-sm font-semibold text-gray-800 truncate flex-1 min-w-0">
           {opponentName}
         </span>
-        <span className="text-xs text-gray-400 flex-shrink-0 capitalize">
-          {game.my_color === "white" ? "♔" : "♚"} {game.my_color}
+        <span className="flex items-center gap-1 text-xs text-gray-400 flex-shrink-0 capitalize">
+          <span className="text-base chess-sym">{game.my_color === "white" ? "♔" : "♚"}</span>
+          {game.my_color}
         </span>
       </div>
 

@@ -136,7 +136,7 @@ export function DashboardClient({ games, currentUser }: Props) {
         >
           <div className="min-w-0">
             <div className="flex items-center gap-2 sm:gap-3 mb-1">
-              <span className="text-xl sm:text-2xl select-none flex-shrink-0" aria-hidden="true">♟</span>
+              <span className="text-2xl sm:text-3xl chess-sym select-none flex-shrink-0" aria-hidden="true">♟</span>
               <h1
                 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight truncate"
                 style={{ fontFamily: "var(--font-nunito), sans-serif" }}

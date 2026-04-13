@@ -26,6 +26,19 @@
   animation: fade-up 0.5s ease-out both;
 }
 
+/*
+ * Chess unicode symbols (♞ ♟ ♔ ♚ …) fall back to Apple Symbols / system
+ * symbol fonts which render glyphs at ~65–70% of the em box. Setting an
+ * explicit font-family that puts well-known symbol fonts first gives us
+ * consistent, full-size rendering across platforms.
+ */
+.chess-sym {
+  font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", "Apple Symbols", serif;
+  line-height: 1;
+  display: inline-block;
+  vertical-align: middle;
+}
+
 .chess-bg {
   background-image: repeating-conic-gradient(#92400e 0% 25%, transparent 0% 50%);
   background-size: 40px 40px;

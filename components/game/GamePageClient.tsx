@@ -175,8 +175,9 @@ function PlayerStrip({
             </span>
           )}
         </p>
-        <p className="text-xs text-gray-400">
-          {color === "white" ? `♔ ${t("white")}` : `♚ ${t("black")}`}
+        <p className="flex items-center gap-1 text-xs text-gray-400">
+          <span className="text-base chess-sym">{color === "white" ? "♔" : "♚"}</span>
+          {color === "white" ? t("white") : t("black")}
         </p>
       </div>
 
