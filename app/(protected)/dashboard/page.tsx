@@ -1,10 +1,13 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { DashboardClient } from "@/components/game/DashboardClient";
 import type { DashboardGame, CurrentUser } from "@/lib/types";
 
 export default async function DashboardPage() {
+  // Auth check via the user-scoped client — never trust the admin client for identity.
   const supabase = createClient();
+  const admin = createAdminClient();
 
   const {
     data: { user },
@@ -12,8 +15,10 @@ export default async function DashboardPage() {
 
   if (!user) redirect("/login");
 
-  // Step 1: get every game_id + color for this user
-  const { data: myPlayerRows } = await supabase
+  // Step 1: get every game_id + color for this user.
+  // Use admin client so the self-referential RLS policy on game_players
+  // doesn't filter out opponent rows (recursive RLS issue).
+  const { data: myPlayerRows } = await admin
     .from("game_players")
     .select("game_id, color")
     .eq("user_id", user.id);
@@ -23,11 +28,13 @@ export default async function DashboardPage() {
     (myPlayerRows ?? []).map((r) => [r.game_id, r.color as "white" | "black"])
   );
 
-  // Step 2: fetch those games with all their players + user profiles
+  // Step 2: fetch those games with all their players + user profiles.
+  // Admin client bypasses the recursive RLS on game_players so both
+  // player rows (self + opponent) are returned in the nested join.
   let games: DashboardGame[] = [];
 
   if (gameIds.length > 0) {
-    const { data: gameRows } = await supabase
+    const { data: gameRows } = await admin
       .from("games")
       .select(
         `
@@ -53,11 +60,12 @@ export default async function DashboardPage() {
       .order("updated_at", { ascending: false });
 
     games = (gameRows ?? []).map((g) => {
-      // Supabase returns related rows as arrays even for FK-based to-one joins.
+      // PostgREST embeds the FK-referenced row (users) as a single object,
+      // not an array — game_players.user_id → public.users.id is many-to-one.
       const players = (g.game_players ?? []) as Array<{
         user_id: string;
         color: string;
-        users: { id: string; username: string; avatar_url: string | null }[];
+        users: { id: string; username: string; avatar_url: string | null } | null;
       }>;
 
       const opponentRow = players.find((p) => p.user_id !== user.id);
@@ -70,7 +78,7 @@ export default async function DashboardPage() {
         state: g.state as { turn?: "white" | "black"; fen?: string },
         created_at: g.created_at as string,
         my_color: myColorMap[g.id] ?? "white",
-        opponent: opponentRow?.users?.[0] ?? null,
+        opponent: opponentRow?.users ?? null,
       };
     });
   }

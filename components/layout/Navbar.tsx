@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,6 +14,7 @@ interface Props {
 export function Navbar({ currentUser }: Props) {
   const router = useRouter();
   const supabase = createClient();
+  const [avatarError, setAvatarError] = useState(false);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -19,6 +22,7 @@ export function Navbar({ currentUser }: Props) {
   }
 
   const initials = currentUser.email.slice(0, 2).toUpperCase();
+  const showAvatar = !!currentUser.avatar_url && !avatarError;
 
   return (
     <nav className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-orange-100 shadow-sm">
@@ -43,15 +47,19 @@ export function Navbar({ currentUser }: Props) {
             {currentUser.email}
           </span>
 
-          {currentUser.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={currentUser.avatar_url}
-              alt="avatar"
-              className="w-9 h-9 rounded-full ring-2 ring-orange-200 object-cover"
-            />
+          {showAvatar ? (
+            <div className="relative w-9 h-9 rounded-full ring-2 ring-orange-200 overflow-hidden flex-shrink-0">
+              <Image
+                src={currentUser.avatar_url!}
+                alt="avatar"
+                fill
+                sizes="36px"
+                className="object-cover"
+                onError={() => setAvatarError(true)}
+              />
+            </div>
           ) : (
-            <div className="w-9 h-9 rounded-full bg-orange-500 ring-2 ring-orange-200 flex items-center justify-center text-white text-sm font-bold select-none">
+            <div className="w-9 h-9 rounded-full bg-orange-500 ring-2 ring-orange-200 flex items-center justify-center text-white text-sm font-bold select-none flex-shrink-0">
               {initials}
             </div>
           )}

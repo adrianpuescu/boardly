@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +29,7 @@ const TIME_CONTROL_LABELS: Record<string, string> = {
 
 export function GameCard({ game }: Props) {
   const router = useRouter();
+  const [avatarError, setAvatarError] = useState(false);
 
   const isMyTurn =
     game.status === "active" && game.state?.turn === game.my_color;
@@ -122,13 +125,17 @@ export function GameCard({ game }: Props) {
 
         {/* Opponent */}
         <div className="flex items-center gap-2.5">
-          {game.opponent?.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={game.opponent.avatar_url}
-              alt={opponentName}
-              className="w-8 h-8 rounded-full ring-1 ring-orange-100 object-cover flex-shrink-0"
-            />
+          {game.opponent?.avatar_url && !avatarError ? (
+            <div className="relative w-8 h-8 rounded-full ring-1 ring-orange-100 overflow-hidden flex-shrink-0">
+              <Image
+                src={game.opponent.avatar_url}
+                alt={opponentName}
+                fill
+                sizes="32px"
+                className="object-cover"
+                onError={() => setAvatarError(true)}
+              />
+            </div>
           ) : (
             <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-xs font-bold flex-shrink-0">
               {game.opponent ? opponentInitials : "?"}
