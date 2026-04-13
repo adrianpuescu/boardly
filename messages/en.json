@@ -71,7 +71,20 @@
     "youLost": "You lost",
     "everyMasterDesc": "Every master was once a beginner — come back stronger!",
     "playAgain": "Play again 🎲",
+    "rematch": "Rematch",
+    "rematchCreating": "Creating…",
+    "opponentNameFallback": "your opponent",
+    "newGameWithOpponent": "New game with {name}",
+    "waitingForRematchAccept": "Waiting for opponent to accept…",
+    "rematchDeclinedMessage": "Opponent declined the rematch.",
+    "rematchDeclinedHint": "Opponent declined the rematch",
+    "opponentLeftRematch": "Opponent has left the game",
     "backToDashboard": "Back to dashboard"
+  },
+  "rematchOffer": {
+    "opponentWantsRematch": "Opponent wants a rematch! Accept?",
+    "decline": "No",
+    "accept": "Yes"
   },
   "resign": {
     "title": "Resign game?",

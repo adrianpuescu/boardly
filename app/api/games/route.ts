@@ -2,9 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-const INITIAL_FEN =
-  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+import { INITIAL_FEN } from "@/lib/chess/squareHighlight";
 
 const timeControlSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("unlimited") }),

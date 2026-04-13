@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { GamePageClient } from "@/components/game/GamePageClient";
 import type { CurrentUser, GamePageData } from "@/lib/types";
 
@@ -59,6 +60,15 @@ export default async function GamePage({ params }: Props) {
 
   const opponentRow = players.find((p) => p.user_id !== user.id);
 
+  let opponentEmail: string | null = null;
+  if (opponentRow) {
+    const admin = createAdminClient();
+    const { data: authData } = await admin.auth.admin.getUserById(
+      opponentRow.user_id
+    );
+    opponentEmail = authData?.user?.email ?? null;
+  }
+
   const state = (game.state ?? {}) as {
     fen?: string;
     turn?: string;
@@ -85,6 +95,7 @@ export default async function GamePage({ params }: Props) {
     winner_id: (game.winner_id as string | null) ?? null,
     my_color: myPlayerRow.color as "white" | "black",
     opponent: opponentProfile,
+    opponent_email: opponentEmail,
   };
 
   const currentUser: CurrentUser = {

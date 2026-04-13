@@ -104,4 +104,6 @@ export interface GamePageData {
     username: string;
     avatar_url: string | null;
   } | null;
+  /** Opponent auth email — used to pre-fill lobby when starting a new game. */
+  opponent_email: string | null;
 }

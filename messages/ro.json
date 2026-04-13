@@ -71,7 +71,20 @@
     "youLost": "Ai pierdut",
     "everyMasterDesc": "Orice maestru a fost cândva un începător — revino mai puternic!",
     "playAgain": "Joacă din nou 🎲",
+    "rematch": "Revansă",
+    "rematchCreating": "Se creează…",
+    "opponentNameFallback": "adversarul tău",
+    "newGameWithOpponent": "Joc nou cu {name}",
+    "waitingForRematchAccept": "Se așteaptă acceptarea adversarului…",
+    "rematchDeclinedMessage": "Adversarul a refuzat revanșa.",
+    "rematchDeclinedHint": "Adversarul a refuzat revanșa",
+    "opponentLeftRematch": "Adversarul a părăsit jocul",
     "backToDashboard": "Înapoi la tablou de bord"
+  },
+  "rematchOffer": {
+    "opponentWantsRematch": "Adversarul vrea revanșă! Accepți?",
+    "decline": "Nu",
+    "accept": "Da"
   },
   "resign": {
     "title": "Abandonezi jocul?",

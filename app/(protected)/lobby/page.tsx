@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Copy, Check, ExternalLink } from "lucide-react";
@@ -134,9 +134,16 @@ function ShareStep({ inviteToken, onGoToGame }: ShareStepProps) {
 // ── Component ──────────────────────────────────────────────────────────────
 export default function LobbyPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const t = useTranslations("lobby");
 
-  const [opponentEmail, setOpponentEmail] = useState("");
+  const [opponentEmail, setOpponentEmail] = useState(
+    () => searchParams.get("opponentEmail") ?? ""
+  );
+
+  useEffect(() => {
+    setOpponentEmail(searchParams.get("opponentEmail") ?? "");
+  }, [searchParams]);
   const [selectedType, setSelectedType] = useState<TimeControlType>("unlimited");
   const [perTurnMinutes, setPerTurnMinutes] = useState(10);
   const [perGameMinutes, setPerGameMinutes] = useState(30);

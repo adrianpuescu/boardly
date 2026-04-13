@@ -327,16 +327,31 @@ function GameOverModal({
   result,
   iWon,
   isDraw,
-  onPlayAgain,
+  opponentOnline,
+  rematchDeclined,
+  rematchWaiting,
+  onRematch,
+  rematchLoading,
   onDashboard,
 }: {
   result: GameResult | string | null;
   iWon: boolean;
   isDraw: boolean;
-  onPlayAgain: () => void;
+  opponentOnline: boolean;
+  rematchDeclined: boolean;
+  rematchWaiting: boolean;
+  onRematch: () => void;
+  rematchLoading: boolean;
   onDashboard: () => void;
 }) {
   const t = useTranslations("gameOver");
+  const rematchDisabled =
+    !opponentOnline || rematchDeclined || rematchWaiting;
+  const rematchTitle = !opponentOnline
+    ? t("opponentLeftRematch")
+    : rematchDeclined
+    ? t("rematchDeclinedHint")
+    : undefined;
 
   return (
     <motion.div
@@ -412,19 +427,96 @@ function GameOverModal({
         )}
 
         <div className="flex flex-col gap-3">
-          <Button
-            onClick={onPlayAgain}
-            className="w-full rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold shadow-md"
-          >
-            {t("playAgain")}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={onDashboard}
-            className="w-full rounded-xl border-gray-200 text-gray-600"
-          >
-            {t("backToDashboard")}
-          </Button>
+          {rematchWaiting ? (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600 flex items-center justify-center gap-2">
+                <svg
+                  className="animate-spin h-4 w-4 text-orange-500"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8H4z"
+                  />
+                </svg>
+                {t("waitingForRematchAccept")}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onDashboard}
+                className="w-full rounded-xl border-gray-200 text-gray-600"
+              >
+                {t("backToDashboard")}
+              </Button>
+            </div>
+          ) : (
+            <>
+              {rematchDeclined && (
+                <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                  {t("rematchDeclinedMessage")}
+                </p>
+              )}
+              <Button
+                type="button"
+                onClick={onRematch}
+                disabled={rematchLoading || rematchDisabled}
+                title={rematchTitle}
+                className="w-full rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold shadow-md disabled:opacity-50 disabled:pointer-events-auto"
+              >
+                {rematchLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg
+                      className="animate-spin h-4 w-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      aria-hidden
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v8H4z"
+                      />
+                    </svg>
+                    {t("rematchCreating")}
+                  </span>
+                ) : (
+                  t("rematch")
+                )}
+              </Button>
+              {!opponentOnline && !rematchDeclined && (
+                <p className="text-xs text-gray-500">{t("opponentLeftRematch")}</p>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onDashboard}
+                disabled={rematchLoading}
+                className="w-full rounded-xl border-gray-200 text-gray-600"
+              >
+                {t("backToDashboard")}
+              </Button>
+            </>
+          )}
         </div>
       </motion.div>
     </motion.div>
@@ -709,12 +801,70 @@ function DrawOfferBanner({
   );
 }
 
+// ── Rematch offer (broadcast, above game-over modal) ─────────────────────────
+function RematchOfferBanner({
+  onAccept,
+  onDecline,
+  loading,
+}: {
+  onAccept: () => void;
+  onDecline: () => void;
+  loading: boolean;
+}) {
+  const t = useTranslations("rematchOffer");
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      className="fixed left-1/2 top-20 z-[60] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 flex items-center gap-3 px-4 py-3 bg-violet-50 border border-violet-200 rounded-2xl text-sm shadow-lg"
+    >
+      <span className="text-xl" aria-hidden>
+        ♟️
+      </span>
+      <p className="flex-1 text-violet-900 font-medium">{t("opponentWantsRematch")}</p>
+      <button
+        type="button"
+        onClick={onDecline}
+        disabled={loading}
+        className="px-3 py-1 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50"
+      >
+        {t("decline")}
+      </button>
+      <button
+        type="button"
+        onClick={onAccept}
+        disabled={loading}
+        className="px-3 py-1 rounded-lg text-xs font-semibold bg-violet-600 text-white hover:bg-violet-700 transition-colors disabled:opacity-50"
+      >
+        {loading ? "…" : t("accept")}
+      </button>
+    </motion.div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export function GamePageClient({ game, currentUser }: Props) {
   const router = useRouter();
   const t = useTranslations("game");
   const tDrawOffer = useTranslations("drawOffer");
   const boardControls = useAnimation();
+
+  const pendingRematchGameIdRef = useRef<string | null>(null);
+  const [incomingRematchGameId, setIncomingRematchGameId] = useState<
+    string | null
+  >(null);
+  const [rematchWaiting, setRematchWaiting] = useState(false);
+  const [rematchDeclined, setRematchDeclined] = useState(false);
+  const [rematchRespondLoading, setRematchRespondLoading] = useState(false);
+
+  useEffect(() => {
+    pendingRematchGameIdRef.current = null;
+    setIncomingRematchGameId(null);
+    setRematchWaiting(false);
+    setRematchDeclined(false);
+  }, [game.id]);
 
   const {
     fen,
@@ -730,6 +880,10 @@ export function GamePageClient({ game, currentUser }: Props) {
     moves,
     drawOfferedBy,
     setDrawOfferedBy,
+    opponentOnline,
+    sendRematchOffer,
+    sendRematchAccept,
+    sendRematchDecline,
   } = useGameRealtime(
     game.id,
     game.state.fen,
@@ -738,6 +892,33 @@ export function GamePageClient({ game, currentUser }: Props) {
       turn_started_at: game.state.turn_started_at,
       white_time_ms: game.state.white_time_ms,
       black_time_ms: game.state.black_time_ms,
+    },
+    {
+      userId: currentUser.id,
+      opponentId: game.opponent?.id ?? null,
+      onRematchOffer: (p) => {
+        if (p.fromUserId === currentUser.id) return;
+        setIncomingRematchGameId(p.newGameId);
+      },
+      onRematchAccept: (p) => {
+        if (p.fromUserId === currentUser.id) return;
+        if (p.newGameId === pendingRematchGameIdRef.current) {
+          router.push(`/game/${p.newGameId}`);
+        }
+      },
+      onRematchDecline: async () => {
+        const id = pendingRematchGameIdRef.current;
+        setRematchWaiting(false);
+        setRematchDeclined(true);
+        pendingRematchGameIdRef.current = null;
+        if (id) {
+          try {
+            await fetch(`/api/games/${id}/decline-rematch`, { method: "POST" });
+          } catch {
+            /* ignore */
+          }
+        }
+      },
     }
   );
 
@@ -765,6 +946,7 @@ export function GamePageClient({ game, currentUser }: Props) {
   const [showResignDialog, setShowResignDialog] = useState(false);
   const [resignLoading, setResignLoading] = useState(false);
   const [drawLoading, setDrawLoading] = useState(false);
+  const [rematchLoading, setRematchLoading] = useState(false);
   const [movesSheetOpen, setMovesSheetOpen] = useState(false);
   const [promotionAt, setPromotionAt] = useState<{
     from: string;
@@ -1054,6 +1236,60 @@ export function GamePageClient({ game, currentUser }: Props) {
   };
 
   // ── Draw actions ─────────────────────────────────────────────────────────
+  const handleRematch = async () => {
+    if (!opponentOnline || rematchDeclined || rematchWaiting) return;
+    setRematchLoading(true);
+    try {
+      const res = await fetch("/api/games/rematch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ originalGameId: game.id }),
+      });
+      const data = (await res.json()) as { gameId?: string; error?: string };
+      if (!res.ok || !data.gameId) {
+        console.error("[rematch]", data.error ?? res.status);
+        return;
+      }
+      pendingRematchGameIdRef.current = data.gameId;
+      await sendRematchOffer(data.gameId, currentUser.id);
+      setRematchWaiting(true);
+    } catch (err) {
+      console.error("[rematch]", err);
+    } finally {
+      setRematchLoading(false);
+    }
+  };
+
+  const handleAcceptRematchOffer = async () => {
+    const gid = incomingRematchGameId;
+    if (!gid) return;
+    setRematchRespondLoading(true);
+    try {
+      await sendRematchAccept(gid, currentUser.id);
+      router.push(`/game/${gid}`);
+    } catch (err) {
+      console.error("[rematch accept]", err);
+    } finally {
+      setRematchRespondLoading(false);
+      setIncomingRematchGameId(null);
+    }
+  };
+
+  const handleDeclineRematchOffer = async () => {
+    const gid = incomingRematchGameId;
+    if (!gid) return;
+    setRematchRespondLoading(true);
+    try {
+      await fetch(`/api/games/${gid}/decline-rematch`, { method: "POST" });
+      await sendRematchDecline(currentUser.id);
+    } catch (err) {
+      console.error("[rematch decline]", err);
+    } finally {
+      setIncomingRematchGameId(null);
+      setRematchRespondLoading(false);
+    }
+  };
+
   const handleDrawAction = async (action: "offer" | "accept" | "decline") => {
     setDrawLoading(true);
     try {
@@ -1134,6 +1370,16 @@ export function GamePageClient({ game, currentUser }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex flex-col">
       <Navbar currentUser={currentUser} />
+
+      <AnimatePresence>
+        {showModal && incomingRematchGameId && (
+          <RematchOfferBanner
+            onAccept={handleAcceptRematchOffer}
+            onDecline={handleDeclineRematchOffer}
+            loading={rematchRespondLoading}
+          />
+        )}
+      </AnimatePresence>
 
       <main className="flex-1 flex flex-col items-center px-4 py-6 gap-4">
         {/* Board + move history: side-by-side on desktop, stacked on mobile */}
@@ -1314,7 +1560,11 @@ export function GamePageClient({ game, currentUser }: Props) {
             result={displayResult}
             iWon={iWon}
             isDraw={isDraw}
-            onPlayAgain={() => router.push("/lobby")}
+            opponentOnline={opponentOnline}
+            rematchDeclined={rematchDeclined}
+            rematchWaiting={rematchWaiting}
+            onRematch={handleRematch}
+            rematchLoading={rematchLoading}
             onDashboard={() => router.push("/dashboard")}
           />
         )}
