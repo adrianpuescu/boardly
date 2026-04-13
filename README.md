@@ -80,3 +80,4 @@ lib/
 supabase/
   migrations/           # SQL migrations
 ```
+# build fix
