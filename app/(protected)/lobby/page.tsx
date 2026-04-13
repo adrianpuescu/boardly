@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Copy, Check, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -49,6 +49,94 @@ const TIME_CARDS = [
   },
 ] as const;
 
+// ── Share step ─────────────────────────────────────────────────────────────
+interface ShareStepProps {
+  gameId: string;
+  inviteToken: string;
+  onGoToGame: () => void;
+}
+
+function ShareStep({ gameId: _gameId, inviteToken, onGoToGame }: ShareStepProps) {
+  const [copied, setCopied] = useState(false);
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const inviteUrl = `${appUrl}/join/${inviteToken}`;
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // Fallback for browsers that block clipboard without user gesture
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
+      {/* Icon */}
+      <div className="text-center">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-orange-100 text-4xl mb-4 shadow-sm">
+          🔗
+        </div>
+        <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">
+          Game created!
+        </h2>
+        <p className="mt-1 text-gray-500 text-sm">
+          Share this link with your opponent — no account needed to join.
+        </p>
+      </div>
+
+      {/* Link box */}
+      <div className="bg-white rounded-3xl p-5 shadow-md border border-orange-50 space-y-3">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          Invite link
+        </p>
+        <div className="flex items-center gap-2 bg-orange-50 rounded-xl px-4 py-3 border border-orange-100">
+          <span className="flex-1 text-sm text-gray-700 font-mono truncate select-all">
+            {inviteUrl}
+          </span>
+        </div>
+        <Button
+          type="button"
+          onClick={handleCopy}
+          className={`w-full h-11 rounded-xl font-bold transition-all ${
+            copied
+              ? "bg-green-500 hover:bg-green-500 text-white"
+              : "bg-orange-500 hover:bg-orange-600 text-white"
+          }`}
+        >
+          {copied ? (
+            <span className="flex items-center gap-2">
+              <Check className="w-4 h-4" />
+              Copied!
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              <Copy className="w-4 h-4" />
+              Copy link
+            </span>
+          )}
+        </Button>
+      </div>
+
+      {/* Go to game */}
+      <Button
+        type="button"
+        onClick={onGoToGame}
+        variant="outline"
+        className="w-full h-11 rounded-xl font-bold border-gray-200 hover:border-orange-300 hover:bg-orange-50 text-gray-700 transition-all flex items-center gap-2"
+      >
+        <ExternalLink className="w-4 h-4" />
+        Go to game
+      </Button>
+    </motion.div>
+  );
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
 export default function LobbyPage() {
   const router = useRouter();
@@ -59,6 +147,7 @@ export default function LobbyPage() {
   const [perGameMinutes, setPerGameMinutes] = useState(30);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [createdGame, setCreatedGame] = useState<{ gameId: string; inviteToken: string } | null>(null);
 
   function getTimeControl(): TimeControl {
     if (selectedType === "per_turn") return { type: "per_turn", minutes: perTurnMinutes };
@@ -88,7 +177,11 @@ export default function LobbyPage() {
         return;
       }
 
-      router.push(`/game/${data.gameId}`);
+      if (data.inviteToken) {
+        setCreatedGame({ gameId: data.gameId, inviteToken: data.inviteToken });
+      } else {
+        router.push(`/game/${data.gameId}`);
+      }
     } catch {
       setError("Network error. Please check your connection.");
     } finally {
@@ -101,13 +194,26 @@ export default function LobbyPage() {
       <div className="max-w-lg mx-auto">
         {/* Back button */}
         <button
-          onClick={() => router.push("/dashboard")}
+          onClick={() => createdGame ? setCreatedGame(null) : router.push("/dashboard")}
           className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 transition-colors mb-8 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
           <span className="text-sm font-medium">Back</span>
         </button>
 
+        {/* Share step — shown after successful game creation */}
+        <AnimatePresence mode="wait">
+          {createdGame && (
+            <ShareStep
+              gameId={createdGame.gameId}
+              inviteToken={createdGame.inviteToken}
+              onGoToGame={() => router.push(`/game/${createdGame.gameId}`)}
+            />
+          )}
+        </AnimatePresence>
+
+        {createdGame ? null : (
+          <>
         {/* Title */}
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
@@ -292,6 +398,8 @@ export default function LobbyPage() {
             </AnimatePresence>
           </div>
         </form>
+        </>
+        )}
       </div>
     </div>
   );

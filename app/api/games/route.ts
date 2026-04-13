@@ -86,24 +86,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── Handle opponent ────────────────────────────────────────────────────────
-  if (!opponentEmail) {
-    // No opponent provided — add the same user as black so the game is
-    // immediately playable for solo testing (play-against-yourself mode).
-    const { error: selfBlackError } = await adminClient
-      .from("game_players")
-      .insert({ game_id: gameId, user_id: user.id, color: "black" });
-
-    if (!selfBlackError) {
-      await adminClient
-        .from("games")
-        .update({ status: "active" })
-        .eq("id", gameId);
-    }
-  } else {
+  // ── Handle opponent (if email provided and they have an account) ───────────
+  if (opponentEmail) {
     // Look up opponent in auth.users via admin API.
-    // listUsers doesn't filter by email, so we page through users.
-    // For production: add email to public.users or use an RPC function.
     const { data: usersPage } = await adminClient.auth.admin.listUsers({
       perPage: 1000,
     });
@@ -131,22 +116,29 @@ export async function POST(request: NextRequest) {
           .update({ status: "active" })
           .eq("id", gameId);
       }
-    } else {
-      // Unknown email — create an invite.
-      const { error: inviteError } = await adminClient.from("invites").insert({
-        game_id: gameId,
-        inviter_id: user.id,
-        invitee_email: opponentEmail,
-      });
-
-      if (inviteError) {
-        console.error("invites insert error:", inviteError);
-        // Non-fatal: game is still created, invite just won't be sent.
-      }
     }
   }
 
-  return NextResponse.json({ gameId }, { status: 201 });
+  // ── Always create a shareable invite ──────────────────────────────────────
+  // The invite token lets anyone join the game via /join/[token], whether or
+  // not an opponent email was supplied.
+  const { data: invite, error: inviteError } = await adminClient
+    .from("invites")
+    .insert({
+      game_id: gameId,
+      inviter_id: user.id,
+      invitee_email: opponentEmail ?? null,
+    })
+    .select("token")
+    .single();
+
+  if (inviteError || !invite) {
+    console.error("invites insert error:", inviteError);
+    // Non-fatal — return without a token; lobby will fall back to direct navigation.
+    return NextResponse.json({ gameId }, { status: 201 });
+  }
+
+  return NextResponse.json({ gameId, inviteToken: invite.token }, { status: 201 });
 }
 
 export async function GET() {
