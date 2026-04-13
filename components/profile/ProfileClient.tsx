@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Pencil, X, Camera, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,22 +26,15 @@ interface Props {
 
 const USERNAME_RE = /^[a-zA-Z0-9._]+$/;
 
-function validateUsername(value: string): string | null {
-  if (value.length < 3) return "At least 3 characters required";
-  if (value.length > 20) return "Maximum 20 characters";
-  if (!USERNAME_RE.test(value)) return "Only letters, numbers, dots and underscores";
-  return null;
-}
-
-function formatMemberSince(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", {
+function formatMemberSince(iso: string, locale: string) {
+  return new Date(iso).toLocaleDateString(locale === "ro" ? "ro-RO" : "en-US", {
     month: "long",
     year: "numeric",
   });
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", {
+function formatDate(iso: string, locale: string) {
+  return new Date(iso).toLocaleDateString(locale === "ro" ? "ro-RO" : "en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -157,10 +151,12 @@ function StatCard({
 
 // ── Result badge ───────────────────────────────────────────────────────────────
 function ResultBadge({ result }: { result: "win" | "loss" | "draw" }) {
+  const t = useTranslations("profile");
+
   const config = {
-    win: { label: "Win", className: "bg-green-100 text-green-700" },
-    loss: { label: "Loss", className: "bg-red-100 text-red-600" },
-    draw: { label: "Draw", className: "bg-gray-100 text-gray-500" },
+    win: { label: t("win"), className: "bg-green-100 text-green-700" },
+    loss: { label: t("loss"), className: "bg-red-100 text-red-600" },
+    draw: { label: t("draw"), className: "bg-gray-100 text-gray-500" },
   }[result];
 
   return (
@@ -177,6 +173,8 @@ const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2 MB
 // ── Main component ─────────────────────────────────────────────────────────────
 export function ProfileClient({ profile, stats, recentGames, email }: Props) {
   const router = useRouter();
+  const t = useTranslations("profile");
+  const locale = useLocale();
 
   const [username, setUsername] = useState(profile.username);
   const [isEditing, setIsEditing] = useState(false);
@@ -190,12 +188,19 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  function validateUsername(value: string): string | null {
+    if (value.length < 3) return t("usernameMin");
+    if (value.length > 20) return t("usernameMax");
+    if (!USERNAME_RE.test(value)) return t("usernameChars");
+    return null;
+  }
+
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.size > MAX_AVATAR_SIZE) {
-      setAvatarError("Image must be under 2 MB");
+      setAvatarError(t("imageSizeError"));
       e.target.value = "";
       return;
     }
@@ -215,14 +220,14 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
       const data = await res.json();
 
       if (!res.ok) {
-        setAvatarError(data.error ?? "Upload failed");
+        setAvatarError(data.error ?? t("uploadFailed"));
         setAvatarUrl(profile.avatar_url);
         return;
       }
 
       setAvatarUrl(data.avatar_url);
     } catch {
-      setAvatarError("Network error. Please try again.");
+      setAvatarError(t("networkError"));
       setAvatarUrl(profile.avatar_url);
     } finally {
       setUploading(false);
@@ -274,14 +279,14 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
       const data = await res.json();
 
       if (!res.ok) {
-        setEditError(data.error ?? "Failed to save username");
+        setEditError(data.error ?? t("failedToSave"));
         return;
       }
 
       setUsername(data.username);
       setIsEditing(false);
     } catch {
-      setEditError("Network error. Please try again.");
+      setEditError(t("networkError"));
     } finally {
       setSaving(false);
     }
@@ -307,7 +312,7 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
           className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 transition-colors group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-          <span className="text-sm font-medium">Back to dashboard</span>
+          <span className="text-sm font-medium">{t("backToDashboard")}</span>
         </button>
 
         {/* ── Header card ────────────────────────────────────────────────── */}
@@ -335,7 +340,7 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
                   onChange={handleAvatarChange}
                 />
                 <button
-                  title="Change avatar"
+                  title={t("changeAvatar")}
                   disabled={uploading}
                   onClick={() => fileInputRef.current?.click()}
                   className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-orange-500 hover:bg-orange-600 disabled:opacity-70 text-white flex items-center justify-center shadow-md transition-colors"
@@ -429,7 +434,7 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
 
               <p className="text-sm text-gray-400 mt-1">{email}</p>
               <p className="text-xs text-gray-400 mt-0.5">
-                Member since {formatMemberSince(profile.created_at)}
+                {t("memberSince")} {formatMemberSince(profile.created_at, locale)}
               </p>
             </div>
           </div>
@@ -441,16 +446,16 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.05 }}
         >
-          <h2 className="text-base font-bold text-gray-700 mb-3 px-1">Stats</h2>
+          <h2 className="text-base font-bold text-gray-700 mb-3 px-1">{t("stats")}</h2>
           <div className="grid grid-cols-2 gap-3">
-            <StatCard emoji="🎮" label="Games Played" value={stats.total} />
-            <StatCard emoji="🏆" label="Wins" value={stats.wins} />
+            <StatCard emoji="🎮" label={t("gamesPlayed")} value={stats.total} />
+            <StatCard emoji="🏆" label={t("wins")} value={stats.wins} />
             <StatCard
               emoji="📊"
-              label="Win Rate"
+              label={t("winRate")}
               value={`${stats.win_rate}%`}
             />
-            <StatCard emoji="🤝" label="Draws" value={stats.draws} />
+            <StatCard emoji="🤝" label={t("draws")} value={stats.draws} />
           </div>
         </motion.section>
 
@@ -462,18 +467,18 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
           className="bg-white rounded-3xl p-6 shadow-md border border-orange-50"
         >
           <h2 className="text-base font-bold text-gray-800 mb-4">
-            Recent Games
+            {t("recentGames")}
           </h2>
 
           {recentGames.length === 0 ? (
             <div className="text-center py-10">
               <span className="text-4xl">♟️</span>
-              <p className="mt-3 text-gray-400 text-sm">No completed games yet.</p>
+              <p className="mt-3 text-gray-400 text-sm">{t("noCompletedGames")}</p>
               <Button
                 onClick={() => router.push("/lobby")}
                 className="mt-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-bold"
               >
-                Start a game
+                {t("startGame")}
               </Button>
             </div>
           ) : (
@@ -504,11 +509,11 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
                     {/* Game info */}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-800 truncate">
-                        {game.opponent?.username ?? "Unknown opponent"}
+                        {game.opponent?.username ?? t("unknownOpponent")}
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">
                         {formatTimeControl(game.time_control)} ·{" "}
-                        {formatDate(game.played_at)}
+                        {formatDate(game.played_at, locale)}
                       </p>
                     </div>
 

@@ -47,7 +47,7 @@ export default async function GamePage({ params }: Props) {
   if (!game) redirect("/dashboard");
 
   // PostgREST returns FK many-to-one joins as a single object, not an array.
-  const players = (game.game_players ?? []) as Array<{
+  const players = (game.game_players ?? []) as unknown as Array<{
     user_id: string;
     color: string;
     users: { id: string; username: string; avatar_url: string | null } | null;
@@ -91,13 +91,12 @@ export default async function GamePage({ params }: Props) {
     id: user.id,
     email: user.email ?? "",
     username: myProfile?.username ?? user.email?.split("@")[0] ?? "You",
-    avatar_url: myProfile?.avatar_url ?? null,
+    avatar_url:
+      myProfile?.avatar_url ??
+      (user.user_metadata?.avatar_url as string | null) ??
+      (user.user_metadata?.picture as string | null) ??
+      null,
   };
-
-  console.log("[game/page] myProfile raw:", myProfile);
-  console.log("[game/page] opponentProfile raw:", opponentProfile);
-  console.log("[game/page] Current user avatar:", currentUser.avatar_url);
-  console.log("[game/page] Opponent avatar:", opponentProfile?.avatar_url);
 
   return <GamePageClient game={gameData} currentUser={currentUser} />;
 }

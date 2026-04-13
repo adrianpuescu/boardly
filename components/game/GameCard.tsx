@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -21,16 +22,9 @@ interface Props {
   game: DashboardGame;
 }
 
-const TIME_CONTROL_LABELS: Record<string, string> = {
-  unlimited: "Unlimited ∞",
-  per_turn: "Per turn ⏱",
-  per_game: "Per game ⏳",
-  time_based: "Timed ⏱",
-  turn_based: "Turn based 🔄",
-};
-
 export function GameCard({ game }: Props) {
   const router = useRouter();
+  const t = useTranslations("gameCard");
   const [avatarError, setAvatarError] = useState(false);
   const { pieceSet } = usePieceSet();
   const customPieces = buildPieces(pieceSet);
@@ -39,12 +33,20 @@ export function GameCard({ game }: Props) {
     game.status === "active" && game.state?.turn === game.my_color;
   const isWaiting = game.status === "waiting";
 
-  const timeLabel =
-    TIME_CONTROL_LABELS[game.time_control?.type] ??
-    game.time_control?.type ??
-    "Unlimited ∞";
+  const timeControlLabels: Record<string, string> = {
+    unlimited: t("unlimited"),
+    per_turn: t("perTurn"),
+    per_game: t("perGame"),
+    time_based: t("timeBased"),
+    turn_based: t("turnBased"),
+  };
 
-  const opponentName = game.opponent?.username ?? "Waiting for opponent…";
+  const timeLabel =
+    timeControlLabels[game.time_control?.type] ??
+    game.time_control?.type ??
+    t("unlimited");
+
+  const opponentName = game.opponent?.username ?? t("waitingForOpponent") + "…";
   const opponentInitials = opponentName.slice(0, 2).toUpperCase();
 
   const ago = formatDistanceToNow(new Date(game.created_at), {
@@ -100,7 +102,7 @@ export function GameCard({ game }: Props) {
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
             </span>
             <span className="text-sm font-semibold text-green-600">
-              Your turn!
+              {t("yourTurn")}
             </span>
           </div>
         ) : isWaiting ? (
@@ -108,14 +110,14 @@ export function GameCard({ game }: Props) {
             variant="secondary"
             className="text-xs bg-gray-100 text-gray-500 border-0 rounded-full"
           >
-            Waiting for opponent
+            {t("waitingForOpponent")}
           </Badge>
         ) : (
           <Badge
             variant="secondary"
             className="text-xs bg-blue-50 text-blue-500 border-0 rounded-full"
           >
-            Opponent&apos;s turn
+            {t("opponentsTurn")}
           </Badge>
         )}
 
@@ -141,7 +143,7 @@ export function GameCard({ game }: Props) {
             <p className="text-sm font-semibold text-gray-800 truncate">
               {opponentName}
             </p>
-            <p className="text-xs text-gray-400">Opponent</p>
+            <p className="text-xs text-gray-400">{t("opponent")}</p>
           </div>
         </div>
 

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { Chessboard } from "react-chessboard";
 import { Chess } from "chess.js";
@@ -118,6 +119,7 @@ function PlayerStrip({
   isTheirTurn: boolean;
   timer?: React.ReactNode;
 }) {
+  const t = useTranslations("game");
   const initials = username.slice(0, 2).toUpperCase();
   const [avatarError, setAvatarError] = useState(false);
   const showAvatar = !!avatarUrl && !avatarError;
@@ -169,12 +171,12 @@ function PlayerStrip({
           {username}
           {isCurrentUser && (
             <span className="ml-1.5 text-xs font-normal text-orange-500">
-              (you)
+              {t("you")}
             </span>
           )}
         </p>
         <p className="text-xs text-gray-400">
-          {color === "white" ? "♔ White" : "♚ Black"}
+          {color === "white" ? `♔ ${t("white")}` : `♚ ${t("black")}`}
         </p>
       </div>
 
@@ -193,7 +195,7 @@ function PlayerStrip({
         )}
         {isTheirTurn && (
           <span className="hidden sm:inline text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-            {isCurrentUser ? "Your turn!" : "Thinking…"}
+            {isCurrentUser ? t("yourTurn") : t("thinking")}
           </span>
         )}
       </div>
@@ -213,11 +215,13 @@ function StatusBanner({
   myColor: "white" | "black";
   submitting: boolean;
 }) {
+  const t = useTranslations("game");
+
   if (status === "waiting") {
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-xl text-sm text-gray-500 font-medium">
         <span className="w-2 h-2 rounded-full bg-gray-400" />
-        Waiting for opponent
+        {t("waitingForOpponent")}
       </div>
     );
   }
@@ -225,7 +229,7 @@ function StatusBanner({
   if (status === "completed" || status === "abandoned") {
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-xl text-sm text-gray-500 font-medium">
-        Game ended
+        {t("gameEnded")}
       </div>
     );
   }
@@ -237,7 +241,7 @@ function StatusBanner({
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
         </svg>
-        Submitting…
+        {t("submitting")}
       </div>
     );
   }
@@ -257,12 +261,12 @@ function StatusBanner({
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
           </span>
-          Your turn!
+          {t("yourTurn")}
         </>
       ) : (
         <>
           <span className="w-2 h-2 rounded-full bg-blue-400" />
-          Opponent&apos;s turn
+          {t("opponentsTurn")}
         </>
       )}
     </div>
@@ -283,6 +287,8 @@ function GameOverModal({
   onPlayAgain: () => void;
   onDashboard: () => void;
 }) {
+  const t = useTranslations("gameOver");
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -301,36 +307,30 @@ function GameOverModal({
           <>
             <div className="text-6xl mb-4 select-none">{iWon ? "⏰" : "⌛"}</div>
             <h2 className="text-2xl font-extrabold text-gray-900 mb-2">
-              {iWon ? "You won on time!" : "Time's up!"}
+              {iWon ? t("wonOnTime") : t("timesUp")}
             </h2>
             <p className="text-gray-500 text-sm mb-6">
-              {iWon
-                ? "Your opponent ran out of time."
-                : "Your clock ran out. Better luck next time!"}
+              {iWon ? t("opponentRanOutOfTime") : t("clockRanOut")}
             </p>
           </>
         ) : result === "resignation" ? (
           <>
             <div className="text-6xl mb-4 select-none">{iWon ? "🏳️" : "🏆"}</div>
             <h2 className="text-2xl font-extrabold text-gray-900 mb-2">
-              {iWon ? "Opponent resigned!" : "You resigned"}
+              {iWon ? t("opponentResigned") : t("youResigned")}
             </h2>
             <p className="text-gray-500 text-sm mb-6">
-              {iWon
-                ? "Your opponent threw in the towel."
-                : "Sometimes discretion is the better part of valour."}
+              {iWon ? t("opponentThrewTowel") : t("discretion")}
             </p>
           </>
         ) : isDraw ? (
           <>
             <div className="text-6xl mb-4 select-none">🤝</div>
             <h2 className="text-2xl font-extrabold text-gray-900 mb-2">
-              It&apos;s a Draw!
+              {t("draw")}
             </h2>
             <p className="text-gray-500 text-sm mb-6">
-              {result === "stalemate"
-                ? "Stalemate — no legal moves left."
-                : "Well played by both sides!"}
+              {result === "stalemate" ? t("stalemate") : t("wellPlayed")}
             </p>
           </>
         ) : iWon ? (
@@ -344,20 +344,20 @@ function GameOverModal({
               🎉
             </motion.div>
             <h2 className="text-2xl font-extrabold text-gray-900 mb-2">
-              You won!
+              {t("youWon")}
             </h2>
             <p className="text-gray-500 text-sm mb-6">
-              Outstanding! Your opponent never saw it coming.
+              {t("outstanding")}
             </p>
           </>
         ) : (
           <>
             <div className="text-6xl mb-4 select-none">😔</div>
             <h2 className="text-2xl font-extrabold text-gray-900 mb-2">
-              You lost
+              {t("youLost")}
             </h2>
             <p className="text-gray-500 text-sm mb-6">
-              Every master was once a beginner — come back stronger!
+              {t("everyMasterDesc")}
             </p>
           </>
         )}
@@ -367,14 +367,14 @@ function GameOverModal({
             onClick={onPlayAgain}
             className="w-full rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold shadow-md"
           >
-            Play again 🎲
+            {t("playAgain")}
           </Button>
           <Button
             variant="outline"
             onClick={onDashboard}
             className="w-full rounded-xl border-gray-200 text-gray-600"
           >
-            Back to dashboard
+            {t("backToDashboard")}
           </Button>
         </div>
       </motion.div>
@@ -392,6 +392,8 @@ function ResignDialog({
   onCancel: () => void;
   loading: boolean;
 }) {
+  const t = useTranslations("resign");
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -407,10 +409,8 @@ function ResignDialog({
         className="bg-white rounded-2xl p-6 max-w-xs w-full shadow-xl text-center"
       >
         <div className="text-4xl mb-3">🏳️</div>
-        <h3 className="text-lg font-bold text-gray-900 mb-1">Resign game?</h3>
-        <p className="text-sm text-gray-500 mb-5">
-          Your opponent will be declared the winner. This cannot be undone.
-        </p>
+        <h3 className="text-lg font-bold text-gray-900 mb-1">{t("title")}</h3>
+        <p className="text-sm text-gray-500 mb-5">{t("desc")}</p>
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -418,14 +418,14 @@ function ResignDialog({
             disabled={loading}
             className="flex-1 rounded-xl border-gray-200 text-gray-600"
           >
-            Cancel
+            {t("cancel")}
           </Button>
           <Button
             onClick={onConfirm}
             disabled={loading}
             className="flex-1 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold"
           >
-            {loading ? "Resigning…" : "Resign"}
+            {loading ? t("resigning") : t("confirm")}
           </Button>
         </div>
       </motion.div>
@@ -461,6 +461,7 @@ function MoveHistoryPanel({
   className?: string;
   hideHeader?: boolean;
 }) {
+  const t = useTranslations("game");
   const bottomRef = useRef<HTMLDivElement>(null);
   const pairs = buildMovePairs(moves);
 
@@ -473,22 +474,22 @@ function MoveHistoryPanel({
     <div className={`flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden ${className ?? ""}`}>
       {!hideHeader && (
         <div className="px-4 py-3 border-b border-gray-100 flex-shrink-0">
-          <h3 className="text-sm font-semibold text-gray-700">Moves</h3>
+          <h3 className="text-sm font-semibold text-gray-700">{t("moves")}</h3>
         </div>
       )}
       <div className="flex-1 overflow-y-auto min-h-0 p-2">
         {pairs.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-6">No moves yet</p>
+          <p className="text-xs text-gray-400 text-center py-6">{t("noMovesYet")}</p>
         ) : (
           <table className="w-full text-xs">
             <thead>
               <tr>
                 <th className="w-6 px-2 pb-1.5 text-left" />
                 <th className="px-2 pb-1.5 text-left font-semibold text-gray-400 tracking-wide uppercase text-[10px] w-1/2">
-                  White
+                  {t("white")}
                 </th>
                 <th className="px-2 pb-1.5 text-left font-semibold text-gray-400 tracking-wide uppercase text-[10px] w-1/2">
-                  Black
+                  {t("black")}
                 </th>
               </tr>
             </thead>
@@ -549,6 +550,8 @@ function DrawOfferBanner({
   onDecline: () => void;
   loading: boolean;
 }) {
+  const t = useTranslations("drawOffer");
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -8 }}
@@ -558,21 +561,21 @@ function DrawOfferBanner({
     >
       <span className="text-xl">🤝</span>
       <p className="flex-1 text-blue-800 font-medium">
-        Your opponent offers a draw
+        {t("opponentOffers")}
       </p>
       <button
         onClick={onDecline}
         disabled={loading}
         className="px-3 py-1 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50"
       >
-        Decline
+        {t("decline")}
       </button>
       <button
         onClick={onAccept}
         disabled={loading}
         className="px-3 py-1 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
       >
-        {loading ? "…" : "Accept"}
+        {loading ? "…" : t("accept")}
       </button>
     </motion.div>
   );
@@ -581,6 +584,8 @@ function DrawOfferBanner({
 // ── Main component ────────────────────────────────────────────────────────────
 export function GamePageClient({ game, currentUser }: Props) {
   const router = useRouter();
+  const t = useTranslations("game");
+  const tDrawOffer = useTranslations("drawOffer");
   const boardControls = useAnimation();
 
   const {
@@ -802,7 +807,7 @@ export function GamePageClient({ game, currentUser }: Props) {
     }
   };
 
-  const opponentUsername = game.opponent?.username ?? "Waiting…";
+  const opponentUsername = game.opponent?.username ?? t("waitingForOpponent") + "…";
   const timeControlType = game.time_control?.type;
   const hasTimer = timeControlType === "per_turn" || timeControlType === "per_game";
 
@@ -866,7 +871,7 @@ export function GamePageClient({ game, currentUser }: Props) {
                 className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 transition-colors group flex-shrink-0"
               >
                 <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-                <span className="text-sm font-medium">Games</span>
+                <span className="text-sm font-medium">{t("games")}</span>
               </button>
 
               <StatusBanner
@@ -948,7 +953,7 @@ export function GamePageClient({ game, currentUser }: Props) {
                     className="flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm font-semibold text-red-500 border border-red-200 hover:bg-red-50 active:bg-red-100 transition-colors disabled:opacity-40"
                   >
                     <Flag className="w-4 h-4" />
-                    <span>Resign</span>
+                    <span>{t("resign")}</span>
                   </button>
                   <button
                     onClick={() =>
@@ -958,15 +963,15 @@ export function GamePageClient({ game, currentUser }: Props) {
                     className="flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm font-semibold text-gray-500 border border-gray-200 hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     title={
                       iOfferedDraw
-                        ? "Draw offer sent — waiting for opponent"
+                        ? tDrawOffer("drawOfferSent")
                         : opponentOfferedDraw
-                        ? "Opponent already offered a draw"
-                        : "Offer a draw"
+                        ? tDrawOffer("opponentAlreadyOffered")
+                        : tDrawOffer("offerDraw")
                     }
                   >
                     <Handshake className="w-4 h-4" />
-                    <span className="hidden sm:inline">{iOfferedDraw ? "Draw offered…" : "Offer Draw"}</span>
-                    <span className="sm:hidden">{iOfferedDraw ? "Offered…" : "Draw"}</span>
+                    <span className="hidden sm:inline">{iOfferedDraw ? t("drawOffered") : t("offerDraw")}</span>
+                    <span className="sm:hidden">{iOfferedDraw ? t("offered") : t("draw")}</span>
                   </button>
                 </>
               )}
@@ -977,7 +982,7 @@ export function GamePageClient({ game, currentUser }: Props) {
                 className="lg:hidden ml-auto flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 active:bg-gray-100 transition-colors"
               >
                 <ChevronUp className="w-4 h-4 text-gray-400" />
-                Moves
+                {t("moves")}
                 {moves.length > 0 && (
                   <span className="ml-0.5 text-gray-400 font-normal text-xs">
                     ({moves.length})
@@ -1045,7 +1050,7 @@ export function GamePageClient({ game, currentUser }: Props) {
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 flex-shrink-0">
                 <h3 className="text-base font-bold text-gray-900">
-                  Moves
+                  {t("moves")}
                   {moves.length > 0 && (
                     <span className="ml-2 text-sm font-normal text-gray-400">
                       ({moves.length})

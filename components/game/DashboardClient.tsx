@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/layout/Navbar";
 import { GameCard } from "@/components/game/GameCard";
@@ -13,6 +14,8 @@ interface Props {
 }
 
 function EmptyState({ onNewGame }: { onNewGame: () => void }) {
+  const t = useTranslations("dashboard");
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
@@ -54,10 +57,10 @@ function EmptyState({ onNewGame }: { onNewGame: () => void }) {
         className="text-3xl font-black text-gray-800 mb-3 tracking-tight"
         style={{ fontFamily: "var(--font-nunito), sans-serif" }}
       >
-        No games yet!
+        {t("noGamesTitle")}
       </h2>
       <p className="text-gray-500 mb-8 max-w-xs leading-relaxed text-base">
-        Challenge a friend and find out who&apos;s the real grandmaster. 🏆
+        {t("noGamesDesc")}
       </p>
 
       <Button
@@ -65,7 +68,7 @@ function EmptyState({ onNewGame }: { onNewGame: () => void }) {
         className="rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold px-8 py-3 text-base shadow-lg shadow-orange-200 hover:shadow-xl hover:shadow-orange-200 transition-all"
         style={{ fontFamily: "var(--font-nunito), sans-serif" }}
       >
-        Start your first game 🎉
+        {t("startFirstGame")}
       </Button>
 
       {/* Decorative scattered pieces */}
@@ -78,6 +81,7 @@ function EmptyState({ onNewGame }: { onNewGame: () => void }) {
 
 export function DashboardClient({ games, currentUser }: Props) {
   const router = useRouter();
+  const t = useTranslations("dashboard");
 
   return (
     <div
@@ -111,13 +115,13 @@ export function DashboardClient({ games, currentUser }: Props) {
                 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight truncate"
                 style={{ fontFamily: "var(--font-nunito), sans-serif" }}
               >
-                Your Games
+                {t("title")}
               </h1>
             </div>
             <p className="text-gray-500 text-sm pl-8 sm:pl-9 truncate">
               {games.length === 0
-                ? "Ready to play? Start a new game."
-                : `${games.length} game${games.length !== 1 ? "s" : ""} in progress`}
+                ? t("readyToPlay")
+                : t("gamesInProgress", { count: games.length })}
             </p>
           </div>
 
@@ -126,8 +130,8 @@ export function DashboardClient({ games, currentUser }: Props) {
             className="rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold px-4 sm:px-5 min-h-[44px] shadow-md shadow-orange-200 hover:shadow-lg transition-all flex-shrink-0"
             style={{ fontFamily: "var(--font-nunito), sans-serif" }}
           >
-            <span className="hidden sm:inline">+ New Game</span>
-            <span className="sm:hidden">+ New</span>
+            <span className="hidden sm:inline">{t("newGame")}</span>
+            <span className="sm:hidden">{t("newGameShort")}</span>
           </Button>
         </motion.div>
 

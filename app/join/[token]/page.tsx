@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import JoinPageClient from "./JoinPageClient";
@@ -9,7 +10,9 @@ interface Props {
 }
 
 // ── Error screen ────────────────────────────────────────────────────────────
-function ExpiredPage() {
+async function ExpiredPage() {
+  const t = await getTranslations("join");
+
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-4"
@@ -21,17 +24,16 @@ function ExpiredPage() {
       <div className="w-full max-w-sm text-center space-y-5">
         <div className="text-6xl">🙈</div>
         <h1 className="text-2xl font-black text-gray-900">
-          This invite has expired or doesn&apos;t exist
+          {t("expired")}
         </h1>
         <p className="text-gray-500 text-sm leading-relaxed">
-          The link may have been used already, or it was valid for only 7 days.
-          Ask your friend to send a new one!
+          {t("expiredDesc")}
         </p>
         <Link
           href="/"
           className="inline-block mt-2 text-sm font-semibold text-orange-500 hover:text-orange-600 underline underline-offset-4 transition-colors"
         >
-          Go to Boardly
+          {t("goToBoardly")}
         </Link>
       </div>
     </div>

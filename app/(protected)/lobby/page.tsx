@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Copy, Check, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,35 +18,27 @@ interface TimeControl {
 }
 
 // ── Time-control card config ───────────────────────────────────────────────
-const TIME_CARDS = [
+const TIME_CARD_CONFIG = [
   {
     type: "unlimited" as const,
     emoji: "♾️",
-    label: "Unlimited",
-    description: "Play at your own pace, no pressure",
     hasSlider: false,
   },
   {
     type: "per_turn" as const,
     emoji: "⏱️",
-    label: "Per turn",
-    description: "Each player gets N minutes per move",
     hasSlider: true,
     min: 1,
     max: 60,
     defaultMinutes: 10,
-    unit: "min / move",
   },
   {
     type: "per_game" as const,
     emoji: "⏰",
-    label: "Per game",
-    description: "Each player gets N minutes total",
     hasSlider: true,
     min: 5,
     max: 180,
     defaultMinutes: 30,
-    unit: "min total",
   },
 ] as const;
 
@@ -56,7 +49,8 @@ interface ShareStepProps {
   onGoToGame: () => void;
 }
 
-function ShareStep({ gameId: _gameId, inviteToken, onGoToGame }: ShareStepProps) {
+function ShareStep({ inviteToken, onGoToGame }: ShareStepProps) {
+  const t = useTranslations("lobby");
   const [copied, setCopied] = useState(false);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
   const inviteUrl = `${appUrl}/join/${inviteToken}`;
@@ -83,17 +77,17 @@ function ShareStep({ gameId: _gameId, inviteToken, onGoToGame }: ShareStepProps)
           🔗
         </div>
         <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">
-          Game created!
+          {t("gameCreated")}
         </h2>
         <p className="mt-1 text-gray-500 text-sm">
-          Share this link with your opponent — no account needed to join.
+          {t("shareLink")}
         </p>
       </div>
 
       {/* Link box */}
       <div className="bg-white rounded-3xl p-5 shadow-md border border-orange-50 space-y-3">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-          Invite link
+          {t("inviteLink")}
         </p>
         <div className="flex items-center gap-2 bg-orange-50 rounded-xl px-4 py-3 border border-orange-100">
           <span className="flex-1 text-sm text-gray-700 font-mono truncate select-all">
@@ -112,12 +106,12 @@ function ShareStep({ gameId: _gameId, inviteToken, onGoToGame }: ShareStepProps)
           {copied ? (
             <span className="flex items-center gap-2">
               <Check className="w-4 h-4" />
-              Copied!
+              {t("copied")}
             </span>
           ) : (
             <span className="flex items-center gap-2">
               <Copy className="w-4 h-4" />
-              Copy link
+              {t("copyLink")}
             </span>
           )}
         </Button>
@@ -131,7 +125,7 @@ function ShareStep({ gameId: _gameId, inviteToken, onGoToGame }: ShareStepProps)
         className="w-full h-11 rounded-xl font-bold border-gray-200 hover:border-orange-300 hover:bg-orange-50 text-gray-700 transition-all flex items-center gap-2"
       >
         <ExternalLink className="w-4 h-4" />
-        Go to game
+        {t("goToGame")}
       </Button>
     </motion.div>
   );
@@ -140,6 +134,7 @@ function ShareStep({ gameId: _gameId, inviteToken, onGoToGame }: ShareStepProps)
 // ── Component ──────────────────────────────────────────────────────────────
 export default function LobbyPage() {
   const router = useRouter();
+  const t = useTranslations("lobby");
 
   const [opponentEmail, setOpponentEmail] = useState("");
   const [selectedType, setSelectedType] = useState<TimeControlType>("unlimited");
@@ -148,6 +143,13 @@ export default function LobbyPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdGame, setCreatedGame] = useState<{ gameId: string; inviteToken: string } | null>(null);
+
+  // Card label/description/unit derived from translations
+  const cardMeta: Record<TimeControlType, { label: string; description: string; unit?: string }> = {
+    unlimited: { label: t("unlimited"), description: t("unlimitedDesc") },
+    per_turn: { label: t("perTurn"), description: t("perTurnDesc"), unit: t("perTurnUnit") },
+    per_game: { label: t("perGame"), description: t("perGameDesc"), unit: t("perGameUnit") },
+  };
 
   function getTimeControl(): TimeControl {
     if (selectedType === "per_turn") return { type: "per_turn", minutes: perTurnMinutes };
@@ -173,7 +175,7 @@ export default function LobbyPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error ?? "Something went wrong. Please try again.");
+        setError(data.error ?? t("somethingWentWrong"));
         return;
       }
 
@@ -183,7 +185,7 @@ export default function LobbyPage() {
         router.push(`/game/${data.gameId}`);
       }
     } catch {
-      setError("Network error. Please check your connection.");
+      setError(t("networkError"));
     } finally {
       setLoading(false);
     }
@@ -198,7 +200,7 @@ export default function LobbyPage() {
           className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 transition-colors mb-8 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-          <span className="text-sm font-medium">Back</span>
+          <span className="text-sm font-medium">{t("back")}</span>
         </button>
 
         {/* Share step — shown after successful game creation */}
@@ -217,19 +219,19 @@ export default function LobbyPage() {
         {/* Title */}
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-            New Game
+            {t("newGame")}
           </h1>
-          <p className="mt-1 text-gray-500">Set up your challenge</p>
+          <p className="mt-1 text-gray-500">{t("setupChallenge")}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* ── Opponent ───────────────────────────────────────── */}
           <section className="bg-white rounded-3xl p-6 shadow-md border border-orange-50 space-y-3">
-            <h2 className="text-base font-bold text-gray-800">Opponent</h2>
+            <h2 className="text-base font-bold text-gray-800">{t("opponent")}</h2>
             <label className="block space-y-1.5">
               <span className="text-sm font-medium text-gray-700">
-                Friend&apos;s email{" "}
-                <span className="text-gray-400 font-normal">(optional)</span>
+                {t("friendsEmail")}{" "}
+                <span className="text-gray-400 font-normal">{t("optional")}</span>
               </span>
               <Input
                 type="email"
@@ -239,19 +241,19 @@ export default function LobbyPage() {
                 className="h-11 rounded-xl border-gray-200 focus:border-orange-400 focus:ring-orange-400"
               />
               <p className="text-xs text-gray-400">
-                We&apos;ll send them an invite link — or they can join without
-                an account.
+                {t("friendEmailHint")}
               </p>
             </label>
           </section>
 
           {/* ── Time control ───────────────────────────────────── */}
           <section className="bg-white rounded-3xl p-6 shadow-md border border-orange-50 space-y-4">
-            <h2 className="text-base font-bold text-gray-800">Time Control</h2>
+            <h2 className="text-base font-bold text-gray-800">{t("timeControl")}</h2>
 
             <div className="space-y-3">
-              {TIME_CARDS.map((card) => {
+              {TIME_CARD_CONFIG.map((card) => {
                 const isSelected = selectedType === card.type;
+                const meta = cardMeta[card.type];
                 const currentMinutes =
                   card.type === "per_turn"
                     ? perTurnMinutes
@@ -290,11 +292,11 @@ export default function LobbyPage() {
                             {card.emoji}
                           </span>
                           <span className="font-semibold text-gray-900">
-                            {card.label}
+                            {meta.label}
                           </span>
                         </div>
                         <p className="mt-0.5 text-sm text-gray-500">
-                          {card.description}
+                          {meta.description}
                         </p>
 
                         {/* Slider — shown only when card is selected */}
@@ -305,9 +307,6 @@ export default function LobbyPage() {
                               animate={{ opacity: 1, height: "auto" }}
                               exit={{ opacity: 0, height: 0 }}
                               transition={{ duration: 0.2 }}
-                              // overflow-hidden is required for height:0→auto animation.
-                              // The extra pb/px below ensures the slider thumb's
-                              // ::after (-inset-2 = 8 px bleed) is never clipped.
                               style={{ overflow: "hidden" }}
                             >
                               <div
@@ -319,7 +318,7 @@ export default function LobbyPage() {
                                     {card.min} min
                                   </span>
                                   <span className="text-sm font-bold text-orange-600 tabular-nums">
-                                    {currentMinutes} {card.unit}
+                                    {currentMinutes} {meta.unit}
                                   </span>
                                   <span className="text-xs text-gray-500">
                                     {card.max} min
@@ -376,10 +375,10 @@ export default function LobbyPage() {
                       d="M4 12a8 8 0 018-8v8H4z"
                     />
                   </svg>
-                  Creating game…
+                  {t("creating")}
                 </span>
               ) : (
-                "Create Game 🎲"
+                t("createGame")
               )}
             </Button>
 

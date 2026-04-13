@@ -32,7 +32,7 @@ export default async function ProfilePage() {
 
   const gameIds = myPlayerRows?.map((r) => r.game_id) ?? [];
 
-  let stats: ProfileStats = {
+  const stats: ProfileStats = {
     total: 0,
     wins: 0,
     losses: 0,
@@ -83,7 +83,7 @@ export default async function ProfilePage() {
       stats.total > 0 ? Math.round((stats.wins / stats.total) * 100) : 0;
 
     recentGames = completed.slice(0, 5).map((g) => {
-      const players = (g.game_players ?? []) as Array<{
+      const players = (g.game_players ?? []) as unknown as Array<{
         user_id: string;
         color: string;
         users: {
@@ -120,7 +120,11 @@ export default async function ProfilePage() {
     id: user.id,
     email: user.email ?? "",
     username: profile.username,
-    avatar_url: profile.avatar_url,
+    avatar_url:
+      profile.avatar_url ??
+      (user.user_metadata?.avatar_url as string | null) ??
+      (user.user_metadata?.picture as string | null) ??
+      null,
   };
 
   return (

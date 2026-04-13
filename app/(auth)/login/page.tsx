@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +60,7 @@ function KnightIllustration() {
 function LoginForm() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo") ?? "/dashboard";
+  const t = useTranslations("login");
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -127,7 +129,7 @@ function LoginForm() {
             className="mt-3 text-base text-gray-500 font-semibold"
             style={{ fontFamily: "var(--font-nunito), sans-serif" }}
           >
-            Chess with friends ♟ &nbsp;Your rules. Your pace.
+            {t("tagline")}
           </p>
         </div>
 
@@ -140,19 +142,19 @@ function LoginForm() {
                 className="text-2xl font-black text-gray-900"
                 style={{ fontFamily: "var(--font-nunito), sans-serif" }}
               >
-                Check your inbox!
+                {t("checkInbox")}
               </h2>
               <p className="text-gray-500 text-sm leading-relaxed">
-                Magic link sent to{" "}
+                {t("magicLinkSentTo")}{" "}
                 <span className="font-bold text-orange-500">{email}</span>.
                 <br />
-                Click it to jump right in. 🚀
+                {t("clickToJump")}
               </p>
               <button
                 onClick={() => { setSent(false); setEmail(""); }}
                 className="mt-2 text-sm text-orange-500 hover:text-orange-600 font-semibold underline underline-offset-4 transition-colors"
               >
-                Use a different email
+                {t("useDifferentEmail")}
               </button>
             </div>
           ) : (
@@ -162,17 +164,17 @@ function LoginForm() {
                   className="text-2xl font-black text-gray-900"
                   style={{ fontFamily: "var(--font-nunito), sans-serif" }}
                 >
-                  Let&apos;s get you in! 👋
+                  {t("letsGetYouIn")}
                 </h2>
                 <p className="text-sm text-gray-500">
-                  No password needed — just a magic link.
+                  {t("noPasswordNeeded")}
                 </p>
               </div>
 
               <form onSubmit={handleMagicLink} className="space-y-3">
                 <Input
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder={t("emailPlaceholder")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -190,10 +192,10 @@ function LoginForm() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" />
                       </svg>
-                      Sending…
+                      {t("sending")}
                     </span>
                   ) : (
-                    "Send me a magic link ✨"
+                    t("sendMagicLink")
                   )}
                 </Button>
               </form>
@@ -203,7 +205,7 @@ function LoginForm() {
                   <div className="w-full border-t border-gray-100" />
                 </div>
                 <div className="relative flex justify-center text-xs">
-                  <span className="px-3 bg-white text-gray-400 font-medium">or continue with</span>
+                  <span className="px-3 bg-white text-gray-400 font-medium">{t("orContinueWith")}</span>
                 </div>
               </div>
 
@@ -219,7 +221,7 @@ function LoginForm() {
                   <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
                   <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                 </svg>
-                Google
+                {t("google")}
               </Button>
 
               {error && (
@@ -230,7 +232,7 @@ function LoginForm() {
         </div>
 
         <p className="mt-6 text-center text-xs text-gray-400 font-medium">
-          By signing in you agree to our terms &nbsp;·&nbsp; Games are meant to be fun 🎉
+          {t("terms")}
         </p>
       </div>
     </div>

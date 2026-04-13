@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -16,13 +17,6 @@ interface JoinPageClientProps {
   inviterName: string;
   timeControl: TimeControl;
   isLoggedIn: boolean;
-}
-
-function formatTimeControl(tc: TimeControl): string {
-  if (tc.type === "unlimited") return "Unlimited time";
-  if (tc.type === "per_turn") return `${tc.minutes} min per move`;
-  if (tc.type === "per_game") return `${tc.minutes} min per player`;
-  return "Unknown";
 }
 
 // ── Chess board preview decoration ─────────────────────────────────────────
@@ -51,8 +45,16 @@ export default function JoinPageClient({
   isLoggedIn,
 }: JoinPageClientProps) {
   const router = useRouter();
+  const t = useTranslations("join");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function formatTimeControl(tc: TimeControl): string {
+    if (tc.type === "unlimited") return t("unlimitedTime");
+    if (tc.type === "per_turn") return t("minPerMove", { minutes: tc.minutes ?? 0 });
+    if (tc.type === "per_game") return t("minPerPlayer", { minutes: tc.minutes ?? 0 });
+    return t("unknown");
+  }
 
   async function handleAccept() {
     setLoading(true);
@@ -65,13 +67,13 @@ export default function JoinPageClient({
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error ?? "Something went wrong. Please try again.");
+        setError(data.error ?? t("somethingWentWrong"));
         return;
       }
 
       router.push(`/game/${data.gameId}`);
     } catch {
-      setError("Network error. Please check your connection.");
+      setError(t("networkError"));
     } finally {
       setLoading(false);
     }
@@ -100,7 +102,7 @@ export default function JoinPageClient({
             Boardly
           </Link>
           <p className="mt-1 text-sm text-gray-500 font-medium">
-            Chess with friends ♟
+            {t("chessFriend")}
           </p>
         </div>
 
@@ -110,11 +112,10 @@ export default function JoinPageClient({
           <div className="text-center space-y-1">
             <div className="text-5xl mb-2">♟️</div>
             <h1 className="text-2xl font-black text-gray-900">
-              You&apos;re invited!
+              {t("invited")}
             </h1>
             <p className="text-sm text-gray-500">
-              <span className="font-semibold text-orange-600">{inviterName}</span>
-              {" "}is challenging you to a game of chess.
+              {t("challengeDesc", { inviter: inviterName })}
             </p>
           </div>
 
@@ -123,15 +124,14 @@ export default function JoinPageClient({
             <MiniBoard />
             <div className="space-y-1">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Time control
+                {t("timeControl")}
               </p>
               <p className="font-bold text-gray-800">
                 {timeControl.type === "unlimited" ? "♾️" : timeControl.type === "per_turn" ? "⏱️" : "⏰"}
                 {" "}{formatTimeControl(timeControl)}
               </p>
               <p className="text-xs text-gray-500">
-                You&apos;ll play as{" "}
-                <span className="font-semibold text-gray-700">Black ♙</span>
+                {t("playAsBlack")}
               </p>
             </div>
           </div>
@@ -165,10 +165,10 @@ export default function JoinPageClient({
                         d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"
                       />
                     </svg>
-                    Joining…
+                    {t("joining")}
                   </span>
                 ) : (
-                  "Accept challenge 🤝"
+                  t("acceptChallenge")
                 )}
               </Button>
 
@@ -176,7 +176,7 @@ export default function JoinPageClient({
                 onClick={() => router.push(`/game/${gameId}`)}
                 className="w-full text-sm text-gray-400 hover:text-gray-600 transition-colors py-1"
               >
-                View game without joining
+                {t("viewWithoutJoining")}
               </button>
 
               {error && (
@@ -192,18 +192,18 @@ export default function JoinPageClient({
                 className="block"
               >
                 <Button className="w-full h-12 rounded-xl text-base font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-200 transition-all">
-                  Sign in to join ✨
+                  {t("signInToJoin")}
                 </Button>
               </Link>
               <p className="text-center text-xs text-gray-400">
-                Free to join — no credit card needed.
+                {t("freeToJoin")}
               </p>
             </div>
           )}
         </div>
 
         <p className="mt-6 text-center text-xs text-gray-400 font-medium">
-          Boardly &nbsp;·&nbsp; Chess with friends, your rules, your pace.
+          {t("tagline")}
         </p>
       </div>
     </div>
