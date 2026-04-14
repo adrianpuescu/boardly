@@ -70,6 +70,31 @@ export async function POST(
     );
   }
 
+  if (opponentRow?.user_id) {
+    const { data: currentUserRecord } = await adminClient
+      .from("users")
+      .select("username")
+      .eq("id", user.id)
+      .single();
+
+    const currentUsername = currentUserRecord?.username ?? "Your opponent";
+    const { error: notificationError } = await adminClient
+      .from("notifications")
+      .insert({
+        user_id: opponentRow.user_id,
+        type: "game_over",
+        payload: {
+          game_id: gameId,
+          opponent_name: currentUsername,
+          result: "resignation",
+        },
+      });
+
+    if (notificationError) {
+      console.error("[resign] notification insert error:", notificationError);
+    }
+  }
+
   // Fire-and-forget email to opponent
   if (opponentRow) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

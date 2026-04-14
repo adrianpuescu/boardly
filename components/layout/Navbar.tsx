@@ -1,13 +1,32 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
+import { BellIcon } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { enUS, ro } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/client";
 import type { CurrentUser } from "@/lib/types";
 
 interface Props {
   currentUser: CurrentUser;
+}
+
+type NotificationType =
+  | "your_turn"
+  | "game_over"
+  | "invite"
+  | "rematch_offer"
+  | "game_started";
+
+interface NotificationItem {
+  id: string;
+  type: NotificationType;
+  payload: Record<string, unknown>;
+  sent_at: string;
+  read_at: string | null;
 }
 
 function Check() {
@@ -37,11 +56,15 @@ function SignOutIcon() {
 export function Navbar({ currentUser }: Props) {
   const router = useRouter();
   const t = useTranslations("nav");
+  const nt = useTranslations("notifications");
   const currentLocale = useLocale();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
-  const [open, setOpen] = useState(false);
+  const [openProfile, setOpenProfile] = useState(false);
+  const [openNotifications, setOpenNotifications] = useState(false);
   const [locale, setLocale] = useState(currentLocale);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Sync locale from cookie on mount (handles SSR/client mismatch)
@@ -52,37 +75,166 @@ export function Navbar({ currentUser }: Props) {
 
   // Close on click outside
   useEffect(() => {
-    if (!open) return;
+    if (!openProfile && !openNotifications) return;
     function handleClick(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpen(false);
+        setOpenProfile(false);
+        setOpenNotifications(false);
       }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
+  }, [openProfile, openNotifications]);
 
   // Close on Escape
   useEffect(() => {
-    if (!open) return;
+    if (!openProfile && !openNotifications) return;
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpenProfile(false);
+        setOpenNotifications(false);
+      }
     }
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
-  }, [open]);
+  }, [openProfile, openNotifications]);
+
+  const unreadCount = notifications.filter((n) => !n.read_at).length;
+
+  function formatTimeAgo(isoDate: string) {
+    return formatDistanceToNow(new Date(isoDate), {
+      addSuffix: true,
+      locale: locale === "ro" ? ro : enUS,
+    });
+  }
+
+  async function fetchNotifications() {
+    setLoadingNotifications(true);
+    try {
+      const res = await fetch("/api/notifications", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = (await res.json()) as { notifications?: NotificationItem[] };
+      setNotifications(data.notifications ?? []);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  }
+
+  async function markNotificationAsRead(notificationId: string) {
+    const target = notifications.find((n) => n.id === notificationId);
+    if (!target || target.read_at) return;
+
+    const now = new Date().toISOString();
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        notification.id === notificationId
+          ? { ...notification, read_at: now }
+          : notification
+      )
+    );
+
+    await fetch(`/api/notifications/${notificationId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ read_at: now }),
+    });
+  }
+
+  async function markAllAsRead() {
+    const now = new Date().toISOString();
+    setNotifications((prev) =>
+      prev.map((notification) => ({ ...notification, read_at: now }))
+    );
+
+    await fetch("/api/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ read_at: now }),
+    });
+  }
+
+  useEffect(() => {
+    void fetchNotifications();
+    const channel = supabase
+      .channel(`notifications:${currentUser.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${currentUser.id}`,
+        },
+        () => {
+          void fetchNotifications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser.id, supabase]);
 
   function switchLocale(next: string) {
     document.cookie = `NEXT_LOCALE=${next}; path=/; max-age=31536000; samesite=lax`;
     setLocale(next);
-    setOpen(false);
+    setOpenProfile(false);
+    setOpenNotifications(false);
     router.refresh();
   }
 
   async function handleSignOut() {
-    setOpen(false);
+    setOpenProfile(false);
+    setOpenNotifications(false);
     await supabase.auth.signOut();
     router.push("/login");
+  }
+
+  function getNotificationBody(notification: NotificationItem) {
+    if (notification.type === "your_turn") {
+      return nt("yourTurn", {
+        opponent: String(notification.payload.opponent_name ?? nt("opponentFallback")),
+      });
+    }
+    if (notification.type === "game_over") {
+      return nt("gameOver", {
+        opponent: String(notification.payload.opponent_name ?? nt("opponentFallback")),
+        result: String(notification.payload.result ?? nt("resultFallback")),
+      });
+    }
+    if (notification.type === "invite") {
+      return nt("invite", {
+        name: String(notification.payload.name ?? nt("opponentFallback")),
+      });
+    }
+    if (notification.type === "game_started") {
+      return nt("gameStarted", {
+        opponent: String(notification.payload.opponent_name ?? nt("opponentFallback")),
+      });
+    }
+    return nt("rematchOffer", {
+      name: String(notification.payload.name ?? nt("opponentFallback")),
+    });
+  }
+
+  function getNotificationAction(notification: NotificationItem) {
+    if (notification.type === "your_turn") {
+      return {
+        href: `/game/${String(notification.payload.game_id ?? "")}`,
+        label: nt("playNow"),
+      };
+    }
+    if (notification.type === "invite") {
+      return {
+        href: `/join/${String(notification.payload.token ?? "")}`,
+        label: nt("acceptInvite"),
+      };
+    }
+    return {
+      href: `/game/${String(notification.payload.game_id ?? "")}`,
+      label: nt("viewGame"),
+    };
   }
 
   return (
@@ -103,15 +255,102 @@ export function Navbar({ currentUser }: Props) {
           </span>
         </button>
 
-        {/* Profile icon trigger + dropdown */}
-        <div className="relative" ref={dropdownRef}>
+        <div className="relative flex items-center gap-2" ref={dropdownRef}>
           <button
-            onClick={() => setOpen((v) => !v)}
+            onClick={() => {
+              setOpenNotifications((v) => !v);
+              setOpenProfile(false);
+            }}
             aria-haspopup="true"
-            aria-expanded={open}
+            aria-expanded={openNotifications}
+            title={nt("title")}
+            className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-all ${
+              openNotifications
+                ? "bg-orange-100 text-orange-600 ring-2 ring-orange-400 ring-offset-2"
+                : "bg-orange-50 text-orange-500 hover:bg-orange-100 hover:text-orange-600"
+            }`}
+          >
+            <BellIcon className="w-4 h-4" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold px-1 flex items-center justify-center">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {openNotifications && (
+            <div
+              role="menu"
+              className="absolute right-0 top-11 w-80 rounded-2xl bg-white border border-gray-100 shadow-xl shadow-black/10 z-50 animate-fade-up overflow-hidden"
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-orange-100 bg-orange-50/40">
+                <p className="text-sm font-semibold text-gray-800">{nt("title")}</p>
+                <button
+                  onClick={markAllAsRead}
+                  disabled={unreadCount === 0}
+                  className="text-xs font-medium text-orange-600 hover:text-orange-700 disabled:text-gray-300 disabled:cursor-not-allowed"
+                >
+                  {nt("markAllAsRead")}
+                </button>
+              </div>
+
+              <div className="max-h-[400px] overflow-y-auto">
+                {loadingNotifications && notifications.length === 0 ? (
+                  <p className="px-4 py-4 text-sm text-gray-500">{nt("loading")}</p>
+                ) : notifications.length === 0 ? (
+                  <p className="px-4 py-4 text-sm text-gray-500">{nt("empty")}</p>
+                ) : (
+                  notifications.map((notification) => {
+                    const action = getNotificationAction(notification);
+                    return (
+                      <div
+                        key={notification.id}
+                        onClick={() => {
+                          void markNotificationAsRead(notification.id);
+                        }}
+                        className={`px-4 py-3 border-b border-gray-100/90 transition-colors cursor-pointer ${
+                          notification.read_at
+                            ? "bg-white"
+                            : "bg-orange-50/40 border-l-2 border-l-orange-300"
+                        }`}
+                      >
+                        <p className="text-sm text-gray-700 leading-5">
+                          {getNotificationBody(notification)}
+                        </p>
+                        <div className="mt-2 flex items-center justify-between">
+                          <span className="text-xs text-gray-400">
+                            {formatTimeAgo(notification.sent_at)}
+                          </span>
+                          <Link
+                            href={action.href}
+                            onClick={() => {
+                              void markNotificationAsRead(notification.id);
+                              setOpenNotifications(false);
+                            }}
+                            className="text-xs font-semibold text-orange-600 hover:text-orange-700"
+                          >
+                            {action.label}
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Profile icon trigger + dropdown */}
+          <button
+            onClick={() => {
+              setOpenProfile((v) => !v);
+              setOpenNotifications(false);
+            }}
+            aria-haspopup="true"
+            aria-expanded={openProfile}
             title={t("viewProfile")}
             className={`w-9 h-9 flex items-center justify-center rounded-full transition-all ${
-              open
+              openProfile
                 ? "bg-orange-100 text-orange-600 ring-2 ring-orange-400 ring-offset-2"
                 : "bg-orange-50 text-orange-500 hover:bg-orange-100 hover:text-orange-600"
             }`}
@@ -120,10 +359,10 @@ export function Navbar({ currentUser }: Props) {
           </button>
 
           {/* Dropdown card */}
-          {open && (
+          {openProfile && (
             <div
               role="menu"
-              className="absolute right-0 mt-2.5 w-56 rounded-2xl bg-white border border-gray-100 shadow-xl shadow-black/10 py-1.5 z-50 animate-fade-up"
+              className="absolute right-0 top-full mt-2.5 w-56 rounded-2xl bg-white border border-gray-100 shadow-xl shadow-black/10 py-1.5 z-50 animate-fade-up"
             >
               {/* Email header */}
               <div className="px-4 py-2.5">
@@ -135,7 +374,7 @@ export function Navbar({ currentUser }: Props) {
               {/* Profile */}
               <button
                 role="menuitem"
-                onClick={() => { setOpen(false); router.push("/profile"); }}
+                onClick={() => { setOpenProfile(false); router.push("/profile"); }}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
               >
                 <span className="text-gray-400 group-hover:text-orange-500">

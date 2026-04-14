@@ -8,6 +8,22 @@
     "profile": "Profile",
     "language": "Language"
   },
+  "notifications": {
+    "title": "Notifications",
+    "loading": "Loading notifications...",
+    "empty": "No notifications yet.",
+    "markAllAsRead": "Mark all as read",
+    "playNow": "Play →",
+    "viewGame": "View game",
+    "acceptInvite": "Accept",
+    "yourTurn": "🎯 Your turn vs {opponent}",
+    "gameOver": "🏁 Game over vs {opponent} — {result, select, resignation {resignation} checkmate {checkmate} stalemate {stalemate} draw {draw} other {{result}}}",
+    "invite": "♟️ {name} challenged you!",
+    "gameStarted": "🎮 {opponent} accepted your challenge! Game is on.",
+    "rematchOffer": "🔄 {name} wants a rematch!",
+    "opponentFallback": "your opponent",
+    "resultFallback": "finished"
+  },
   "dashboard": {
     "title": "Your Games",
     "gamesInProgress": "{count, plural, one {# game in progress} other {# games in progress}}",

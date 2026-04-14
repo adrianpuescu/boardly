@@ -70,6 +70,8 @@ export async function POST(request: NextRequest) {
   }
 
   const gameId = game.id as string;
+  let invitedUserId: string | null = null;
+  let opponentAdded = false;
 
   // ── Add creator as white player ────────────────────────────────────────────
   const { error: creatorPlayerError } = await adminClient
@@ -96,6 +98,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (opponentAuthUser) {
+      invitedUserId = opponentAuthUser.id;
       // Opponent already has an account — add as black player directly.
       const { error: opponentPlayerError } = await adminClient
         .from("game_players")
@@ -108,6 +111,7 @@ export async function POST(request: NextRequest) {
       if (opponentPlayerError) {
         console.error("game_players insert (opponent) error:", opponentPlayerError);
       } else {
+        opponentAdded = true;
         // Both players present — move game to active.
         await adminClient
           .from("games")
@@ -134,6 +138,67 @@ export async function POST(request: NextRequest) {
     console.error("invites insert error:", inviteError);
     // Non-fatal — return without a token; lobby will fall back to direct navigation.
     return NextResponse.json({ gameId }, { status: 201 });
+  }
+
+  if (invitedUserId) {
+    const { data: inviterProfile } = await adminClient
+      .from("users")
+      .select("username")
+      .eq("id", user.id)
+      .single();
+
+    const inviterName = inviterProfile?.username ?? "Someone";
+    const { error: notificationError } = await adminClient
+      .from("notifications")
+      .insert({
+        user_id: invitedUserId,
+        type: "invite",
+        payload: {
+          game_id: gameId,
+          token: invite.token,
+          name: inviterName,
+        },
+      });
+
+    if (notificationError) {
+      console.error("[games POST] invite notification insert error:", notificationError);
+    }
+
+    if (opponentAdded) {
+      const { data: opponentProfile } = await adminClient
+        .from("users")
+        .select("username")
+        .eq("id", invitedUserId)
+        .single();
+
+      const opponentName = opponentProfile?.username ?? "Your opponent";
+      const inviterName = inviterProfile?.username ?? "Your opponent";
+
+      const { error: gameStartedNotificationError } = await adminClient
+        .from("notifications")
+        .insert([
+          {
+            user_id: user.id,
+            type: "game_started",
+            payload: {
+              game_id: gameId,
+              opponent_name: opponentName,
+            },
+          },
+          {
+            user_id: invitedUserId,
+            type: "game_started",
+            payload: {
+              game_id: gameId,
+              opponent_name: inviterName,
+            },
+          },
+        ]);
+
+      if (gameStartedNotificationError) {
+        console.error("[games POST] game_started notifications insert error:", gameStartedNotificationError);
+      }
+    }
   }
 
   return NextResponse.json({ gameId, inviteToken: invite.token }, { status: 201 });

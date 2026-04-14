@@ -244,6 +244,46 @@ export async function POST(
     // Non-fatal: the move is already recorded; the game state may lag one cycle
   }
 
+  if (!isOver) {
+    const nextPlayer = players.find((p) => p.color === newTurn);
+    if (nextPlayer && nextPlayer.user_id !== user.id) {
+      const { data: moverProfile } = await adminClient
+        .from("users")
+        .select("username")
+        .eq("id", user.id)
+        .single();
+
+      const moverName = moverProfile?.username ?? "Your opponent";
+
+      const { error: cleanupError } = await adminClient
+        .from("notifications")
+        .delete()
+        .eq("user_id", nextPlayer.user_id)
+        .eq("type", "your_turn")
+        .is("read_at", null)
+        .contains("payload", { game_id: gameId });
+
+      if (cleanupError) {
+        console.error("[moves POST] your_turn notification cleanup error:", cleanupError);
+      }
+
+      const { error: notificationError } = await adminClient
+        .from("notifications")
+        .insert({
+          user_id: nextPlayer.user_id,
+          type: "your_turn",
+          payload: {
+            game_id: gameId,
+            opponent_name: moverName,
+          },
+        });
+
+      if (notificationError) {
+        console.error("[moves POST] your_turn notification insert error:", notificationError);
+      }
+    }
+  }
+
   return NextResponse.json({
     success: true,
     fen: newFen,

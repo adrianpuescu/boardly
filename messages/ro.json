@@ -8,6 +8,22 @@
     "profile": "Profil",
     "language": "Limbă"
   },
+  "notifications": {
+    "title": "Notificări",
+    "loading": "Se încarcă notificările...",
+    "empty": "Nu ai notificări încă.",
+    "markAllAsRead": "Marchează toate ca citite",
+    "playNow": "Joacă →",
+    "viewGame": "Vezi jocul",
+    "acceptInvite": "Acceptă",
+    "yourTurn": "🎯 E rândul tău vs {opponent}",
+    "gameOver": "🏁 Joc încheiat vs {opponent} — {result, select, resignation {abandon} checkmate {șah mat} stalemate {pat} draw {remiză} other {{result}}}",
+    "invite": "♟️ {name} te-a provocat!",
+    "gameStarted": "🎮 {opponent} ți-a acceptat provocarea! Jocul începe.",
+    "rematchOffer": "🔄 {name} vrea revanșă!",
+    "opponentFallback": "adversarul tău",
+    "resultFallback": "terminat"
+  },
   "dashboard": {
     "title": "Jocurile tale",
     "gamesInProgress": "{count, plural, one {# joc în desfășurare} other {# jocuri în desfășurare}}",

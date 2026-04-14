@@ -110,5 +110,27 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
       .eq("id", invite.id),
   ]);
 
+  const { data: accepterProfile } = await adminClient
+    .from("users")
+    .select("username")
+    .eq("id", user.id)
+    .single();
+
+  const accepterName = accepterProfile?.username ?? "Your opponent";
+  const { error: startedNotifError } = await adminClient
+    .from("notifications")
+    .insert({
+      user_id: invite.inviter_id,
+      type: "game_started",
+      payload: {
+        game_id: invite.game_id,
+        opponent_name: accepterName,
+      },
+    });
+
+  if (startedNotifError) {
+    console.error("[invites/accept] game_started notification insert error:", startedNotifError);
+  }
+
   return NextResponse.json({ gameId: invite.game_id }, { status: 200 });
 }
