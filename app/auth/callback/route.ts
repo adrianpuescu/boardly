@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
   createRouteHandlerClient,
+  getPublicSiteOrigin,
   safeAuthRedirectPath,
 } from "@/lib/supabase/route-handler";
 
@@ -10,8 +11,9 @@ export async function GET(request: NextRequest) {
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type");
 
+  const siteOrigin = getPublicSiteOrigin(request);
   const nextPath = safeAuthRedirectPath(searchParams.get("next"), "/dashboard");
-  const redirectUrl = new URL(nextPath, request.url);
+  const redirectUrl = new URL(nextPath, `${siteOrigin}/`);
 
   // PKCE / OAuth (Google) and email links that use ?code= — session cookies must be
   // written onto this redirect response (Route Handlers cannot rely on cookies() from next/headers).
@@ -37,7 +39,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const fail = new URL("/login", request.url);
+  const fail = new URL("/login", `${siteOrigin}/`);
   fail.searchParams.set("error", "auth_callback_failed");
   return NextResponse.redirect(fail);
 }
