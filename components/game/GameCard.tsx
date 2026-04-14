@@ -11,7 +11,9 @@ import { enUS, ro } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import type { DashboardGame } from "@/lib/types";
 import { usePieceSet } from "@/hooks/usePieceSet";
+import { useBoardTheme } from "@/hooks/useBoardTheme";
 import { buildPieces } from "@/lib/chess/pieces";
+import { BOARD_THEME_COLORS } from "@/lib/chess/boardThemes";
 import {
   getCheckHighlight,
   getLastMoveSquaresFromMoves,
@@ -35,6 +37,8 @@ export function GameCard({ game }: Props) {
   const locale = useLocale();
   const [avatarError, setAvatarError] = useState(false);
   const { pieceSet } = usePieceSet();
+  const { boardTheme } = useBoardTheme();
+  const boardColors = BOARD_THEME_COLORS[boardTheme];
   const customPieces = buildPieces(pieceSet);
 
   const [moves, setMoves] = useState<MoveRecord[]>([]);
@@ -112,8 +116,8 @@ export function GameCard({ game }: Props) {
               boardOrientation: game.my_color,
               pieces: customPieces,
               allowDragging: false,
-              lightSquareStyle: { backgroundColor: "#F0D9B5" },
-              darkSquareStyle: { backgroundColor: "#B58863" },
+              lightSquareStyle: { backgroundColor: boardColors.light },
+              darkSquareStyle: { backgroundColor: boardColors.dark },
               squareStyles,
             }}
           />

@@ -13,7 +13,9 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { useGameRealtime } from "@/hooks/useGameRealtime";
 import { usePieceSet } from "@/hooks/usePieceSet";
+import { useBoardTheme } from "@/hooks/useBoardTheme";
 import { buildPieces, type PieceRenderObject } from "@/lib/chess/pieces";
+import { BOARD_THEME_COLORS } from "@/lib/chess/boardThemes";
 import {
   getCheckHighlight,
   getLastMoveSquaresFromMoves,
@@ -23,6 +25,7 @@ import {
 } from "@/lib/chess/squareHighlight";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { PiecePicker } from "@/components/game/PiecePicker";
+import { BoardThemePicker } from "@/components/game/BoardThemePicker";
 import type { GameResult, MoveRecord } from "@/hooks/useGameRealtime";
 import type { GamePageData, CurrentUser } from "@/lib/types";
 
@@ -930,6 +933,8 @@ export function GamePageClient({ game, currentUser }: Props) {
     setGlobalPieceSet,
     clearGamePieceSet,
   } = usePieceSet(game.id);
+  const { boardTheme, setBoardTheme } = useBoardTheme();
+  const boardColors = BOARD_THEME_COLORS[boardTheme];
   const customPieces = buildPieces(pieceSet);
 
   const sfx = useSoundEffects();
@@ -1436,6 +1441,10 @@ export function GamePageClient({ game, currentUser }: Props) {
                   onChangeGlobal={setGlobalPieceSet}
                   onClearGame={clearGamePieceSet}
                 />
+                <BoardThemePicker
+                  boardTheme={boardTheme}
+                  onChange={setBoardTheme}
+                />
               </div>
             </div>
 
@@ -1479,8 +1488,8 @@ export function GamePageClient({ game, currentUser }: Props) {
                     if (!targetSquare) return false;
                     return handlePieceDrop(sourceSquare, targetSquare);
                   },
-                  lightSquareStyle: { backgroundColor: "#F0D9B5" },
-                  darkSquareStyle: { backgroundColor: "#B58863" },
+                  lightSquareStyle: { backgroundColor: boardColors.light },
+                  darkSquareStyle: { backgroundColor: boardColors.dark },
                   squareStyles,
                   boardStyle: { borderRadius: "0", boxShadow: "none" },
                 }}

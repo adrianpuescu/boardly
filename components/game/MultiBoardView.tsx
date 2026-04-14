@@ -18,7 +18,9 @@ import {
   type LastMoveSquares,
 } from "@/lib/chess/squareHighlight";
 import { usePieceSet } from "@/hooks/usePieceSet";
+import { useBoardTheme } from "@/hooks/useBoardTheme";
 import { buildPieces } from "@/lib/chess/pieces";
+import { BOARD_THEME_COLORS } from "@/lib/chess/boardThemes";
 import type { DashboardGame } from "@/lib/types";
 
 const Chessboard = dynamic(
@@ -41,6 +43,8 @@ interface BoardItemProps {
 
 function BoardItem({ game }: BoardItemProps) {
   const { pieceSet } = usePieceSet(game.id);
+  const { boardTheme } = useBoardTheme();
+  const boardColors = BOARD_THEME_COLORS[boardTheme];
   const customPieces = buildPieces(pieceSet);
   const router = useRouter();
   const t = useTranslations("game");
@@ -239,8 +243,8 @@ function BoardItem({ game }: BoardItemProps) {
                 }
               : () => false,
             onPieceDrop: handlePieceDrop,
-            lightSquareStyle: { backgroundColor: "#F0D9B5" },
-            darkSquareStyle: { backgroundColor: "#B58863" },
+            lightSquareStyle: { backgroundColor: boardColors.light },
+            darkSquareStyle: { backgroundColor: boardColors.dark },
             squareStyles,
             boardStyle: { borderRadius: "0", boxShadow: "none" },
           }}

@@ -66,6 +66,17 @@
     "promoteBishop": "Bishop",
     "promoteKnight": "Knight",
     "promotionCancel": "Cancel",
+    "chooseBoardTheme": "Choose board theme",
+    "boardThemes": {
+      "classic": "Classic",
+      "green": "Green",
+      "blue": "Blue",
+      "purple": "Purple",
+      "pink": "Pink",
+      "midnight": "Midnight",
+      "wood": "Wood",
+      "coral": "Coral"
+    },
     "muteSound": "Mute move sounds",
     "unmuteSound": "Unmute move sounds",
     "soundSystemMuted": "Sounds muted (reduced motion is on)"
