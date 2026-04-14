@@ -104,23 +104,6 @@ function computeOpponentOnline(
   return false;
 }
 
-function debugPresenceSnapshot(
-  channel: RealtimeChannel,
-  gameId: string,
-  userId: string,
-  opponentId: string | null
-): void {
-  const state = channel.presenceState();
-  const online = computeOpponentOnline(channel, opponentId, userId);
-  console.log("[presence] snapshot", {
-    gameId,
-    userId,
-    opponentId,
-    online,
-    state,
-  });
-}
-
 export function useGameRealtime(
   gameId: string,
   initialFen: string = INITIAL_FEN,
@@ -255,8 +238,6 @@ export function useGameRealtime(
       }
 
       const channelName = `game-social:${gameId}`;
-      console.log("Joining presence channel:", channelName);
-      console.log("[presence] ids", { gameId, userId, opponentId });
       const channel = supabase.channel(channelName, {
         config: {
           broadcast: { self: false },
@@ -269,21 +250,16 @@ export function useGameRealtime(
       channel
         .on("presence", { event: "sync" }, () => {
           if (!cancelled) {
-            const presenceState = channel.presenceState();
-            console.log("Presence state:", presenceState);
-            debugPresenceSnapshot(channel, gameId, userId, opponentId);
             setOpponentOnline(computeOpponentOnline(channel, opponentId, userId));
           }
         })
         .on("presence", { event: "join" }, () => {
           if (!cancelled) {
-            debugPresenceSnapshot(channel, gameId, userId, opponentId);
             setOpponentOnline(computeOpponentOnline(channel, opponentId, userId));
           }
         })
         .on("presence", { event: "leave" }, () => {
           if (!cancelled) {
-            debugPresenceSnapshot(channel, gameId, userId, opponentId);
             setOpponentOnline(computeOpponentOnline(channel, opponentId, userId));
           }
         })
@@ -308,15 +284,12 @@ export function useGameRealtime(
 
       channel.subscribe(async (status) => {
         if (cancelled) return;
-        console.log("[presence] subscribe status", { gameId, userId, status });
         if (status === "SUBSCRIBED") {
           socialReadyRef.current = true;
-          console.log("Tracking self:", userId);
           await channel.track({
             user_id: userId,
             online_at: new Date().toISOString(),
           });
-          debugPresenceSnapshot(channel, gameId, userId, opponentId);
           setOpponentOnline(computeOpponentOnline(channel, opponentId, userId));
         }
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
