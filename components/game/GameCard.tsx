@@ -36,8 +36,8 @@ export function GameCard({ game }: Props) {
   const t = useTranslations("gameCard");
   const locale = useLocale();
   const [avatarError, setAvatarError] = useState(false);
-  const { pieceSet } = usePieceSet();
-  const { boardTheme } = useBoardTheme();
+  const { pieceSet } = usePieceSet(game.id);
+  const { boardTheme } = useBoardTheme(game.id);
   const boardStyles = getBoardThemeStyles(boardTheme);
   const customPieces = buildPieces(pieceSet);
 

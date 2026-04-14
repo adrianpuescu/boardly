@@ -43,7 +43,7 @@ interface BoardItemProps {
 
 function BoardItem({ game }: BoardItemProps) {
   const { pieceSet } = usePieceSet(game.id);
-  const { boardTheme } = useBoardTheme();
+  const { boardTheme } = useBoardTheme(game.id);
   const boardStyles = getBoardThemeStyles(boardTheme);
   const customPieces = buildPieces(pieceSet);
   const router = useRouter();
