@@ -250,7 +250,8 @@
     "unknown": "Necunoscut",
     "joiningGame": "Te ducem la joc…",
     "tryAgain": "Încearcă din nou",
-    "signInInstead": "Conectează-te cu un cont"
+    "signInInstead": "Conectează-te cu un cont",
+    "guestInviteRequiresSignIn": "Conectează-te pentru a accepta invitația — jocul fără cont nu este disponibil pe acest server."
   },
   "common": {
     "loading": "Se încarcă...",

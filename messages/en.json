@@ -250,7 +250,8 @@
     "unknown": "Unknown",
     "joiningGame": "Taking you to the game…",
     "tryAgain": "Try again",
-    "signInInstead": "Sign in with an account instead"
+    "signInInstead": "Sign in with an account instead",
+    "guestInviteRequiresSignIn": "Sign in to accept this invite — playing here without an account isn’t available on this server."
   },
   "common": {
     "loading": "Loading...",

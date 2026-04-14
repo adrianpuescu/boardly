@@ -250,7 +250,8 @@
     "unknown": "Desconocido",
     "joiningGame": "Llevándote a la partida…",
     "tryAgain": "Reintentar",
-    "signInInstead": "Iniciar sesión con una cuenta"
+    "signInInstead": "Iniciar sesión con una cuenta",
+    "guestInviteRequiresSignIn": "Inicia sesión para aceptar la invitación — jugar aquí sin cuenta no está disponible en este servidor."
   },
   "common": {
     "loading": "Cargando...",

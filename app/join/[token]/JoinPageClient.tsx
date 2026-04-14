@@ -10,6 +10,14 @@ import { createClient } from "@/lib/supabase/client";
 /** Avoid duplicate anonymous join flows in React Strict Mode (dev double mount). */
 const guestJoinStartedForToken = new Set<string>();
 
+function isAnonymousSignInsDisabledError(err: { message?: string } | null): boolean {
+  const msg = (err?.message ?? "").toLowerCase();
+  return (
+    msg.includes("anonymous") &&
+    (msg.includes("disabled") || msg.includes("not enabled") || msg.includes("not allowed"))
+  );
+}
+
 interface TimeControl {
   type: "unlimited" | "per_turn" | "per_game";
   minutes?: number;
@@ -53,6 +61,8 @@ export default function JoinPageClient({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [guestJoining, setGuestJoining] = useState(!isLoggedIn);
+  /** Supabase project has Anonymous Auth off — offer sign-in instead of guest play. */
+  const [guestSignInOnly, setGuestSignInOnly] = useState(false);
 
   function formatTimeControl(tc: TimeControl): string {
     if (tc.type === "unlimited") return t("unlimitedTime");
@@ -73,6 +83,12 @@ export default function JoinPageClient({
     if (!session) {
       const { error: anonError } = await supabase.auth.signInAnonymously();
       if (anonError) {
+        if (isAnonymousSignInsDisabledError(anonError)) {
+          setGuestSignInOnly(true);
+          setGuestJoining(false);
+          setError(null);
+          return;
+        }
         setError(anonError.message || t("somethingWentWrong"));
         setGuestJoining(false);
         return;
@@ -99,13 +115,13 @@ export default function JoinPageClient({
   }, [token, router, t]);
 
   useEffect(() => {
-    if (isLoggedIn) return;
+    if (isLoggedIn || guestSignInOnly) return;
     if (guestJoinStartedForToken.has(token)) return;
     guestJoinStartedForToken.add(token);
     void runGuestJoin().finally(() => {
       guestJoinStartedForToken.delete(token);
     });
-  }, [isLoggedIn, token, runGuestJoin]);
+  }, [isLoggedIn, guestSignInOnly, token, runGuestJoin]);
 
   async function handleAccept() {
     setLoading(true);
@@ -235,6 +251,18 @@ export default function JoinPageClient({
                   {error}
                 </p>
               )}
+            </div>
+          ) : guestSignInOnly ? (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600 text-center leading-relaxed">
+                {t("guestInviteRequiresSignIn")}
+              </p>
+              <Link href={`/login?redirectTo=/join/${token}`} className="block">
+                <Button className="w-full h-12 rounded-xl text-base font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-200 transition-all">
+                  {t("signInToJoin")}
+                </Button>
+              </Link>
+              <p className="text-center text-xs text-gray-400">{t("freeToJoin")}</p>
             </div>
           ) : (
             <div className="space-y-3">
