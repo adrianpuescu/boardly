@@ -56,19 +56,69 @@ function presenceStateContainsUserId(
   return false;
 }
 
+function collectPresenceUserIds(state: unknown, acc: Set<string>): void {
+  if (state == null) return;
+  if (Array.isArray(state)) {
+    for (const item of state) collectPresenceUserIds(item, acc);
+    return;
+  }
+  if (typeof state !== "object") return;
+
+  const obj = state as Record<string, unknown>;
+  for (const [key, val] of Object.entries(obj)) {
+    if (key === "user_id" && typeof val === "string") {
+      acc.add(val);
+    } else {
+      collectPresenceUserIds(val, acc);
+    }
+  }
+}
+
 function computeOpponentOnline(
   channel: RealtimeChannel,
-  opponentId: string | null
+  opponentId: string | null,
+  selfUserId: string
 ): boolean {
-  if (!opponentId) return false;
   const state = channel.presenceState();
   if (!state || typeof state !== "object") return false;
 
-  // Fast path: presence join key === user id (common when using presence.key = userId)
-  const atKey = (state as Record<string, unknown>)[opponentId];
-  if (Array.isArray(atKey) && atKey.length > 0) return true;
+  const stateObj = state as Record<string, unknown>;
 
-  return presenceStateContainsUserId(state, opponentId);
+  // Normal path: explicit opponent id is known.
+  if (opponentId) {
+    const atKey = stateObj[opponentId];
+    if (Array.isArray(atKey) && atKey.length > 0) return true;
+    return presenceStateContainsUserId(state, opponentId);
+  }
+
+  // Fallback path: opponent profile isn't resolved in page props.
+  // Consider "opponent online" if any tracked user_id differs from self.
+  const userIds = new Set<string>();
+  collectPresenceUserIds(stateObj, userIds);
+  let hasOtherUser = false;
+  userIds.forEach((uid) => {
+    if (uid !== selfUserId) hasOtherUser = true;
+  });
+  if (hasOtherUser) return true;
+
+  return false;
+}
+
+function debugPresenceSnapshot(
+  channel: RealtimeChannel,
+  gameId: string,
+  userId: string,
+  opponentId: string | null
+): void {
+  const state = channel.presenceState();
+  const online = computeOpponentOnline(channel, opponentId, userId);
+  console.log("[presence] snapshot", {
+    gameId,
+    userId,
+    opponentId,
+    online,
+    state,
+  });
 }
 
 export function useGameRealtime(
@@ -206,6 +256,7 @@ export function useGameRealtime(
 
       const channelName = `game-social:${gameId}`;
       console.log("Joining presence channel:", channelName);
+      console.log("[presence] ids", { gameId, userId, opponentId });
       const channel = supabase.channel(channelName, {
         config: {
           broadcast: { self: false },
@@ -220,17 +271,20 @@ export function useGameRealtime(
           if (!cancelled) {
             const presenceState = channel.presenceState();
             console.log("Presence state:", presenceState);
-            setOpponentOnline(computeOpponentOnline(channel, opponentId));
+            debugPresenceSnapshot(channel, gameId, userId, opponentId);
+            setOpponentOnline(computeOpponentOnline(channel, opponentId, userId));
           }
         })
         .on("presence", { event: "join" }, () => {
           if (!cancelled) {
-            setOpponentOnline(computeOpponentOnline(channel, opponentId));
+            debugPresenceSnapshot(channel, gameId, userId, opponentId);
+            setOpponentOnline(computeOpponentOnline(channel, opponentId, userId));
           }
         })
         .on("presence", { event: "leave" }, () => {
           if (!cancelled) {
-            setOpponentOnline(computeOpponentOnline(channel, opponentId));
+            debugPresenceSnapshot(channel, gameId, userId, opponentId);
+            setOpponentOnline(computeOpponentOnline(channel, opponentId, userId));
           }
         })
         .on("broadcast", { event: "rematch_offer" }, ({ payload }) => {
@@ -254,6 +308,7 @@ export function useGameRealtime(
 
       channel.subscribe(async (status) => {
         if (cancelled) return;
+        console.log("[presence] subscribe status", { gameId, userId, status });
         if (status === "SUBSCRIBED") {
           socialReadyRef.current = true;
           console.log("Tracking self:", userId);
@@ -261,7 +316,8 @@ export function useGameRealtime(
             user_id: userId,
             online_at: new Date().toISOString(),
           });
-          setOpponentOnline(computeOpponentOnline(channel, opponentId));
+          debugPresenceSnapshot(channel, gameId, userId, opponentId);
+          setOpponentOnline(computeOpponentOnline(channel, opponentId, userId));
         }
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
           socialReadyRef.current = false;
