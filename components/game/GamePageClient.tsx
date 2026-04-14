@@ -24,8 +24,7 @@ import {
   type LastMoveSquares,
 } from "@/lib/chess/squareHighlight";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
-import { PiecePicker } from "@/components/game/PiecePicker";
-import { BoardThemePicker } from "@/components/game/BoardThemePicker";
+import { GameSettings } from "@/components/game/GameSettings";
 import type { GameResult, MoveRecord } from "@/hooks/useGameRealtime";
 import type { GamePageData, CurrentUser } from "@/lib/types";
 
@@ -933,7 +932,14 @@ export function GamePageClient({ game, currentUser }: Props) {
     setGlobalPieceSet,
     clearGamePieceSet,
   } = usePieceSet(game.id);
-  const { boardTheme, setBoardTheme } = useBoardTheme();
+  const {
+    boardTheme,
+    gameBoardTheme,
+    globalBoardTheme,
+    setGameBoardTheme,
+    setGlobalBoardTheme,
+    clearGameBoardTheme,
+  } = useBoardTheme(game.id);
   const boardStyles = getBoardThemeStyles(boardTheme);
   const customPieces = buildPieces(pieceSet);
 
@@ -1433,17 +1439,18 @@ export function GamePageClient({ game, currentUser }: Props) {
                 >
                   {sfx.soundEnabled && !sfx.respectReducedMotion ? "🔊" : "🔇"}
                 </button>
-                <PiecePicker
+                <GameSettings
                   gameId={game.id}
                   gamePieceSet={gamePieceSet}
                   globalPieceSet={globalPieceSet}
-                  onChangeGame={setGamePieceSet}
-                  onChangeGlobal={setGlobalPieceSet}
-                  onClearGame={clearGamePieceSet}
-                />
-                <BoardThemePicker
-                  boardTheme={boardTheme}
-                  onChange={setBoardTheme}
+                  onChangeGamePieceSet={setGamePieceSet}
+                  onChangeGlobalPieceSet={setGlobalPieceSet}
+                  onClearGamePieceSet={clearGamePieceSet}
+                  gameBoardTheme={gameBoardTheme}
+                  globalBoardTheme={globalBoardTheme}
+                  onChangeGameBoardTheme={setGameBoardTheme}
+                  onChangeGlobalBoardTheme={setGlobalBoardTheme}
+                  onClearGameBoardTheme={clearGameBoardTheme}
                 />
               </div>
             </div>

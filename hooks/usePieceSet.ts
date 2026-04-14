@@ -109,11 +109,34 @@ export function usePieceSet(gameId?: string) {
       if (!session) return;
       supabase
         .from("user_game_preferences")
-        .delete()
+        .select("board_theme")
         .eq("user_id", session.user.id)
         .eq("game_id", gameId)
-        .then(({ error }) => {
+        .maybeSingle()
+        .then(({ data, error }) => {
           if (error) console.error("[usePieceSet] clear game pref error:", error.message);
+          if (data?.board_theme) {
+            return supabase
+              .from("user_game_preferences")
+              .update({ piece_set: null })
+              .eq("user_id", session.user.id)
+              .eq("game_id", gameId)
+              .then(({ error: updateError }) => {
+                if (updateError) {
+                  console.error("[usePieceSet] clear game pref error:", updateError.message);
+                }
+              });
+          }
+          return supabase
+            .from("user_game_preferences")
+            .delete()
+            .eq("user_id", session.user.id)
+            .eq("game_id", gameId)
+            .then(({ error: deleteError }) => {
+              if (deleteError) {
+                console.error("[usePieceSet] clear game pref error:", deleteError.message);
+              }
+            });
         });
     });
   }, [gameId]);
