@@ -15,7 +15,7 @@ import { useGameRealtime } from "@/hooks/useGameRealtime";
 import { usePieceSet } from "@/hooks/usePieceSet";
 import { useBoardTheme } from "@/hooks/useBoardTheme";
 import { buildPieces, type PieceRenderObject } from "@/lib/chess/pieces";
-import { BOARD_THEME_COLORS } from "@/lib/chess/boardThemes";
+import { getBoardThemeStyles } from "@/lib/chess/boardThemes";
 import {
   getCheckHighlight,
   getLastMoveSquaresFromMoves,
@@ -934,7 +934,7 @@ export function GamePageClient({ game, currentUser }: Props) {
     clearGamePieceSet,
   } = usePieceSet(game.id);
   const { boardTheme, setBoardTheme } = useBoardTheme();
-  const boardColors = BOARD_THEME_COLORS[boardTheme];
+  const boardStyles = getBoardThemeStyles(boardTheme);
   const customPieces = buildPieces(pieceSet);
 
   const sfx = useSoundEffects();
@@ -1488,8 +1488,10 @@ export function GamePageClient({ game, currentUser }: Props) {
                     if (!targetSquare) return false;
                     return handlePieceDrop(sourceSquare, targetSquare);
                   },
-                  lightSquareStyle: { backgroundColor: boardColors.light },
-                  darkSquareStyle: { backgroundColor: boardColors.dark },
+                  lightSquareStyle: boardStyles.lightSquareStyle,
+                  darkSquareStyle: boardStyles.darkSquareStyle,
+                  lightSquareNotationStyle: boardStyles.lightSquareNotationStyle,
+                  darkSquareNotationStyle: boardStyles.darkSquareNotationStyle,
                   squareStyles,
                   boardStyle: { borderRadius: "0", boxShadow: "none" },
                 }}

@@ -20,7 +20,7 @@ import {
 import { usePieceSet } from "@/hooks/usePieceSet";
 import { useBoardTheme } from "@/hooks/useBoardTheme";
 import { buildPieces } from "@/lib/chess/pieces";
-import { BOARD_THEME_COLORS } from "@/lib/chess/boardThemes";
+import { getBoardThemeStyles } from "@/lib/chess/boardThemes";
 import type { DashboardGame } from "@/lib/types";
 
 const Chessboard = dynamic(
@@ -44,7 +44,7 @@ interface BoardItemProps {
 function BoardItem({ game }: BoardItemProps) {
   const { pieceSet } = usePieceSet(game.id);
   const { boardTheme } = useBoardTheme();
-  const boardColors = BOARD_THEME_COLORS[boardTheme];
+  const boardStyles = getBoardThemeStyles(boardTheme);
   const customPieces = buildPieces(pieceSet);
   const router = useRouter();
   const t = useTranslations("game");
@@ -243,8 +243,10 @@ function BoardItem({ game }: BoardItemProps) {
                 }
               : () => false,
             onPieceDrop: handlePieceDrop,
-            lightSquareStyle: { backgroundColor: boardColors.light },
-            darkSquareStyle: { backgroundColor: boardColors.dark },
+            lightSquareStyle: boardStyles.lightSquareStyle,
+            darkSquareStyle: boardStyles.darkSquareStyle,
+            lightSquareNotationStyle: boardStyles.lightSquareNotationStyle,
+            darkSquareNotationStyle: boardStyles.darkSquareNotationStyle,
             squareStyles,
             boardStyle: { borderRadius: "0", boxShadow: "none" },
           }}

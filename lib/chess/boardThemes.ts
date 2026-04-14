@@ -12,3 +12,14 @@ export const BOARD_THEME_COLORS = {
 export type BoardTheme = keyof typeof BOARD_THEME_COLORS;
 
 export const ALL_BOARD_THEMES = Object.keys(BOARD_THEME_COLORS) as BoardTheme[];
+
+export function getBoardThemeStyles(theme: BoardTheme) {
+  const colors = BOARD_THEME_COLORS[theme];
+  return {
+    lightSquareStyle: { backgroundColor: colors.light },
+    darkSquareStyle: { backgroundColor: colors.dark },
+    // Keep notation color theme-aware by mirroring opposite square color.
+    lightSquareNotationStyle: { color: colors.dark },
+    darkSquareNotationStyle: { color: colors.light },
+  };
+}
