@@ -204,7 +204,9 @@ export function useGameRealtime(
         supabase.realtime.setAuth(session.access_token);
       }
 
-      const channel = supabase.channel(`game-social:${gameId}`, {
+      const channelName = `game-social:${gameId}`;
+      console.log("Joining presence channel:", channelName);
+      const channel = supabase.channel(channelName, {
         config: {
           broadcast: { self: false },
           presence: { key: userId },
@@ -216,6 +218,8 @@ export function useGameRealtime(
       channel
         .on("presence", { event: "sync" }, () => {
           if (!cancelled) {
+            const presenceState = channel.presenceState();
+            console.log("Presence state:", presenceState);
             setOpponentOnline(computeOpponentOnline(channel, opponentId));
           }
         })
@@ -252,6 +256,7 @@ export function useGameRealtime(
         if (cancelled) return;
         if (status === "SUBSCRIBED") {
           socialReadyRef.current = true;
+          console.log("Tracking self:", userId);
           await channel.track({
             user_id: userId,
             online_at: new Date().toISOString(),
