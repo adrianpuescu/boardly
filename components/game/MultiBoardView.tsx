@@ -87,6 +87,23 @@ function BoardItem({ game }: BoardItemProps) {
 
   const [submitting, setSubmitting] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
+  const boardContainerRef = useRef<HTMLDivElement>(null);
+  const [notationSizePx, setNotationSizePx] = useState(9);
+
+  useEffect(() => {
+    const el = boardContainerRef.current;
+    if (!el) return;
+    const update = () => {
+      const width = el.clientWidth;
+      // Scale notation with actual mini-board size in multi-board dashboard cards.
+      const size = Math.round(width / 20);
+      setNotationSizePx(Math.max(7, Math.min(11, size)));
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Derive turn from live FEN for accuracy
   const fenTurn = fen.split(" ")[1] === "b" ? "black" : "white";
@@ -223,6 +240,7 @@ function BoardItem({ game }: BoardItemProps) {
       {/* Board — interactive when it's my turn, view-only otherwise */}
       <motion.div
         animate={boardControls}
+        ref={boardContainerRef}
         className={`relative select-none w-full aspect-square ${
           submitting ? "opacity-75" : ""
         }`}
@@ -247,6 +265,8 @@ function BoardItem({ game }: BoardItemProps) {
             darkSquareStyle: boardStyles.darkSquareStyle,
             lightSquareNotationStyle: boardStyles.lightSquareNotationStyle,
             darkSquareNotationStyle: boardStyles.darkSquareNotationStyle,
+            alphaNotationStyle: { fontSize: `${notationSizePx}px`, fontWeight: "600" },
+            numericNotationStyle: { fontSize: `${notationSizePx}px`, fontWeight: "600" },
             squareStyles,
             boardStyle: { borderRadius: "0", boxShadow: "none" },
           }}

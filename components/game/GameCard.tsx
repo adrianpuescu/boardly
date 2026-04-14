@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import dynamic from "next/dynamic";
@@ -36,6 +36,8 @@ export function GameCard({ game }: Props) {
   const t = useTranslations("gameCard");
   const locale = useLocale();
   const [avatarError, setAvatarError] = useState(false);
+  const boardContainerRef = useRef<HTMLDivElement>(null);
+  const [notationSizePx, setNotationSizePx] = useState(8);
   const { pieceSet } = usePieceSet(game.id);
   const { boardTheme } = useBoardTheme(game.id);
   const boardStyles = getBoardThemeStyles(boardTheme);
@@ -51,6 +53,21 @@ export function GameCard({ game }: Props) {
       })
       .catch(() => {});
   }, [game.id]);
+
+  useEffect(() => {
+    const el = boardContainerRef.current;
+    if (!el) return;
+    const update = () => {
+      const width = el.clientWidth;
+      // Scale notation with board width (dashboard card mini-board baseline).
+      const size = Math.round(width / 16);
+      setNotationSizePx(Math.max(7, Math.min(10, size)));
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const fen = game.state?.fen || "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -109,7 +126,7 @@ export function GameCard({ game }: Props) {
       <div className="relative flex items-center justify-center overflow-hidden select-none"
            style={{ height: "148px", background: "linear-gradient(160deg, #FFF8F0 0%, #F0E8DC 100%)" }}>
         {/* Actual board — pointer-events-none keeps it non-interactive */}
-        <div className="pointer-events-none" style={{ width: 120, height: 120 }}>
+        <div ref={boardContainerRef} className="pointer-events-none" style={{ width: 120, height: 120 }}>
           <Chessboard
             options={{
               position: fen,
@@ -120,6 +137,8 @@ export function GameCard({ game }: Props) {
               darkSquareStyle: boardStyles.darkSquareStyle,
               lightSquareNotationStyle: boardStyles.lightSquareNotationStyle,
               darkSquareNotationStyle: boardStyles.darkSquareNotationStyle,
+              alphaNotationStyle: { fontSize: `${notationSizePx}px`, fontWeight: "600" },
+              numericNotationStyle: { fontSize: `${notationSizePx}px`, fontWeight: "600" },
               squareStyles,
             }}
           />
