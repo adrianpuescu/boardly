@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-const SUPPORTED_LOCALES = ["en", "ro"];
+const SUPPORTED_LOCALES = ["en", "ro", "es"];
 
 function detectLocale(acceptLanguage: string): string {
   const preferred = acceptLanguage

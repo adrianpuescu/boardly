@@ -27,18 +27,24 @@ interface Props {
 const USERNAME_RE = /^[a-zA-Z0-9._]+$/;
 
 function formatMemberSince(iso: string, locale: string) {
-  return new Date(iso).toLocaleDateString(locale === "ro" ? "ro-RO" : "en-US", {
-    month: "long",
-    year: "numeric",
-  });
+  return new Date(iso).toLocaleDateString(
+    locale === "ro" ? "ro-RO" : locale === "es" ? "es-ES" : "en-US",
+    {
+      month: "long",
+      year: "numeric",
+    }
+  );
 }
 
 function formatDate(iso: string, locale: string) {
-  return new Date(iso).toLocaleDateString(locale === "ro" ? "ro-RO" : "en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return new Date(iso).toLocaleDateString(
+    locale === "ro" ? "ro-RO" : locale === "es" ? "es-ES" : "en-US",
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }
+  );
 }
 
 function formatTimeControl(

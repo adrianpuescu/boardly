@@ -1,7 +1,7 @@
 import { getRequestConfig } from "next-intl/server";
 import { cookies, headers } from "next/headers";
 
-const SUPPORTED_LOCALES = ["en", "ro"] as const;
+const SUPPORTED_LOCALES = ["en", "ro", "es"] as const;
 type Locale = (typeof SUPPORTED_LOCALES)[number];
 
 function detectLocale(acceptLanguage: string): Locale {

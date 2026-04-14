@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
-import { enUS, ro } from "date-fns/locale";
+import { enUS, es, ro } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import type { DashboardGame } from "@/lib/types";
 import { usePieceSet } from "@/hooks/usePieceSet";
@@ -108,7 +108,7 @@ export function GameCard({ game }: Props) {
 
   const ago = formatDistanceToNow(new Date(game.created_at), {
     addSuffix: true,
-    locale: locale === "ro" ? ro : enUS,
+    locale: locale === "ro" ? ro : locale === "es" ? es : enUS,
   });
 
   return (

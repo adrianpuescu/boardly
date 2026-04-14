@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { BellIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { enUS, ro } from "date-fns/locale";
+import { enUS, es, ro } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/client";
 import type { CurrentUser } from "@/lib/types";
 
@@ -104,7 +104,7 @@ export function Navbar({ currentUser }: Props) {
   function formatTimeAgo(isoDate: string) {
     return formatDistanceToNow(new Date(isoDate), {
       addSuffix: true,
-      locale: locale === "ro" ? ro : enUS,
+      locale: locale === "ro" ? ro : locale === "es" ? es : enUS,
     });
   }
 
@@ -405,6 +405,15 @@ export function Navbar({ currentUser }: Props) {
                   <span className="text-base leading-none">🇷🇴</span>
                   <span className="flex-1 text-left font-medium">Română</span>
                   {locale === "ro" && <Check />}
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => switchLocale("es")}
+                  className="w-full flex items-center gap-3 px-2 py-2 rounded-xl text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                >
+                  <span className="text-base leading-none">🇪🇸</span>
+                  <span className="flex-1 text-left font-medium">Español</span>
+                  {locale === "es" && <Check />}
                 </button>
               </div>
 
