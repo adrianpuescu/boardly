@@ -243,7 +243,8 @@ export function Navbar({ currentUser }: Props) {
 
         {/* Logo */}
         <button
-          onClick={() => router.push("/dashboard")}
+          type="button"
+          onClick={() => router.push(currentUser.isGuest ? "/" : "/dashboard")}
           className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
         >
           <span className="text-2xl chess-sym select-none" aria-hidden="true">♞</span>

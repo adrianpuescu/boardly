@@ -1,10 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
+
+/** Avoid duplicate anonymous join flows in React Strict Mode (dev double mount). */
+const guestJoinStartedForToken = new Set<string>();
 
 interface TimeControl {
   type: "unlimited" | "per_turn" | "per_game";
@@ -48,6 +52,7 @@ export default function JoinPageClient({
   const t = useTranslations("join");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [guestJoining, setGuestJoining] = useState(!isLoggedIn);
 
   function formatTimeControl(tc: TimeControl): string {
     if (tc.type === "unlimited") return t("unlimitedTime");
@@ -55,6 +60,52 @@ export default function JoinPageClient({
     if (tc.type === "per_game") return t("minPerPlayer", { minutes: tc.minutes ?? 0 });
     return t("unknown");
   }
+
+  const runGuestJoin = useCallback(async () => {
+    setGuestJoining(true);
+    setError(null);
+    const supabase = createClient();
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      const { error: anonError } = await supabase.auth.signInAnonymously();
+      if (anonError) {
+        setError(anonError.message || t("somethingWentWrong"));
+        setGuestJoining(false);
+        return;
+      }
+    }
+
+    try {
+      const res = await fetch(`/api/invites/${token}/accept`, {
+        method: "POST",
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? t("somethingWentWrong"));
+        setGuestJoining(false);
+        return;
+      }
+
+      router.replace(`/game/${data.gameId}`);
+    } catch {
+      setError(t("networkError"));
+      setGuestJoining(false);
+    }
+  }, [token, router, t]);
+
+  useEffect(() => {
+    if (isLoggedIn) return;
+    if (guestJoinStartedForToken.has(token)) return;
+    guestJoinStartedForToken.add(token);
+    void runGuestJoin().finally(() => {
+      guestJoinStartedForToken.delete(token);
+    });
+  }, [isLoggedIn, token, runGuestJoin]);
 
   async function handleAccept() {
     setLoading(true);
@@ -187,17 +238,59 @@ export default function JoinPageClient({
             </div>
           ) : (
             <div className="space-y-3">
-              <Link
-                href={`/login?redirectTo=/join/${token}`}
-                className="block"
-              >
-                <Button className="w-full h-12 rounded-xl text-base font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-200 transition-all">
-                  {t("signInToJoin")}
-                </Button>
-              </Link>
-              <p className="text-center text-xs text-gray-400">
-                {t("freeToJoin")}
-              </p>
+              {guestJoining && !error && (
+                <div className="flex flex-col items-center gap-3 py-2">
+                  <svg
+                    className="animate-spin h-8 w-8 text-orange-500"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    aria-hidden
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z"
+                    />
+                  </svg>
+                  <p className="text-sm text-gray-600 font-medium text-center">
+                    {t("joiningGame")}
+                  </p>
+                </div>
+              )}
+              {error && (
+                <>
+                  <p className="text-sm text-red-500 text-center font-medium">
+                    {error}
+                  </p>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (guestJoinStartedForToken.has(token)) return;
+                      guestJoinStartedForToken.add(token);
+                      void runGuestJoin().finally(() => {
+                        guestJoinStartedForToken.delete(token);
+                      });
+                    }}
+                    className="w-full h-12 rounded-xl text-base font-bold bg-orange-500 hover:bg-orange-600 text-white"
+                  >
+                    {t("tryAgain")}
+                  </Button>
+                  <Link
+                    href={`/login?redirectTo=/join/${token}`}
+                    className="block text-center text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    {t("signInInstead")}
+                  </Link>
+                </>
+              )}
             </div>
           )}
         </div>

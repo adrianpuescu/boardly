@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { GamePageClient } from "@/components/game/GamePageClient";
+import { isAnonymousAuthUser } from "@/lib/auth/isAnonymous";
 import type { CurrentUser, GamePageData } from "@/lib/types";
 
 interface Props {
@@ -19,6 +20,8 @@ export default async function GamePage({ params }: Props) {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
+
+  const isGuest = isAnonymousAuthUser(user);
 
   // Fetch game with all players + their profiles
   const { data: game } = await supabase
@@ -107,6 +110,7 @@ export default async function GamePage({ params }: Props) {
       (user.user_metadata?.avatar_url as string | null) ??
       (user.user_metadata?.picture as string | null) ??
       null,
+    isGuest,
   };
 
   return <GamePageClient game={gameData} currentUser={currentUser} />;

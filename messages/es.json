@@ -89,7 +89,10 @@
     },
     "muteSound": "Silenciar sonidos de jugada",
     "unmuteSound": "Activar sonidos de jugada",
-    "soundSystemMuted": "Sonidos silenciados (movimiento reducido activado)"
+    "soundSystemMuted": "Sonidos silenciados (movimiento reducido activado)",
+    "guestBanner": "Estás jugando como invitado — Crea una cuenta para guardar tus partidas y estadísticas",
+    "guestBannerSignUp": "Registrarse",
+    "guestBannerDismiss": "Cerrar aviso de invitado"
   },
   "gameOver": {
     "wonOnTime": "¡Ganaste por tiempo!",
@@ -116,7 +119,8 @@
     "rematchDeclinedMessage": "El rival ha rechazado la revancha.",
     "rematchDeclinedHint": "El rival ha rechazado la revancha",
     "opponentLeftRematch": "El rival ha salido de la partida",
-    "backToDashboard": "Volver al panel"
+    "backToDashboard": "Volver al panel",
+    "createAccount": "Crear cuenta"
   },
   "rematchOffer": {
     "opponentWantsRematch": "¡El rival quiere la revancha! ¿Aceptas?",
@@ -243,7 +247,10 @@
     "unlimitedTime": "Tiempo ilimitado",
     "minPerMove": "{minutes} min por jugada",
     "minPerPlayer": "{minutes} min por jugador",
-    "unknown": "Desconocido"
+    "unknown": "Desconocido",
+    "joiningGame": "Llevándote a la partida…",
+    "tryAgain": "Reintentar",
+    "signInInstead": "Iniciar sesión con una cuenta"
   },
   "common": {
     "loading": "Cargando...",

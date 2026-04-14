@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DashboardClient } from "@/components/game/DashboardClient";
+import { isAnonymousAuthUser } from "@/lib/auth/isAnonymous";
 import type { DashboardGame, CurrentUser } from "@/lib/types";
 
 export default async function DashboardPage() {
@@ -14,6 +15,10 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
+
+  if (isAnonymousAuthUser(user)) {
+    redirect("/login");
+  }
 
   // Fetch the current user's public profile (has the uploaded avatar_url)
   const { data: myProfile } = await admin

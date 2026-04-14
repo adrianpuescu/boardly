@@ -2,13 +2,14 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { Chessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import type { Square, PieceSymbol } from "chess.js";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
-import { ArrowLeft, ChevronUp, Flag, Handshake, X } from "lucide-react";
+import { ArrowLeft, ChevronUp, Flag, Handshake, X, XCircle } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { useGameRealtime } from "@/hooks/useGameRealtime";
@@ -174,8 +175,6 @@ function PlayerStrip({
   const [avatarError, setAvatarError] = useState(false);
   const showAvatar = !!avatarUrl && !avatarError;
 
-  console.log("[PlayerStrip]", username, "avatarUrl:", avatarUrl, "showAvatar:", showAvatar);
-
   return (
     <div
       className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 rounded-2xl border transition-colors ${
@@ -335,6 +334,7 @@ function GameOverModal({
   onRematch,
   rematchLoading,
   onDashboard,
+  exitGameLabel,
 }: {
   result: GameResult | string | null;
   iWon: boolean;
@@ -345,6 +345,8 @@ function GameOverModal({
   onRematch: () => void;
   rematchLoading: boolean;
   onDashboard: () => void;
+  /** When set (e.g. guests), replaces "Back to dashboard" button text. */
+  exitGameLabel?: string;
 }) {
   const t = useTranslations("gameOver");
   const rematchDisabled =
@@ -460,7 +462,7 @@ function GameOverModal({
                 onClick={onDashboard}
                 className="w-full rounded-xl border-gray-200 text-gray-600"
               >
-                {t("backToDashboard")}
+                {exitGameLabel ?? t("backToDashboard")}
               </Button>
             </div>
           ) : (
@@ -515,12 +517,44 @@ function GameOverModal({
                 disabled={rematchLoading}
                 className="w-full rounded-xl border-gray-200 text-gray-600"
               >
-                {t("backToDashboard")}
+                {exitGameLabel ?? t("backToDashboard")}
               </Button>
             </>
           )}
         </div>
       </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Guest account banner ─────────────────────────────────────────────────────
+function GuestPlayingBanner({ onDismiss }: { onDismiss: () => void }) {
+  const t = useTranslations("game");
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -6 }}
+      className="w-full max-w-[900px] flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-2xl bg-amber-50/90 border border-amber-200/80 text-sm text-amber-950 shadow-sm"
+    >
+      <p className="flex-1 text-center sm:text-left leading-snug">{t("guestBanner")}</p>
+      <div className="flex items-center justify-center gap-2 flex-shrink-0">
+        <Link
+          href="/login"
+          className="inline-flex items-center justify-center rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs sm:text-sm font-semibold h-9 px-4 shadow-sm transition-colors"
+        >
+          {t("guestBannerSignUp")}
+        </Link>
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="p-1.5 rounded-lg text-amber-800/70 hover:bg-amber-100/80 transition-colors"
+          aria-label={t("guestBannerDismiss")}
+        >
+          <XCircle className="w-5 h-5" />
+        </button>
+      </div>
     </motion.div>
   );
 }
@@ -850,8 +884,34 @@ function RematchOfferBanner({
 export function GamePageClient({ game, currentUser }: Props) {
   const router = useRouter();
   const t = useTranslations("game");
+  const tGameOver = useTranslations("gameOver");
   const tDrawOffer = useTranslations("drawOffer");
   const boardControls = useAnimation();
+
+  const [showGuestBanner, setShowGuestBanner] = useState(false);
+  useEffect(() => {
+    if (!currentUser.isGuest) return;
+    try {
+      const dismissed = localStorage.getItem(
+        `boardly_guest_banner_dismissed:${currentUser.id}`
+      );
+      setShowGuestBanner(!dismissed);
+    } catch {
+      setShowGuestBanner(true);
+    }
+  }, [currentUser.id, currentUser.isGuest]);
+
+  function dismissGuestBanner() {
+    try {
+      localStorage.setItem(
+        `boardly_guest_banner_dismissed:${currentUser.id}`,
+        "1"
+      );
+    } catch {
+      /* ignore */
+    }
+    setShowGuestBanner(false);
+  }
 
   const pendingRematchGameIdRef = useRef<string | null>(null);
   const [incomingRematchGameId, setIncomingRematchGameId] = useState<
@@ -1383,6 +1443,14 @@ export function GamePageClient({ game, currentUser }: Props) {
       <Navbar currentUser={currentUser} />
 
       <AnimatePresence>
+        {currentUser.isGuest && showGuestBanner && (
+          <div className="w-full flex justify-center px-4 pt-4">
+            <GuestPlayingBanner onDismiss={dismissGuestBanner} />
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {showModal && incomingRematchGameId && (
           <RematchOfferBanner
             onAccept={handleAcceptRematchOffer}
@@ -1400,7 +1468,10 @@ export function GamePageClient({ game, currentUser }: Props) {
             {/* Back + status row — inside board column so it aligns with board edges */}
             <div className="flex items-center gap-3">
               <button
-                onClick={() => router.push("/dashboard")}
+                type="button"
+                onClick={() =>
+                  router.push(currentUser.isGuest ? "/" : "/dashboard")
+                }
                 className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 transition-colors group flex-shrink-0"
               >
                 <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
@@ -1583,7 +1654,12 @@ export function GamePageClient({ game, currentUser }: Props) {
             rematchWaiting={rematchWaiting}
             onRematch={handleRematch}
             rematchLoading={rematchLoading}
-            onDashboard={() => router.push("/dashboard")}
+            onDashboard={() =>
+              router.push(currentUser.isGuest ? "/login" : "/dashboard")
+            }
+            exitGameLabel={
+              currentUser.isGuest ? tGameOver("createAccount") : undefined
+            }
           />
         )}
       </AnimatePresence>

@@ -51,6 +51,8 @@ export interface CurrentUser {
   email: string;
   username: string;
   avatar_url: string | null;
+  /** Supabase anonymous auth — show guest UI and limit account-only routes. */
+  isGuest?: boolean;
 }
 
 export interface DashboardGame {

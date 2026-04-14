@@ -89,7 +89,10 @@
     },
     "muteSound": "Mute move sounds",
     "unmuteSound": "Unmute move sounds",
-    "soundSystemMuted": "Sounds muted (reduced motion is on)"
+    "soundSystemMuted": "Sounds muted (reduced motion is on)",
+    "guestBanner": "You're playing as a guest — Create an account to save your games and stats",
+    "guestBannerSignUp": "Sign up",
+    "guestBannerDismiss": "Dismiss guest banner"
   },
   "gameOver": {
     "wonOnTime": "You won on time!",
@@ -116,7 +119,8 @@
     "rematchDeclinedMessage": "Opponent declined the rematch.",
     "rematchDeclinedHint": "Opponent declined the rematch",
     "opponentLeftRematch": "Opponent has left the game",
-    "backToDashboard": "Back to dashboard"
+    "backToDashboard": "Back to dashboard",
+    "createAccount": "Create account"
   },
   "rematchOffer": {
     "opponentWantsRematch": "Opponent wants a rematch! Accept?",
@@ -243,7 +247,10 @@
     "unlimitedTime": "Unlimited time",
     "minPerMove": "{minutes} min per move",
     "minPerPlayer": "{minutes} min per player",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "joiningGame": "Taking you to the game…",
+    "tryAgain": "Try again",
+    "signInInstead": "Sign in with an account instead"
   },
   "common": {
     "loading": "Loading...",

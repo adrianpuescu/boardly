@@ -89,7 +89,10 @@
     },
     "muteSound": "Dezactivează sunetele mutărilor",
     "unmuteSound": "Activează sunetele mutărilor",
-    "soundSystemMuted": "Sunete dezactivate (preferința de mișcare redusă)"
+    "soundSystemMuted": "Sunete dezactivate (preferința de mișcare redusă)",
+    "guestBanner": "Joci ca invitat — Creează un cont pentru a-ți salva jocurile și statisticile",
+    "guestBannerSignUp": "Înregistrare",
+    "guestBannerDismiss": "Închide banner invitat"
   },
   "gameOver": {
     "wonOnTime": "Ai câștigat la timp!",
@@ -116,7 +119,8 @@
     "rematchDeclinedMessage": "Adversarul a refuzat revanșa.",
     "rematchDeclinedHint": "Adversarul a refuzat revanșa",
     "opponentLeftRematch": "Adversarul a părăsit jocul",
-    "backToDashboard": "Înapoi la tablou de bord"
+    "backToDashboard": "Înapoi la tablou de bord",
+    "createAccount": "Creează cont"
   },
   "rematchOffer": {
     "opponentWantsRematch": "Adversarul vrea revanșă! Accepți?",
@@ -243,7 +247,10 @@
     "unlimitedTime": "Timp nelimitat",
     "minPerMove": "{minutes} min pe mutare",
     "minPerPlayer": "{minutes} min pe jucător",
-    "unknown": "Necunoscut"
+    "unknown": "Necunoscut",
+    "joiningGame": "Te ducem la joc…",
+    "tryAgain": "Încearcă din nou",
+    "signInInstead": "Conectează-te cu un cont"
   },
   "common": {
     "loading": "Se încarcă...",
