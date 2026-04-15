@@ -30,6 +30,10 @@ export const metadata: Metadata = {
   description:
     "A friendly platform for turn-based board games. Chess is just the beginning.",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/favicon.svg",
+    apple: "/icons/icon-192.png",
+  },
   openGraph: {
     title: "Boardly — Play board games with friends",
     description:
@@ -39,9 +43,9 @@ export const metadata: Metadata = {
     siteName: "Boardly",
     images: [
       {
-        url: "/icons/icon-512.png",
-        width: 512,
-        height: 512,
+        url: "/api/og",
+        width: 1200,
+        height: 630,
         alt: "Boardly",
       },
     ],
@@ -51,7 +55,7 @@ export const metadata: Metadata = {
     title: "Boardly — Play board games with friends",
     description:
       "A friendly platform for turn-based board games. Chess is just the beginning.",
-    images: ["/icons/icon-512.png"],
+    images: ["/api/og"],
   },
   appleWebApp: {
     capable: true,
