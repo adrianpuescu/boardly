@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 env:
   NEXT_TELEMETRY_DISABLED: 1
 
@@ -13,13 +16,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # v5+ targets Node 24 (avoids deprecation warnings for v4 on forced Node 24 runners)
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
-          node-version: "22"
+          # eslint-visitor-keys@5 needs ^22.13.0 or >=24; avoid bare "22" resolving to <22.13
+          node-version: "24"
           cache: npm
 
       - name: Install dependencies
