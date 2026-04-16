@@ -2,7 +2,9 @@
 
 Turn-based board games in the browser—**chess first**, more games later. Built as a full-stack portfolio piece: real auth, realtime sync, invites, and a polished UI.
 
-**Live:** [boardly.webz.ro](https://boardly.webz.ro) · **Stack:** Next.js 14 · TypeScript · Supabase · Tailwind · [![CI](https://github.com/adrianpuescu/boardly/actions/workflows/ci.yml/badge.svg)](https://github.com/adrianpuescu/boardly/actions/workflows/ci.yml)
+**Live:** [boardly.webz.ro](https://boardly.webz.ro) · **Stack:** Next.js 14 · TypeScript · Supabase · Tailwind
+
+[![CI](https://github.com/adrianpuescu/boardly/actions/workflows/ci.yml/badge.svg)](https://github.com/adrianpuescu/boardly/actions/workflows/ci.yml)
 
 ---
 
