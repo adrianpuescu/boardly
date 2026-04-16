@@ -71,6 +71,8 @@ export async function GET(request: Request) {
                 borderRadius: 22,
               }}
             >
+              {/* next/image is not applicable inside @vercel/og ImageResponse; remote URL is required */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={knightUrl}
                 alt=""
