@@ -28,6 +28,10 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { GameSettings } from "@/components/game/GameSettings";
 import type { GameResult, MoveRecord } from "@/hooks/useGameRealtime";
 import type { GamePageData, CurrentUser } from "@/lib/types";
+import {
+  getCapturedPieces,
+  type CapturedPieces,
+} from "@/lib/chess/capturedPieces";
 
 type PromotionPiece = "q" | "r" | "b" | "n";
 
@@ -162,6 +166,7 @@ function PlayerStrip({
   isCurrentUser,
   isTheirTurn,
   timer,
+  moveCount,
 }: {
   username: string;
   avatarUrl: string | null;
@@ -169,6 +174,7 @@ function PlayerStrip({
   isCurrentUser: boolean;
   isTheirTurn: boolean;
   timer?: React.ReactNode;
+  moveCount: number;
 }) {
   const t = useTranslations("game");
   const initials = username.slice(0, 2).toUpperCase();
@@ -223,6 +229,9 @@ function PlayerStrip({
               {t("you")}
             </span>
           )}
+          <span className="ml-1.5 text-xs font-normal text-gray-400">
+            {moveCount}
+          </span>
         </p>
         <p className="flex items-center gap-1 text-xs text-gray-400">
           <span className="text-base chess-sym">{color === "white" ? "♔" : "♚"}</span>
@@ -249,6 +258,61 @@ function PlayerStrip({
           </span>
         )}
       </div>
+    </div>
+  );
+}
+
+const CAPTURED_ORDER: Array<{
+  key: keyof CapturedPieces;
+  code: "P" | "B" | "N" | "R" | "Q";
+}> = [
+  { key: "pawns", code: "P" },
+  { key: "bishops", code: "B" },
+  { key: "knights", code: "N" },
+  { key: "rooks", code: "R" },
+  { key: "queens", code: "Q" },
+];
+
+function CapturedPiecesStrip({
+  captured,
+  capturedByColor,
+  capturedPoints,
+  customPieces,
+}: {
+  captured: CapturedPieces;
+  capturedByColor: "white" | "black";
+  /** Sum of material values for pieces this player has captured (no comparison to opponent). */
+  capturedPoints: number;
+  customPieces: PieceRenderObject;
+}) {
+  const capturedPieceColor = capturedByColor === "white" ? "b" : "w";
+
+  return (
+    <div className="h-6 flex items-center justify-end gap-1.5 pr-1">
+      <div className="flex items-center gap-1">
+        {CAPTURED_ORDER.map(({ key, code }) => {
+          const count = captured[key];
+          if (count <= 0) return null;
+          const pieceCode = `${capturedPieceColor}${code}`;
+          return (
+            <div key={key} className="flex items-center -space-x-1">
+              {Array.from({ length: count }).map((_, idx) => (
+                <div
+                  key={`${key}-${idx}`}
+                  className="w-5 h-5 sm:w-6 sm:h-6 opacity-75"
+                >
+                  {customPieces[pieceCode]?.({
+                    svgStyle: { width: "100%", height: "100%" },
+                  })}
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+      <span className="text-xs font-medium text-gray-500 tabular-nums min-w-[1ch]">
+        {capturedPoints}
+      </span>
     </div>
   );
 }
@@ -1139,6 +1203,22 @@ export function GamePageClient({ game, currentUser }: Props) {
   // ── Board interactivity ──────────────────────────────────────────────────
   const opponentColor: "white" | "black" =
     game.my_color === "white" ? "black" : "white";
+  const whitePlayerId =
+    game.my_color === "white" ? currentUser.id : (game.opponent?.id ?? null);
+  const blackPlayerId =
+    game.my_color === "black" ? currentUser.id : (game.opponent?.id ?? null);
+
+  const moveCounts = useMemo(() => {
+    let white = 0;
+    let black = 0;
+    for (const move of moves) {
+      if (move.user_id === whitePlayerId) white += 1;
+      else if (move.user_id === blackPlayerId) black += 1;
+    }
+    return { white, black };
+  }, [moves, whitePlayerId, blackPlayerId]);
+
+  const capturedState = useMemo(() => getCapturedPieces(fen), [fen]);
 
   const fenTurn = fen.split(" ")[1] === "b" ? "black" : "white";
   const isMyTurn = fenTurn === game.my_color;
@@ -1551,6 +1631,16 @@ export function GamePageClient({ game, currentUser }: Props) {
             </AnimatePresence>
 
             {/* Opponent strip — shown at top (they play "above" us) */}
+            <CapturedPiecesStrip
+              captured={capturedState[opponentColor]}
+              capturedByColor={opponentColor}
+              capturedPoints={
+                opponentColor === "white"
+                  ? capturedState.whitePoints
+                  : capturedState.blackPoints
+              }
+              customPieces={customPieces}
+            />
             <PlayerStrip
               username={opponentUsername}
               avatarUrl={game.opponent?.avatar_url ?? null}
@@ -1558,6 +1648,7 @@ export function GamePageClient({ game, currentUser }: Props) {
               isCurrentUser={false}
               isTheirTurn={fenTurn === opponentColor && gameStatus === "active"}
               timer={buildTimer(opponentColor)}
+              moveCount={moveCounts[opponentColor]}
             />
 
             {/* Chess board with shake animation wrapper */}
@@ -1597,6 +1688,17 @@ export function GamePageClient({ game, currentUser }: Props) {
               isCurrentUser
               isTheirTurn={isMyTurn}
               timer={buildTimer(game.my_color)}
+              moveCount={moveCounts[game.my_color]}
+            />
+            <CapturedPiecesStrip
+              captured={capturedState[game.my_color]}
+              capturedByColor={game.my_color}
+              capturedPoints={
+                game.my_color === "white"
+                  ? capturedState.whitePoints
+                  : capturedState.blackPoints
+              }
+              customPieces={customPieces}
             />
 
             {/* Resign + Draw + Moves row */}
