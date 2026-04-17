@@ -14,6 +14,7 @@ const bodySchema = z.object({
   opponentEmail: z.string().email().optional().or(z.literal("")).transform((v) =>
     v === "" ? undefined : v
   ),
+  opponentId: z.string().uuid().optional(),
   timeControl: timeControlSchema,
 });
 
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { opponentEmail, timeControl } = parsed.data;
+  const { opponentEmail, opponentId, timeControl } = parsed.data;
 
   // ── Insert game ────────────────────────────────────────────────────────────
   const { data: game, error: gameError } = await adminClient
@@ -86,38 +87,46 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── Handle opponent (if email provided and they have an account) ───────────
+  // ── Resolve opponent account (email first, otherwise selected opponent id) ─
+  let resolvedOpponentEmail: string | undefined = opponentEmail;
+  let opponentAuthUser: { id: string; email?: string | null } | null = null;
+
   if (opponentEmail) {
-    // Look up opponent in auth.users via admin API.
     const { data: usersPage } = await adminClient.auth.admin.listUsers({
       perPage: 1000,
     });
+    const match = usersPage?.users?.find((u) => u.email === opponentEmail);
+    if (match) {
+      opponentAuthUser = { id: match.id, email: match.email };
+      resolvedOpponentEmail = match.email ?? opponentEmail;
+    }
+  } else if (opponentId && opponentId !== user.id) {
+    const { data: authData } = await adminClient.auth.admin.getUserById(opponentId);
+    if (authData?.user) {
+      opponentAuthUser = { id: authData.user.id, email: authData.user.email };
+      resolvedOpponentEmail = authData.user.email ?? undefined;
+    }
+  }
 
-    const opponentAuthUser = usersPage?.users?.find(
-      (u) => u.email === opponentEmail
-    );
+  // ── Add resolved opponent directly when they have an account ───────────────
+  if (opponentAuthUser && opponentAuthUser.id !== user.id) {
+    invitedUserId = opponentAuthUser.id;
+    const { error: opponentPlayerError } = await adminClient
+      .from("game_players")
+      .insert({
+        game_id: gameId,
+        user_id: opponentAuthUser.id,
+        color: "black",
+      });
 
-    if (opponentAuthUser) {
-      invitedUserId = opponentAuthUser.id;
-      // Opponent already has an account — add as black player directly.
-      const { error: opponentPlayerError } = await adminClient
-        .from("game_players")
-        .insert({
-          game_id: gameId,
-          user_id: opponentAuthUser.id,
-          color: "black",
-        });
-
-      if (opponentPlayerError) {
-        console.error("game_players insert (opponent) error:", opponentPlayerError);
-      } else {
-        opponentAdded = true;
-        // Both players present — move game to active.
-        await adminClient
-          .from("games")
-          .update({ status: "active" })
-          .eq("id", gameId);
-      }
+    if (opponentPlayerError) {
+      console.error("game_players insert (opponent) error:", opponentPlayerError);
+    } else {
+      opponentAdded = true;
+      await adminClient
+        .from("games")
+        .update({ status: "active" })
+        .eq("id", gameId);
     }
   }
 
@@ -129,7 +138,7 @@ export async function POST(request: NextRequest) {
     .insert({
       game_id: gameId,
       inviter_id: user.id,
-      invitee_email: opponentEmail ?? null,
+      invitee_email: resolvedOpponentEmail ?? null,
     })
     .select("token")
     .single();

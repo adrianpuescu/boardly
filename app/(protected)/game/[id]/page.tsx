@@ -14,6 +14,7 @@ const INITIAL_FEN =
 
 export default async function GamePage({ params }: Props) {
   const supabase = createClient();
+  const admin = createAdminClient();
 
   const {
     data: { user },
@@ -61,15 +62,28 @@ export default async function GamePage({ params }: Props) {
   const myPlayerRow = players.find((p) => p.user_id === user.id);
   if (!myPlayerRow) redirect("/dashboard");
 
-  const opponentRow = players.find((p) => p.user_id !== user.id);
+  let opponentRow = players.find((p) => p.user_id !== user.id);
+  if (!opponentRow) {
+    // Fallback for cases where nested joins return only the current player row.
+    const { data: opponentPlayerRow } = await admin
+      .from("game_players")
+      .select(
+        `
+        user_id,
+        color,
+        users (
+          id,
+          username,
+          avatar_url
+        )
+      `
+      )
+      .eq("game_id", params.id)
+      .neq("user_id", user.id)
+      .limit(1)
+      .maybeSingle();
 
-  let opponentEmail: string | null = null;
-  if (opponentRow) {
-    const admin = createAdminClient();
-    const { data: authData } = await admin.auth.admin.getUserById(
-      opponentRow.user_id
-    );
-    opponentEmail = authData?.user?.email ?? null;
+    opponentRow = (opponentPlayerRow as typeof players[number] | null) ?? undefined;
   }
 
   const state = (game.state ?? {}) as {
@@ -81,7 +95,27 @@ export default async function GamePage({ params }: Props) {
   };
 
   const myProfile = myPlayerRow.users;
-  const opponentProfile = opponentRow?.users ?? null;
+
+  let opponentProfile = opponentRow?.users ?? null;
+  if (opponentRow && !opponentProfile) {
+    const { data: opponentUser } = await admin
+      .from("users")
+      .select("id, username, avatar_url")
+      .eq("id", opponentRow.user_id)
+      .maybeSingle();
+
+    opponentProfile = opponentUser
+      ? {
+          id: opponentUser.id as string,
+          username: opponentUser.username as string,
+          avatar_url: (opponentUser.avatar_url as string | null) ?? null,
+        }
+      : {
+          id: opponentRow.user_id,
+          username: "Opponent",
+          avatar_url: null,
+        };
+  }
 
   const gameData: GamePageData = {
     id: game.id as string,
@@ -98,7 +132,6 @@ export default async function GamePage({ params }: Props) {
     winner_id: (game.winner_id as string | null) ?? null,
     my_color: myPlayerRow.color as "white" | "black",
     opponent: opponentProfile,
-    opponent_email: opponentEmail,
   };
 
   const currentUser: CurrentUser = {

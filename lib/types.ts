@@ -80,7 +80,11 @@ export interface ProfileStats {
 
 export interface RecentGame {
   id: string;
-  opponent: { id: string; username: string; avatar_url: string | null } | null;
+  opponent: {
+    id: string;
+    username: string;
+    avatar_url: string | null;
+  } | null;
   result: "win" | "loss" | "draw";
   time_control: { type: string; minutes?: number };
   played_at: string;
@@ -106,6 +110,4 @@ export interface GamePageData {
     username: string;
     avatar_url: string | null;
   } | null;
-  /** Opponent auth email — used to pre-fill lobby when starting a new game. */
-  opponent_email: string | null;
 }

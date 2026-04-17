@@ -135,14 +135,19 @@ export default function LobbyPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations("lobby");
+  const opponentIdFromQuery = searchParams.get("opponentId") ?? "";
+  const opponentNameFromQuery = searchParams.get("opponentName") ?? "";
 
-  const [opponentEmail, setOpponentEmail] = useState(
-    () => searchParams.get("opponentEmail") ?? ""
+  const [opponentEmail, setOpponentEmail] = useState("");
+  const [selectedOpponentId, setSelectedOpponentId] = useState(
+    () => opponentIdFromQuery
   );
+  const [selectedOpponentName, setSelectedOpponentName] = useState(() => opponentNameFromQuery);
 
   useEffect(() => {
-    setOpponentEmail(searchParams.get("opponentEmail") ?? "");
-  }, [searchParams]);
+    setSelectedOpponentId(opponentIdFromQuery);
+    setSelectedOpponentName(opponentNameFromQuery);
+  }, [opponentIdFromQuery, opponentNameFromQuery]);
   const [selectedType, setSelectedType] = useState<TimeControlType>("unlimited");
   const [perTurnMinutes, setPerTurnMinutes] = useState(10);
   const [perGameMinutes, setPerGameMinutes] = useState(30);
@@ -174,6 +179,7 @@ export default function LobbyPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           opponentEmail: opponentEmail.trim() || undefined,
+          opponentId: selectedOpponentId || undefined,
           timeControl: getTimeControl(),
         }),
       });
@@ -245,6 +251,13 @@ export default function LobbyPage() {
                 onChange={(e) => setOpponentEmail(e.target.value)}
                 className="h-11 rounded-xl border-gray-200 focus:border-orange-400 focus:ring-orange-400"
               />
+              {(selectedOpponentId || selectedOpponentName) && (
+                <p className="text-xs text-orange-600">
+                  {selectedOpponentName
+                    ? `Inviting ${selectedOpponentName}. Add an email only if you want to override this opponent.`
+                    : "Inviting your previous opponent. Add an email only if you want to override this opponent."}
+                </p>
+              )}
               <p className="text-xs text-gray-400">
                 {t("friendEmailHint")}
               </p>

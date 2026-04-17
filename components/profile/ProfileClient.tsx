@@ -196,6 +196,8 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
   const [uploading, setUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [inviteMenuForGame, setInviteMenuForGame] = useState<string | null>(null);
+  const inviteMenuRef = useRef<HTMLUListElement>(null);
 
   function validateUsername(value: string): string | null {
     if (value.length < 3) return t("usernameMin");
@@ -251,6 +253,19 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
       inputRef.current?.select();
     }
   }, [isEditing]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        inviteMenuRef.current &&
+        !inviteMenuRef.current.contains(event.target as Node)
+      ) {
+        setInviteMenuForGame(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   function startEditing() {
     setDraft(username);
@@ -491,7 +506,7 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
               </Button>
             </div>
           ) : (
-            <ul className="space-y-3">
+            <ul ref={inviteMenuRef} className="space-y-3">
               {recentGames.map((game, i) => (
                 <motion.li
                   key={game.id}
@@ -503,36 +518,78 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
                     href={`/game/${game.id}`}
                     className="flex items-center gap-3 p-3 rounded-2xl hover:bg-orange-50 transition-colors group"
                   >
-                    {/* Opponent avatar */}
-                    {game.opponent ? (
-                      <SmallAvatar
-                        avatarUrl={game.opponent.avatar_url}
-                        username={game.opponent.username}
-                      />
-                    ) : (
-                      <div className="w-9 h-9 rounded-full bg-gray-100 ring-2 ring-gray-200 flex items-center justify-center text-gray-400 text-xs font-bold flex-shrink-0">
-                        ?
-                      </div>
-                    )}
+                    {/* Opponent + quick invite menu */}
+                    <div className="relative flex items-center gap-3">
+                      {game.opponent ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setInviteMenuForGame((current) =>
+                              current === game.id ? null : game.id
+                            );
+                          }}
+                          className="flex items-center gap-3 px-3 py-2 rounded-2xl transition-colors hover:bg-orange-100/80 cursor-pointer"
+                        >
+                          <SmallAvatar
+                            avatarUrl={game.opponent.avatar_url}
+                            username={game.opponent.username}
+                          />
+                          <div className="min-w-0 text-left">
+                            <p className="text-sm font-semibold text-gray-800 truncate">
+                              {game.opponent.username}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {formatTimeControl(game.time_control, t)} ·{" "}
+                              {formatDate(game.played_at, locale)}
+                            </p>
+                          </div>
+                        </button>
+                      ) : (
+                        <>
+                          <div className="w-9 h-9 rounded-full bg-gray-100 ring-2 ring-gray-200 flex items-center justify-center text-gray-400 text-xs font-bold flex-shrink-0">
+                            ?
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 truncate">
+                              {t("unknownOpponent")}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {formatTimeControl(game.time_control, t)} ·{" "}
+                              {formatDate(game.played_at, locale)}
+                            </p>
+                          </div>
+                        </>
+                      )}
 
-                    {/* Game info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 truncate">
-                        {game.opponent?.username ?? t("unknownOpponent")}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {formatTimeControl(game.time_control, t)} ·{" "}
-                        {formatDate(game.played_at, locale)}
-                      </p>
+                      {inviteMenuForGame === game.id && (
+                        <div className="absolute left-0 top-full mt-2 z-20 min-w-[180px] rounded-xl border border-orange-100 bg-white p-1.5 shadow-lg">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const params = new URLSearchParams({
+                                opponentId: game.opponent?.id ?? "",
+                                opponentName: game.opponent?.username ?? "",
+                              });
+                              router.push(`/lobby?${params.toString()}`);
+                            }}
+                            className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-orange-50"
+                          >
+                            Invite to new game
+                          </button>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Result */}
-                    <ResultBadge result={game.result} />
-
-                    {/* Arrow */}
-                    <span className="text-gray-300 group-hover:text-orange-400 transition-colors text-lg leading-none ml-1">
-                      →
-                    </span>
+                    <div className="ml-auto flex items-center gap-2">
+                      <ResultBadge result={game.result} />
+                      <span className="text-gray-300 group-hover:text-orange-400 transition-colors text-lg leading-none ml-1">
+                        →
+                      </span>
+                    </div>
                   </Link>
                 </motion.li>
               ))}

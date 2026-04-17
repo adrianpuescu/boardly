@@ -334,6 +334,7 @@ function GameOverModal({
   onRematch,
   rematchLoading,
   onDashboard,
+  onInviteToNewGame,
   exitGameLabel,
 }: {
   result: GameResult | string | null;
@@ -345,6 +346,7 @@ function GameOverModal({
   onRematch: () => void;
   rematchLoading: boolean;
   onDashboard: () => void;
+  onInviteToNewGame?: () => void;
   /** When set (e.g. guests), replaces "Back to dashboard" button text. */
   exitGameLabel?: string;
 }) {
@@ -509,6 +511,17 @@ function GameOverModal({
               </Button>
               {!opponentOnline && !rematchDeclined && (
                 <p className="text-xs text-gray-500">{t("opponentLeftRematch")}</p>
+              )}
+              {!opponentOnline && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onInviteToNewGame}
+                  disabled={rematchLoading}
+                  className="w-full rounded-xl border-orange-200 text-orange-700 hover:bg-orange-50"
+                >
+                  Invite to a new game
+                </Button>
               )}
               <Button
                 type="button"
@@ -1656,6 +1669,20 @@ export function GamePageClient({ game, currentUser }: Props) {
             rematchLoading={rematchLoading}
             onDashboard={() =>
               router.push(currentUser.isGuest ? "/login" : "/dashboard")
+            }
+            onInviteToNewGame={
+              () => {
+                const params = new URLSearchParams();
+                if (game.opponent?.id) params.set("opponentId", game.opponent.id);
+                const opponentNameForInvite =
+                  game.opponent?.username ??
+                  (game.status === "completed" || game.status === "abandoned"
+                    ? "previous opponent"
+                    : "");
+                if (opponentNameForInvite) params.set("opponentName", opponentNameForInvite);
+                const query = params.toString();
+                router.push(query ? `/lobby?${query}` : "/lobby");
+              }
             }
             exitGameLabel={
               currentUser.isGuest ? tGameOver("createAccount") : undefined
