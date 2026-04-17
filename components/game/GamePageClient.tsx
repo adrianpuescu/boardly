@@ -1226,6 +1226,26 @@ export function GamePageClient({ game, currentUser }: Props) {
   const canSubmitMove = isMyTurn && !submitting && !showModal;
   const isActiveGame = gameStatus === "active";
 
+  // If you're already on this game with the tab visible, don't leave an unread "your turn" in the bell.
+  useEffect(() => {
+    if (!isMyTurn || !isActiveGame || showModal) return;
+
+    function dismissYourTurnBell() {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+        return;
+      }
+      void fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gameId: game.id }),
+      });
+    }
+
+    dismissYourTurnBell();
+    document.addEventListener("visibilitychange", dismissYourTurnBell);
+    return () => document.removeEventListener("visibilitychange", dismissYourTurnBell);
+  }, [isMyTurn, isActiveGame, showModal, game.id]);
+
   // Draw offer is pending from opponent when it was offered by someone else
   const opponentOfferedDraw =
     !!drawOfferedBy && drawOfferedBy !== currentUser.id;

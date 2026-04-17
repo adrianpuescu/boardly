@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+
+const patchBodySchema = z.object({
+  read_at: z.string().optional(),
+  /** When set, only unread `your_turn` rows for this game are marked read (in-app bell). */
+  gameId: z.string().uuid().optional(),
+});
 
 export async function GET() {
   const supabase = createClient();
@@ -35,19 +42,37 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { read_at?: string } = {};
+  let raw: unknown;
   try {
-    body = (await request.json()) as { read_at?: string };
+    raw = await request.json();
   } catch {
-    // Empty body is allowed.
+    raw = {};
   }
 
-  const readAt = body.read_at ?? new Date().toISOString();
-  const { error } = await supabase
+  const parsed = patchBodySchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Validation error", issues: parsed.error.flatten() },
+      { status: 422 }
+    );
+  }
+
+  const { read_at: readAtBody, gameId } = parsed.data;
+  const readAt = readAtBody ?? new Date().toISOString();
+
+  let query = supabase
     .from("notifications")
     .update({ read_at: readAt })
     .eq("user_id", user.id)
     .is("read_at", null);
+
+  if (gameId) {
+    query = query
+      .eq("type", "your_turn")
+      .contains("payload", { game_id: gameId });
+  }
+
+  const { error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

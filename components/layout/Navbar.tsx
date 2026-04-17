@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { BellIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -55,6 +55,7 @@ function SignOutIcon() {
 
 export function Navbar({ currentUser }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
   const t = useTranslations("nav");
   const nt = useTranslations("notifications");
   const currentLocale = useLocale();
@@ -100,6 +101,13 @@ export function Navbar({ currentUser }: Props) {
   }, [openProfile, openNotifications]);
 
   const unreadCount = notifications.filter((n) => !n.read_at).length;
+
+  const activeGameId = useMemo(() => {
+    const parts = pathname.split("/").filter(Boolean);
+    const gameIdx = parts.lastIndexOf("game");
+    if (gameIdx === -1) return null;
+    return parts[gameIdx + 1] ?? null;
+  }, [pathname]);
 
   function formatTimeAgo(isoDate: string) {
     return formatDistanceToNow(new Date(isoDate), {
@@ -153,6 +161,31 @@ export function Navbar({ currentUser }: Props) {
     });
   }
 
+  async function dismissCurrentGameYourTurnAlerts(gameId: string) {
+    if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+
+    const now = new Date().toISOString();
+    setNotifications((prev) =>
+      prev.map((notification) => {
+        const notificationGameId = String(notification.payload.game_id ?? "");
+        if (
+          notification.type === "your_turn" &&
+          !notification.read_at &&
+          notificationGameId === gameId
+        ) {
+          return { ...notification, read_at: now };
+        }
+        return notification;
+      })
+    );
+
+    await fetch("/api/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ read_at: now, gameId }),
+    });
+  }
+
   useEffect(() => {
     void fetchNotifications();
     const channel = supabase
@@ -175,6 +208,18 @@ export function Navbar({ currentUser }: Props) {
       supabase.removeChannel(channel);
     };
   }, [currentUser.id, supabase]);
+
+  useEffect(() => {
+    if (!activeGameId) return;
+
+    const hasUnreadCurrentGameYourTurn = notifications.some((notification) => {
+      if (notification.type !== "your_turn" || notification.read_at) return false;
+      return String(notification.payload.game_id ?? "") === activeGameId;
+    });
+
+    if (!hasUnreadCurrentGameYourTurn) return;
+    void dismissCurrentGameYourTurnAlerts(activeGameId);
+  }, [activeGameId, notifications]);
 
   function switchLocale(next: string) {
     document.cookie = `NEXT_LOCALE=${next}; path=/; max-age=31536000; samesite=lax`;

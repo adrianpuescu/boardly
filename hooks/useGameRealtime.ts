@@ -135,7 +135,12 @@ export function useGameRealtime(
     fetch(`/api/moves/${gameId}`)
       .then((r) => r.json())
       .then((data: { moves?: MoveRecord[] }) => {
-        if (data.moves) setMoves(data.moves);
+        const list = data.moves ?? [];
+        setMoves(list);
+        const last = list[list.length - 1];
+        if (last?.fen_after) {
+          setFen(last.fen_after);
+        }
       })
       .catch(() => {});
   }, [gameId]);
@@ -193,6 +198,11 @@ export function useGameRealtime(
           });
 
           setDrawOfferedBy(updated.state?.draw_offered_by ?? null);
+
+          const nextFen = updated.state?.fen;
+          if (typeof nextFen === "string" && nextFen.trim() !== "") {
+            setFen(nextFen);
+          }
 
           if (updated.status === "completed") {
             setGameOver(true);
