@@ -92,7 +92,16 @@
     "soundSystemMuted": "Sunete dezactivate (preferința de mișcare redusă)",
     "guestBanner": "Joci ca invitat — Creează un cont pentru a-ți salva jocurile și statisticile",
     "guestBannerSignUp": "Înregistrare",
-    "guestBannerDismiss": "Închide banner invitat"
+    "guestBannerDismiss": "Închide banner invitat",
+    "replayReview": "Revizuire partidă",
+    "replayExit": "Ieși din reluare",
+    "replayMoveOf": "Mutarea {current} din {total}",
+    "replayStart": "Start · 0 din {total}",
+    "replayMode": "Reluare",
+    "replayFirst": "Prima mutare",
+    "replayPrev": "Mutarea anterioară",
+    "replayNext": "Mutarea următoare",
+    "replayLast": "Ultima mutare"
   },
   "gameOver": {
     "wonOnTime": "Ai câștigat la timp!",

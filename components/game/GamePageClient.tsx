@@ -9,7 +9,18 @@ import { Chessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import type { Square, PieceSymbol } from "chess.js";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
-import { ArrowLeft, ChevronUp, Flag, Handshake, X, XCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  ChevronsLeft,
+  ChevronsRight,
+  Flag,
+  Handshake,
+  X,
+  XCircle,
+} from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { useGameRealtime } from "@/hooks/useGameRealtime";
@@ -399,7 +410,10 @@ function GameOverModal({
   rematchLoading,
   onDashboard,
   onInviteToNewGame,
+  onReviewGame,
+  canReviewGame,
   exitGameLabel,
+  reviewGameLabel,
 }: {
   result: GameResult | string | null;
   iWon: boolean;
@@ -411,8 +425,11 @@ function GameOverModal({
   rematchLoading: boolean;
   onDashboard: () => void;
   onInviteToNewGame?: () => void;
+  onReviewGame?: () => void;
+  canReviewGame?: boolean;
   /** When set (e.g. guests), replaces "Back to dashboard" button text. */
   exitGameLabel?: string;
+  reviewGameLabel: string;
 }) {
   const t = useTranslations("gameOver");
   const rematchDisabled =
@@ -522,6 +539,17 @@ function GameOverModal({
                 </svg>
                 {t("waitingForRematchAccept")}
               </p>
+              {canReviewGame && onReviewGame && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onReviewGame}
+                  disabled={rematchLoading}
+                  className="w-full rounded-xl border-violet-200 text-violet-800 hover:bg-violet-50"
+                >
+                  {reviewGameLabel}
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
@@ -585,6 +613,17 @@ function GameOverModal({
                   className="w-full rounded-xl border-orange-200 text-orange-700 hover:bg-orange-50"
                 >
                   Invite to a new game
+                </Button>
+              )}
+              {canReviewGame && onReviewGame && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onReviewGame}
+                  disabled={rematchLoading}
+                  className="w-full rounded-xl border-violet-200 text-violet-800 hover:bg-violet-50"
+                >
+                  {reviewGameLabel}
                 </Button>
               )}
               <Button
@@ -789,19 +828,33 @@ function MoveHistoryPanel({
   moves,
   className,
   hideHeader,
+  highlightHalfMoveIndex,
 }: {
   moves: MoveRecord[];
   className?: string;
   hideHeader?: boolean;
+  /**
+   * Omitted: highlight the latest half-move (live play).
+   * `null`: no half-move highlighted (e.g. replay at start position).
+   * `number`: highlight `moves[index]` (replay scrubber).
+   */
+  highlightHalfMoveIndex?: number | null;
 }) {
   const t = useTranslations("game");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const activeRowRef = useRef<HTMLTableRowElement | null>(null);
   const pairs = buildMovePairs(moves);
 
-  // Auto-scroll to bottom on new move
+  const useExplicitHighlight = highlightHalfMoveIndex !== undefined;
+
+  // Live play: keep scrolled to bottom on new moves. Replay: scroll active row into view.
   useEffect(() => {
+    if (useExplicitHighlight) {
+      activeRowRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      return;
+    }
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [moves.length]);
+  }, [moves.length, useExplicitHighlight, highlightHalfMoveIndex]);
 
   return (
     <div className={`flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden ${className ?? ""}`}>
@@ -829,11 +882,28 @@ function MoveHistoryPanel({
             <tbody>
               {pairs.map((pair, idx) => {
                 const isLastPair = idx === pairs.length - 1;
-                const whiteIsLatest = isLastPair && pair.black === null;
-                const blackIsLatest = isLastPair && pair.black !== null;
+                const whiteMoveIndex = idx * 2;
+                const blackMoveIndex = idx * 2 + 1;
+
+                let whiteIsLatest: boolean;
+                let blackIsLatest: boolean;
+                if (useExplicitHighlight) {
+                  whiteIsLatest =
+                    highlightHalfMoveIndex !== null &&
+                    highlightHalfMoveIndex === whiteMoveIndex;
+                  blackIsLatest =
+                    highlightHalfMoveIndex !== null &&
+                    highlightHalfMoveIndex === blackMoveIndex;
+                } else {
+                  whiteIsLatest = isLastPair && pair.black === null;
+                  blackIsLatest = isLastPair && pair.black !== null;
+                }
+
+                const rowIsActive = whiteIsLatest || blackIsLatest;
                 return (
                   <tr
                     key={pair.moveNumber}
+                    ref={rowIsActive ? activeRowRef : undefined}
                     className={idx % 2 === 0 ? "bg-gray-50/60" : ""}
                   >
                     <td className="w-6 px-2 py-1 text-gray-300 font-medium select-none tabular-nums">
@@ -855,7 +925,9 @@ function MoveHistoryPanel({
                         className={`inline-block w-full px-1.5 py-0.5 font-mono font-medium rounded ${
                           blackIsLatest
                             ? "bg-orange-200 text-orange-800"
-                            : "text-gray-400"
+                            : pair.black == null
+                            ? "text-gray-400"
+                            : "text-gray-800"
                         }`}
                       >
                         {pair.black ?? ""}
@@ -868,6 +940,102 @@ function MoveHistoryPanel({
           </table>
         )}
         <div ref={bottomRef} />
+      </div>
+    </div>
+  );
+}
+
+function ReplayModeControls({
+  replayPlyIndex,
+  totalPlies,
+  onFirst,
+  onPrev,
+  onNext,
+  onLast,
+  onExit,
+}: {
+  replayPlyIndex: number;
+  totalPlies: number;
+  onFirst: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+  onLast: () => void;
+  onExit: () => void;
+}) {
+  const t = useTranslations("game");
+  const label =
+    replayPlyIndex === 0
+      ? t("replayStart", { total: totalPlies })
+      : t("replayMoveOf", { current: replayPlyIndex, total: totalPlies });
+
+  const iconBtn =
+    "inline-flex items-center justify-center h-11 w-11 shrink-0 rounded-xl border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none";
+
+  return (
+    <div
+      className={
+        "border-t border-gray-200 bg-white/95 backdrop-blur-md px-3 py-3 sm:border sm:rounded-2xl sm:bg-white sm:backdrop-blur-none " +
+        "fixed bottom-0 left-0 right-0 z-40 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:static lg:z-auto lg:inset-auto lg:pb-3"
+      }
+      role="region"
+      aria-label={t("replayMode")}
+    >
+      <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="flex items-center justify-center gap-1 sm:justify-start">
+          <button
+            type="button"
+            className={iconBtn}
+            onClick={onFirst}
+            disabled={replayPlyIndex === 0}
+            aria-label={t("replayFirst")}
+            title={t("replayFirst")}
+          >
+            <ChevronsLeft className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            className={iconBtn}
+            onClick={onPrev}
+            disabled={replayPlyIndex === 0}
+            aria-label={t("replayPrev")}
+            title={t("replayPrev")}
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            className={iconBtn}
+            onClick={onNext}
+            disabled={replayPlyIndex >= totalPlies}
+            aria-label={t("replayNext")}
+            title={t("replayNext")}
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            className={iconBtn}
+            onClick={onLast}
+            disabled={replayPlyIndex >= totalPlies}
+            aria-label={t("replayLast")}
+            title={t("replayLast")}
+          >
+            <ChevronsRight className="w-5 h-5" />
+          </button>
+        </div>
+        <p className="text-center text-sm font-semibold text-gray-800 tabular-nums sm:flex-1 sm:min-w-0">
+          {label}
+        </p>
+        <div className="flex justify-center sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onExit}
+            className="min-h-11 rounded-xl border-gray-300 px-4 text-gray-800"
+          >
+            {t("replayExit")}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -1101,9 +1269,18 @@ export function GamePageClient({ game, currentUser }: Props) {
     to: string;
   } | null>(null);
 
+  const [replayMode, setReplayMode] = useState(false);
+  /** Number of plies applied: 0 = start position, `moves.length` = final. */
+  const [replayPlyIndex, setReplayPlyIndex] = useState(0);
+
   const [pendingLastMove, setPendingLastMove] = useState<LastMoveSquares | null>(
     null
   );
+
+  useEffect(() => {
+    setReplayMode(false);
+    setReplayPlyIndex(0);
+  }, [game.id]);
 
   const lastMoveFromHistory = useMemo(
     () => getLastMoveSquaresFromMoves(moves),
@@ -1123,12 +1300,62 @@ export function GamePageClient({ game, currentUser }: Props) {
 
   const lastMove = lastMoveFromHistory ?? pendingLastMove;
 
-  const { inCheck, kingSquare } = useMemo(() => getCheckHighlight(fen), [fen]);
+  const replayFen = useMemo(() => {
+    if (replayPlyIndex <= 0) return INITIAL_FEN;
+    return moves[replayPlyIndex - 1]?.fen_after ?? INITIAL_FEN;
+  }, [replayPlyIndex, moves]);
+
+  const displayFen =
+    replayMode && moves.length > 0 ? replayFen : fen;
+
+  const replayLastMove = useMemo(() => {
+    if (!replayMode || replayPlyIndex === 0) return null;
+    return getLastMoveSquaresFromMoves(
+      moves.slice(0, replayPlyIndex),
+      INITIAL_FEN
+    );
+  }, [replayMode, replayPlyIndex, moves]);
+
+  const effectiveLastMove = replayMode ? replayLastMove : lastMove;
+
+  const { inCheck, kingSquare } = useMemo(
+    () => getCheckHighlight(displayFen),
+    [displayFen]
+  );
 
   const squareStyles = useMemo(
-    () => getSquareStyles(lastMove, inCheck, kingSquare),
-    [lastMove, inCheck, kingSquare]
+    () => getSquareStyles(effectiveLastMove, inCheck, kingSquare),
+    [effectiveLastMove, inCheck, kingSquare]
   );
+
+  useEffect(() => {
+    if (!replayMode) return;
+    setReplayPlyIndex((i) => Math.min(i, moves.length));
+  }, [moves.length, replayMode]);
+
+  useEffect(() => {
+    if (!replayMode) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (
+        el &&
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.getAttribute("contenteditable") === "true")
+      ) {
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setReplayPlyIndex((i) => Math.max(0, i - 1));
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setReplayPlyIndex((i) => Math.min(moves.length, i + 1));
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [replayMode, moves.length]);
 
   // Opponent moves (and sync’d batches): play once per new move, skip initial history load
   const movesSyncRef = useRef({ ready: false, prevLen: 0 });
@@ -1179,6 +1406,7 @@ export function GamePageClient({ game, currentUser }: Props) {
     game.status === "completed" || game.status === "abandoned";
 
   const showModal = isAlreadyOver || realtimeGameOver;
+  const showGameOverModal = showModal && !replayMode;
 
   const displayResult: string | null =
     realtimeGameResult ?? game.state.result ?? null;
@@ -1218,12 +1446,15 @@ export function GamePageClient({ game, currentUser }: Props) {
     return { white, black };
   }, [moves, whitePlayerId, blackPlayerId]);
 
-  const capturedState = useMemo(() => getCapturedPieces(fen), [fen]);
+  const capturedState = useMemo(() => getCapturedPieces(displayFen), [displayFen]);
 
   const fenTurn = fen.split(" ")[1] === "b" ? "black" : "white";
+  const visualTurn =
+    displayFen.split(" ")[1] === "b" ? "black" : "white";
   const isMyTurn = fenTurn === game.my_color;
 
-  const canSubmitMove = isMyTurn && !submitting && !showModal;
+  const canSubmitMove =
+    isMyTurn && !submitting && !showModal && !replayMode;
   const isActiveGame = gameStatus === "active";
 
   // If you're already on this game with the tab visible, don't leave an unread "your turn" in the bell.
@@ -1517,9 +1748,19 @@ export function GamePageClient({ game, currentUser }: Props) {
   // For per_turn: each player gets the same fresh allocation each turn
   const perTurnMs = (game.time_control?.minutes ?? 1) * 60 * 1000;
 
+  const startReplay = useCallback(() => {
+    if (moves.length === 0) return;
+    setReplayMode(true);
+    setReplayPlyIndex(moves.length);
+  }, [moves.length]);
+
+  const exitReplay = useCallback(() => {
+    setReplayMode(false);
+  }, []);
+
   // Build timer nodes for each player
   function buildTimer(playerColor: "white" | "black"): React.ReactNode {
-    if (!hasTimer || showModal) return undefined;
+    if (!hasTimer || showModal || replayMode) return undefined;
 
     const isThisPlayersTurn = fenTurn === playerColor && gameStatus === "active";
     const turnStartedAt = resolvedTimerState.turn_started_at ?? null;
@@ -1573,7 +1814,11 @@ export function GamePageClient({ game, currentUser }: Props) {
         )}
       </AnimatePresence>
 
-      <main className="flex-1 flex flex-col items-center px-4 py-6 gap-4">
+      <main
+        className={`flex-1 flex flex-col items-center px-4 py-6 gap-4${
+          replayMode ? " pb-28 lg:pb-6" : ""
+        }`}
+      >
         {/* Board + move history: side-by-side on desktop, stacked on mobile */}
         <div className="w-full max-w-[900px] flex flex-col lg:flex-row gap-4 items-start justify-center">
           {/* Board column */}
@@ -1591,12 +1836,19 @@ export function GamePageClient({ game, currentUser }: Props) {
                 <span className="text-sm font-medium">{t("games")}</span>
               </button>
 
-              <StatusBanner
-                status={gameStatus as GamePageData["status"]}
-                currentTurn={fenTurn}
-                myColor={game.my_color}
-                submitting={submitting}
-              />
+              {replayMode ? (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold bg-violet-50 text-violet-900 border border-violet-200">
+                  <span className="h-2 w-2 rounded-full bg-violet-500 shrink-0" />
+                  {t("replayMode")}
+                </div>
+              ) : (
+                <StatusBanner
+                  status={gameStatus as GamePageData["status"]}
+                  currentTurn={fenTurn}
+                  myColor={game.my_color}
+                  submitting={submitting}
+                />
+              )}
 
               <div className="ml-auto flex items-center gap-1 flex-shrink-0">
                 <button
@@ -1666,7 +1918,11 @@ export function GamePageClient({ game, currentUser }: Props) {
               avatarUrl={game.opponent?.avatar_url ?? null}
               color={opponentColor}
               isCurrentUser={false}
-              isTheirTurn={fenTurn === opponentColor && gameStatus === "active"}
+              isTheirTurn={
+                replayMode
+                  ? visualTurn === opponentColor
+                  : fenTurn === opponentColor && gameStatus === "active"
+              }
               timer={buildTimer(opponentColor)}
               moveCount={moveCounts[opponentColor]}
             />
@@ -1678,15 +1934,17 @@ export function GamePageClient({ game, currentUser }: Props) {
             >
               <Chessboard
                 options={{
-                  position: fen,
+                  position: displayFen,
                   boardOrientation: game.my_color,
                   pieces: customPieces,
                   canDragPiece: ({ piece }) => {
+                    if (replayMode) return false;
                     if (promotionAt) return false;
                     const isWhitePiece = piece.pieceType.startsWith("w");
                     return game.my_color === "white" ? isWhitePiece : !isWhitePiece;
                   },
                   onPieceDrop: ({ sourceSquare, targetSquare }) => {
+                    if (replayMode) return false;
                     if (!targetSquare) return false;
                     return handlePieceDrop(sourceSquare, targetSquare);
                   },
@@ -1700,13 +1958,29 @@ export function GamePageClient({ game, currentUser }: Props) {
               />
             </motion.div>
 
+            {replayMode && moves.length > 0 && (
+              <ReplayModeControls
+                replayPlyIndex={replayPlyIndex}
+                totalPlies={moves.length}
+                onFirst={() => setReplayPlyIndex(0)}
+                onPrev={() => setReplayPlyIndex((i) => Math.max(0, i - 1))}
+                onNext={() =>
+                  setReplayPlyIndex((i) => Math.min(moves.length, i + 1))
+                }
+                onLast={() => setReplayPlyIndex(moves.length)}
+                onExit={exitReplay}
+              />
+            )}
+
             {/* Current user strip — shown at bottom */}
             <PlayerStrip
               username={currentUser.username}
               avatarUrl={currentUser.avatar_url}
               color={game.my_color}
               isCurrentUser
-              isTheirTurn={isMyTurn}
+              isTheirTurn={
+                replayMode ? visualTurn === game.my_color : isMyTurn
+              }
               timer={buildTimer(game.my_color)}
               moveCount={moveCounts[game.my_color]}
             />
@@ -1772,14 +2046,24 @@ export function GamePageClient({ game, currentUser }: Props) {
 
           {/* Desktop: permanent move history sidebar */}
           <div className="hidden lg:flex flex-col w-52 flex-shrink-0 self-stretch">
-            <MoveHistoryPanel moves={moves} className="flex-1 min-h-[200px]" />
+            <MoveHistoryPanel
+              moves={moves}
+              className="flex-1 min-h-[200px]"
+              highlightHalfMoveIndex={
+                replayMode
+                  ? replayPlyIndex === 0
+                    ? null
+                    : replayPlyIndex - 1
+                  : undefined
+              }
+            />
           </div>
         </div>
       </main>
 
       {/* Game over modal */}
       <AnimatePresence>
-        {showModal && (
+        {showGameOverModal && (
           <GameOverModal
             result={displayResult}
             iWon={iWon}
@@ -1792,6 +2076,9 @@ export function GamePageClient({ game, currentUser }: Props) {
             onDashboard={() =>
               router.push(currentUser.isGuest ? "/login" : "/dashboard")
             }
+            canReviewGame={moves.length > 0}
+            onReviewGame={startReplay}
+            reviewGameLabel={t("replayReview")}
             onInviteToNewGame={
               () => {
                 const params = new URLSearchParams();
@@ -1883,7 +2170,18 @@ export function GamePageClient({ game, currentUser }: Props) {
               </div>
               {/* Content */}
               <div className="flex-1 overflow-y-auto min-h-0">
-                <MoveHistoryPanel moves={moves} className="border-0 rounded-none h-full" hideHeader />
+                <MoveHistoryPanel
+                  moves={moves}
+                  className="border-0 rounded-none h-full"
+                  hideHeader
+                  highlightHalfMoveIndex={
+                    replayMode
+                      ? replayPlyIndex === 0
+                        ? null
+                        : replayPlyIndex - 1
+                      : undefined
+                  }
+                />
               </div>
             </motion.div>
           </>

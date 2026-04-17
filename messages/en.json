@@ -92,7 +92,16 @@
     "soundSystemMuted": "Sounds muted (reduced motion is on)",
     "guestBanner": "You're playing as a guest — Create an account to save your games and stats",
     "guestBannerSignUp": "Sign up",
-    "guestBannerDismiss": "Dismiss guest banner"
+    "guestBannerDismiss": "Dismiss guest banner",
+    "replayReview": "Review game",
+    "replayExit": "Exit replay",
+    "replayMoveOf": "Move {current} of {total}",
+    "replayStart": "Start · 0 of {total}",
+    "replayMode": "Replay",
+    "replayFirst": "First move",
+    "replayPrev": "Previous move",
+    "replayNext": "Next move",
+    "replayLast": "Last move"
   },
   "gameOver": {
     "wonOnTime": "You won on time!",

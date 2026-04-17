@@ -92,7 +92,16 @@
     "soundSystemMuted": "Sonidos silenciados (movimiento reducido activado)",
     "guestBanner": "Estás jugando como invitado — Crea una cuenta para guardar tus partidas y estadísticas",
     "guestBannerSignUp": "Registrarse",
-    "guestBannerDismiss": "Cerrar aviso de invitado"
+    "guestBannerDismiss": "Cerrar aviso de invitado",
+    "replayReview": "Revisar partida",
+    "replayExit": "Salir de la revisión",
+    "replayMoveOf": "Jugada {current} de {total}",
+    "replayStart": "Inicio · 0 de {total}",
+    "replayMode": "Repetición",
+    "replayFirst": "Primera jugada",
+    "replayPrev": "Jugada anterior",
+    "replayNext": "Siguiente jugada",
+    "replayLast": "Última jugada"
   },
   "gameOver": {
     "wonOnTime": "¡Ganaste por tiempo!",
