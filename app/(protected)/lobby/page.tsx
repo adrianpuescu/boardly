@@ -251,7 +251,7 @@ export default function LobbyPage() {
                 onChange={(e) => setOpponentEmail(e.target.value)}
                 className="h-11 rounded-xl border-gray-200 focus:border-orange-400 focus:ring-orange-400"
               />
-              {(selectedOpponentId || selectedOpponentName) && (
+              {!opponentEmail.trim() && (selectedOpponentId || selectedOpponentName) && (
                 <p className="text-xs text-orange-600">
                   {selectedOpponentName
                     ? `Inviting ${selectedOpponentName}. Add an email only if you want to override this opponent.`
