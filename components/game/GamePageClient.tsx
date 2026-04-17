@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  type ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -11,11 +18,7 @@ import type { Square, PieceSymbol } from "chess.js";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import {
   ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
   ChevronUp,
-  ChevronsLeft,
-  ChevronsRight,
   Flag,
   Handshake,
   X,
@@ -43,6 +46,14 @@ import {
   getCapturedPieces,
   type CapturedPieces,
 } from "@/lib/chess/capturedPieces";
+import { cn } from "@/lib/utils";
+
+/** Tiled fractal noise for CRT-style static (SVG filter). */
+const REPLAY_TV_NOISE_DATA_URL =
+  "data:image/svg+xml," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>'
+  );
 
 type PromotionPiece = "q" | "r" | "b" | "n";
 
@@ -824,11 +835,62 @@ function buildMovePairs(moves: MoveRecord[]): MovePair[] {
   return pairs;
 }
 
+function MoveHistoryNavButtons({
+  viewPlyIndex,
+  movesLength,
+  onPrev,
+  onNext,
+  className,
+  /** Slightly larger tap targets — use next to the mobile Moves button. */
+  compact,
+}: {
+  viewPlyIndex: number;
+  movesLength: number;
+  onPrev: () => void;
+  onNext: () => void;
+  className?: string;
+  compact?: boolean;
+}) {
+  const t = useTranslations("game");
+  const btn = compact
+    ? "inline-flex items-center justify-center min-h-[44px] min-w-[44px] shrink-0 rounded-xl border border-gray-200 bg-white text-lg font-semibold text-gray-800 hover:bg-gray-50 active:bg-gray-100 disabled:opacity-40 disabled:pointer-events-none"
+    : "inline-flex items-center justify-center h-9 w-9 shrink-0 rounded-xl border border-gray-200 bg-white text-lg font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none";
+
+  return (
+    <div className={cn("flex items-center gap-1 justify-center", className)}>
+      <button
+        type="button"
+        className={btn}
+        onClick={onPrev}
+        disabled={viewPlyIndex <= 0}
+        aria-label={t("replayPrev")}
+        title={t("replayPrev")}
+      >
+        ←
+      </button>
+      <button
+        type="button"
+        className={btn}
+        onClick={onNext}
+        disabled={viewPlyIndex >= movesLength}
+        aria-label={t("replayNext")}
+        title={t("replayNext")}
+      >
+        →
+      </button>
+    </div>
+  );
+}
+
 function MoveHistoryPanel({
   moves,
   className,
   hideHeader,
   highlightHalfMoveIndex,
+  onSelectHalfMove,
+  headerNav,
+  headerEnd,
+  headerVariant = "sidebar",
 }: {
   moves: MoveRecord[];
   className?: string;
@@ -839,6 +901,14 @@ function MoveHistoryPanel({
    * `number`: highlight `moves[index]` (replay scrubber).
    */
   highlightHalfMoveIndex?: number | null;
+  /** Jump review to the position after this half-move (`moves[index]`). */
+  onSelectHalfMove?: (halfMoveIndex: number) => void;
+  /** e.g. prev/next replay controls — same row as the Moves title (desktop sidebar + mobile sheet). */
+  headerNav?: ReactNode;
+  /** e.g. close button on mobile moves sheet. */
+  headerEnd?: ReactNode;
+  /** `sheet`: larger title/padding for the bottom sheet. */
+  headerVariant?: "sidebar" | "sheet";
 }) {
   const t = useTranslations("game");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -859,8 +929,38 @@ function MoveHistoryPanel({
   return (
     <div className={`flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden ${className ?? ""}`}>
       {!hideHeader && (
-        <div className="px-4 py-3 border-b border-gray-100 flex-shrink-0">
-          <h3 className="text-sm font-semibold text-gray-700">{t("moves")}</h3>
+        <div
+          className={cn(
+            "border-b border-gray-100 flex-shrink-0 flex items-center justify-between gap-2 min-h-[44px]",
+            headerVariant === "sheet" ? "px-5 py-3" : "px-4 py-3"
+          )}
+        >
+          <h3
+            className={cn(
+              "truncate min-w-0 flex-1",
+              headerVariant === "sheet"
+                ? "text-base font-bold text-gray-900"
+                : "text-sm font-semibold text-gray-700"
+            )}
+          >
+            {t("moves")}
+            {moves.length > 0 && (
+              <span
+                className={cn(
+                  "ml-1.5 font-normal text-gray-400 tabular-nums",
+                  headerVariant === "sheet" ? "text-sm" : "text-xs"
+                )}
+              >
+                ({moves.length})
+              </span>
+            )}
+          </h3>
+          {(headerNav || headerEnd) && (
+            <div className="flex shrink-0 items-center gap-2">
+              {headerNav}
+              {headerEnd}
+            </div>
+          )}
         </div>
       )}
       <div className="flex-1 overflow-y-auto min-h-0 p-2">
@@ -900,6 +1000,24 @@ function MoveHistoryPanel({
                 }
 
                 const rowIsActive = whiteIsLatest || blackIsLatest;
+                const interactive = !!onSelectHalfMove;
+                const whiteBtnClass = `inline-block w-full px-1.5 py-0.5 font-mono font-semibold rounded text-left transition-colors ${
+                  whiteIsLatest
+                    ? "bg-orange-200 text-orange-800"
+                    : interactive
+                    ? "text-gray-800 hover:bg-orange-50/80 cursor-pointer"
+                    : "text-gray-800"
+                }`;
+                const blackBtnClass = (hasMove: boolean) =>
+                  `inline-block w-full px-1.5 py-0.5 font-mono font-medium rounded text-left transition-colors ${
+                    blackIsLatest
+                      ? "bg-orange-200 text-orange-800"
+                      : !hasMove
+                      ? "text-gray-400"
+                      : interactive
+                      ? "text-gray-800 hover:bg-orange-50/80 cursor-pointer"
+                      : "text-gray-800"
+                  }`;
                 return (
                   <tr
                     key={pair.moveNumber}
@@ -910,28 +1028,50 @@ function MoveHistoryPanel({
                       {pair.moveNumber}.
                     </td>
                     <td className="px-1 py-0.5 w-1/2">
-                      <span
-                        className={`inline-block w-full px-1.5 py-0.5 font-mono font-semibold rounded ${
-                          whiteIsLatest
-                            ? "bg-orange-200 text-orange-800"
-                            : "text-gray-800"
-                        }`}
-                      >
-                        {pair.white}
-                      </span>
+                      {interactive ? (
+                        <button
+                          type="button"
+                          onClick={() => onSelectHalfMove(whiteMoveIndex)}
+                          className={whiteBtnClass}
+                          aria-label={t("replayGoToMove", { san: pair.white })}
+                        >
+                          {pair.white}
+                        </button>
+                      ) : (
+                        <span
+                          className={`inline-block w-full px-1.5 py-0.5 font-mono font-semibold rounded ${
+                            whiteIsLatest
+                              ? "bg-orange-200 text-orange-800"
+                              : "text-gray-800"
+                          }`}
+                        >
+                          {pair.white}
+                        </span>
+                      )}
                     </td>
                     <td className="px-1 py-0.5 w-1/2">
-                      <span
-                        className={`inline-block w-full px-1.5 py-0.5 font-mono font-medium rounded ${
-                          blackIsLatest
-                            ? "bg-orange-200 text-orange-800"
-                            : pair.black == null
-                            ? "text-gray-400"
-                            : "text-gray-800"
-                        }`}
-                      >
-                        {pair.black ?? ""}
-                      </span>
+                      {pair.black == null ? (
+                        <span className="inline-block w-full px-1.5 py-0.5 font-mono font-medium rounded text-gray-400" />
+                      ) : interactive ? (
+                        <button
+                          type="button"
+                          onClick={() => onSelectHalfMove(blackMoveIndex)}
+                          className={blackBtnClass(true)}
+                          aria-label={t("replayGoToMove", { san: pair.black })}
+                        >
+                          {pair.black}
+                        </button>
+                      ) : (
+                        <span
+                          className={`inline-block w-full px-1.5 py-0.5 font-mono font-medium rounded ${
+                            blackIsLatest
+                              ? "bg-orange-200 text-orange-800"
+                              : "text-gray-800"
+                          }`}
+                        >
+                          {pair.black}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -940,102 +1080,6 @@ function MoveHistoryPanel({
           </table>
         )}
         <div ref={bottomRef} />
-      </div>
-    </div>
-  );
-}
-
-function ReplayModeControls({
-  replayPlyIndex,
-  totalPlies,
-  onFirst,
-  onPrev,
-  onNext,
-  onLast,
-  onExit,
-}: {
-  replayPlyIndex: number;
-  totalPlies: number;
-  onFirst: () => void;
-  onPrev: () => void;
-  onNext: () => void;
-  onLast: () => void;
-  onExit: () => void;
-}) {
-  const t = useTranslations("game");
-  const label =
-    replayPlyIndex === 0
-      ? t("replayStart", { total: totalPlies })
-      : t("replayMoveOf", { current: replayPlyIndex, total: totalPlies });
-
-  const iconBtn =
-    "inline-flex items-center justify-center h-11 w-11 shrink-0 rounded-xl border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none";
-
-  return (
-    <div
-      className={
-        "border-t border-gray-200 bg-white/95 backdrop-blur-md px-3 py-3 sm:border sm:rounded-2xl sm:bg-white sm:backdrop-blur-none " +
-        "fixed bottom-0 left-0 right-0 z-40 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:static lg:z-auto lg:inset-auto lg:pb-3"
-      }
-      role="region"
-      aria-label={t("replayMode")}
-    >
-      <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="flex items-center justify-center gap-1 sm:justify-start">
-          <button
-            type="button"
-            className={iconBtn}
-            onClick={onFirst}
-            disabled={replayPlyIndex === 0}
-            aria-label={t("replayFirst")}
-            title={t("replayFirst")}
-          >
-            <ChevronsLeft className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
-            className={iconBtn}
-            onClick={onPrev}
-            disabled={replayPlyIndex === 0}
-            aria-label={t("replayPrev")}
-            title={t("replayPrev")}
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
-            className={iconBtn}
-            onClick={onNext}
-            disabled={replayPlyIndex >= totalPlies}
-            aria-label={t("replayNext")}
-            title={t("replayNext")}
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
-            className={iconBtn}
-            onClick={onLast}
-            disabled={replayPlyIndex >= totalPlies}
-            aria-label={t("replayLast")}
-            title={t("replayLast")}
-          >
-            <ChevronsRight className="w-5 h-5" />
-          </button>
-        </div>
-        <p className="text-center text-sm font-semibold text-gray-800 tabular-nums sm:flex-1 sm:min-w-0">
-          {label}
-        </p>
-        <div className="flex justify-center sm:justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onExit}
-            className="min-h-11 rounded-xl border-gray-300 px-4 text-gray-800"
-          >
-            {t("replayExit")}
-          </Button>
-        </div>
       </div>
     </div>
   );
@@ -1269,18 +1313,30 @@ export function GamePageClient({ game, currentUser }: Props) {
     to: string;
   } | null>(null);
 
-  const [replayMode, setReplayMode] = useState(false);
-  /** Number of plies applied: 0 = start position, `moves.length` = final. */
-  const [replayPlyIndex, setReplayPlyIndex] = useState(0);
+  /**
+   * Ply count after which the board shows live `fen` (0 = start, `moves.length` = current).
+   */
+  const [viewPlyIndex, setViewPlyIndex] = useState(0);
+  const prevMovesLenRef = useRef(0);
 
   const [pendingLastMove, setPendingLastMove] = useState<LastMoveSquares | null>(
     null
   );
 
   useEffect(() => {
-    setReplayMode(false);
-    setReplayPlyIndex(0);
+    prevMovesLenRef.current = 0;
+    setViewPlyIndex(0);
   }, [game.id]);
+
+  useEffect(() => {
+    const prev = prevMovesLenRef.current;
+    if (moves.length > prev) {
+      setViewPlyIndex(moves.length);
+    } else {
+      setViewPlyIndex((i) => Math.min(i, moves.length));
+    }
+    prevMovesLenRef.current = moves.length;
+  }, [moves.length]);
 
   const lastMoveFromHistory = useMemo(
     () => getLastMoveSquaresFromMoves(moves),
@@ -1300,23 +1356,25 @@ export function GamePageClient({ game, currentUser }: Props) {
 
   const lastMove = lastMoveFromHistory ?? pendingLastMove;
 
-  const replayFen = useMemo(() => {
-    if (replayPlyIndex <= 0) return INITIAL_FEN;
-    return moves[replayPlyIndex - 1]?.fen_after ?? INITIAL_FEN;
-  }, [replayPlyIndex, moves]);
+  const atLivePosition = viewPlyIndex === moves.length;
+
+  const historyFen = useMemo(() => {
+    if (viewPlyIndex <= 0) return INITIAL_FEN;
+    return moves[viewPlyIndex - 1]?.fen_after ?? INITIAL_FEN;
+  }, [viewPlyIndex, moves]);
 
   const displayFen =
-    replayMode && moves.length > 0 ? replayFen : fen;
+    moves.length > 0 && !atLivePosition ? historyFen : fen;
 
-  const replayLastMove = useMemo(() => {
-    if (!replayMode || replayPlyIndex === 0) return null;
+  const historyLastMove = useMemo(() => {
+    if (atLivePosition || viewPlyIndex === 0) return null;
     return getLastMoveSquaresFromMoves(
-      moves.slice(0, replayPlyIndex),
+      moves.slice(0, viewPlyIndex),
       INITIAL_FEN
     );
-  }, [replayMode, replayPlyIndex, moves]);
+  }, [atLivePosition, viewPlyIndex, moves]);
 
-  const effectiveLastMove = replayMode ? replayLastMove : lastMove;
+  const effectiveLastMove = atLivePosition ? lastMove : historyLastMove;
 
   const { inCheck, kingSquare } = useMemo(
     () => getCheckHighlight(displayFen),
@@ -1328,13 +1386,15 @@ export function GamePageClient({ game, currentUser }: Props) {
     [effectiveLastMove, inCheck, kingSquare]
   );
 
-  useEffect(() => {
-    if (!replayMode) return;
-    setReplayPlyIndex((i) => Math.min(i, moves.length));
-  }, [moves.length, replayMode]);
+  /** While browsing past moves, return to the live position (e.g. user tries to drag or clicks). */
+  const snapToLiveIfBrowsingHistory = useCallback(() => {
+    if (!atLivePosition) {
+      setViewPlyIndex(moves.length);
+    }
+  }, [atLivePosition, moves.length]);
 
   useEffect(() => {
-    if (!replayMode) return;
+    if (moves.length === 0) return;
     const onKeyDown = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
       if (
@@ -1347,15 +1407,15 @@ export function GamePageClient({ game, currentUser }: Props) {
       }
       if (e.key === "ArrowLeft") {
         e.preventDefault();
-        setReplayPlyIndex((i) => Math.max(0, i - 1));
+        setViewPlyIndex((i) => Math.max(0, i - 1));
       } else if (e.key === "ArrowRight") {
         e.preventDefault();
-        setReplayPlyIndex((i) => Math.min(moves.length, i + 1));
+        setViewPlyIndex((i) => Math.min(moves.length, i + 1));
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [replayMode, moves.length]);
+  }, [moves.length]);
 
   // Opponent moves (and sync’d batches): play once per new move, skip initial history load
   const movesSyncRef = useRef({ ready: false, prevLen: 0 });
@@ -1406,7 +1466,9 @@ export function GamePageClient({ game, currentUser }: Props) {
     game.status === "completed" || game.status === "abandoned";
 
   const showModal = isAlreadyOver || realtimeGameOver;
-  const showGameOverModal = showModal && !replayMode;
+  /** Hide while scrubbing so the board stays visible (same as former replay mode). */
+  const showGameOverModal =
+    showModal && viewPlyIndex === moves.length;
 
   const displayResult: string | null =
     realtimeGameResult ?? game.state.result ?? null;
@@ -1454,7 +1516,7 @@ export function GamePageClient({ game, currentUser }: Props) {
   const isMyTurn = fenTurn === game.my_color;
 
   const canSubmitMove =
-    isMyTurn && !submitting && !showModal && !replayMode;
+    isMyTurn && !submitting && !showModal && atLivePosition;
   const isActiveGame = gameStatus === "active";
 
   // If you're already on this game with the tab visible, don't leave an unread "your turn" in the bell.
@@ -1750,17 +1812,12 @@ export function GamePageClient({ game, currentUser }: Props) {
 
   const startReplay = useCallback(() => {
     if (moves.length === 0) return;
-    setReplayMode(true);
-    setReplayPlyIndex(moves.length);
+    setViewPlyIndex(0);
   }, [moves.length]);
-
-  const exitReplay = useCallback(() => {
-    setReplayMode(false);
-  }, []);
 
   // Build timer nodes for each player
   function buildTimer(playerColor: "white" | "black"): React.ReactNode {
-    if (!hasTimer || showModal || replayMode) return undefined;
+    if (!hasTimer || showModal || !atLivePosition) return undefined;
 
     const isThisPlayersTurn = fenTurn === playerColor && gameStatus === "active";
     const turnStartedAt = resolvedTimerState.turn_started_at ?? null;
@@ -1814,11 +1871,7 @@ export function GamePageClient({ game, currentUser }: Props) {
         )}
       </AnimatePresence>
 
-      <main
-        className={`flex-1 flex flex-col items-center px-4 py-6 gap-4${
-          replayMode ? " pb-28 lg:pb-6" : ""
-        }`}
-      >
+      <main className="flex-1 flex flex-col items-center px-4 py-6 gap-4">
         {/* Board + move history: side-by-side on desktop, stacked on mobile */}
         <div className="w-full max-w-[900px] flex flex-col lg:flex-row gap-4 items-start justify-center">
           {/* Board column */}
@@ -1836,18 +1889,15 @@ export function GamePageClient({ game, currentUser }: Props) {
                 <span className="text-sm font-medium">{t("games")}</span>
               </button>
 
-              {replayMode ? (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold bg-violet-50 text-violet-900 border border-violet-200">
-                  <span className="h-2 w-2 rounded-full bg-violet-500 shrink-0" />
-                  {t("replayMode")}
-                </div>
-              ) : (
+              {atLivePosition ? (
                 <StatusBanner
                   status={gameStatus as GamePageData["status"]}
                   currentTurn={fenTurn}
                   myColor={game.my_color}
                   submitting={submitting}
                 />
+              ) : (
+                <div className="flex-1 min-h-[36px]" aria-hidden />
               )}
 
               <div className="ml-auto flex items-center gap-1 flex-shrink-0">
@@ -1919,7 +1969,7 @@ export function GamePageClient({ game, currentUser }: Props) {
               color={opponentColor}
               isCurrentUser={false}
               isTheirTurn={
-                replayMode
+                !atLivePosition
                   ? visualTurn === opponentColor
                   : fenTurn === opponentColor && gameStatus === "active"
               }
@@ -1930,47 +1980,72 @@ export function GamePageClient({ game, currentUser }: Props) {
             {/* Chess board with shake animation wrapper */}
             <motion.div
               animate={boardControls}
-              className="w-full rounded-2xl overflow-hidden shadow-xl ring-1 ring-orange-100"
+              className="w-full rounded-2xl overflow-hidden shadow-xl ring-1 ring-orange-100 relative"
             >
-              <Chessboard
-                options={{
-                  position: displayFen,
-                  boardOrientation: game.my_color,
-                  pieces: customPieces,
-                  canDragPiece: ({ piece }) => {
-                    if (replayMode) return false;
-                    if (promotionAt) return false;
-                    const isWhitePiece = piece.pieceType.startsWith("w");
-                    return game.my_color === "white" ? isWhitePiece : !isWhitePiece;
-                  },
-                  onPieceDrop: ({ sourceSquare, targetSquare }) => {
-                    if (replayMode) return false;
-                    if (!targetSquare) return false;
-                    return handlePieceDrop(sourceSquare, targetSquare);
-                  },
-                  lightSquareStyle: boardStyles.lightSquareStyle,
-                  darkSquareStyle: boardStyles.darkSquareStyle,
-                  lightSquareNotationStyle: boardStyles.lightSquareNotationStyle,
-                  darkSquareNotationStyle: boardStyles.darkSquareNotationStyle,
-                  squareStyles,
-                  boardStyle: { borderRadius: "0", boxShadow: "none" },
-                }}
-              />
+              <div
+                className={cn(
+                  "transition-[filter] duration-500 ease-in-out motion-reduce:transition-none",
+                  atLivePosition
+                    ? "blur-0 grayscale-0 brightness-[1] contrast-[1]"
+                    : "grayscale brightness-[1.05] contrast-[1.08] blur-[1.25px] motion-reduce:blur-0 motion-reduce:grayscale-0 motion-reduce:saturate-[0.75]"
+                )}
+              >
+                <Chessboard
+                  options={{
+                    position: displayFen,
+                    boardOrientation: game.my_color,
+                    pieces: customPieces,
+                    allowDragging: true,
+                    canDragPiece: ({ piece }) => {
+                      if (!atLivePosition) return false;
+                      if (promotionAt) return false;
+                      const isWhitePiece = piece.pieceType.startsWith("w");
+                      return game.my_color === "white" ? isWhitePiece : !isWhitePiece;
+                    },
+                    onPieceDrop: ({ sourceSquare, targetSquare }) => {
+                      if (!atLivePosition) return false;
+                      if (!targetSquare) return false;
+                      return handlePieceDrop(sourceSquare, targetSquare);
+                    },
+                    onSquareClick: snapToLiveIfBrowsingHistory,
+                    onPieceClick: snapToLiveIfBrowsingHistory,
+                    onPieceDrag: snapToLiveIfBrowsingHistory,
+                    onSquareMouseDown: ({ piece }) => {
+                      if (!atLivePosition && piece) {
+                        setViewPlyIndex(moves.length);
+                      }
+                    },
+                    lightSquareStyle: boardStyles.lightSquareStyle,
+                    darkSquareStyle: boardStyles.darkSquareStyle,
+                    lightSquareNotationStyle: boardStyles.lightSquareNotationStyle,
+                    darkSquareNotationStyle: boardStyles.darkSquareNotationStyle,
+                    squareStyles,
+                    boardStyle: { borderRadius: "0", boxShadow: "none" },
+                  }}
+                />
+              </div>
+              <div
+                aria-hidden
+                className={cn(
+                  "pointer-events-none absolute inset-0 z-[2] rounded-2xl transition-opacity duration-500 ease-in-out motion-reduce:transition-none",
+                  atLivePosition ? "opacity-0" : "opacity-100"
+                )}
+              >
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-slate-950/[0.07] via-transparent to-slate-950/[0.06] shadow-[inset_0_0_0_1px_rgba(15,23,42,0.14)]" />
+                {/* TV static + scanlines (old CRT feel) */}
+                <div
+                  className="absolute inset-0 rounded-2xl opacity-[0.32] mix-blend-soft-light motion-reduce:opacity-[0.14]"
+                  style={{
+                    backgroundImage: `url("${REPLAY_TV_NOISE_DATA_URL}")`,
+                    backgroundSize: "96px 96px",
+                  }}
+                />
+                <div className="absolute inset-0 rounded-2xl opacity-[0.14] mix-blend-multiply motion-reduce:opacity-[0.06] [background:repeating-linear-gradient(to_bottom,transparent_0px,transparent_1px,rgba(0,0,0,0.22)_1px,rgba(0,0,0,0.22)_3px)]" />
+                {/* CRT-style vignette (lighter tube edges) */}
+                <div className="absolute inset-0 rounded-2xl [box-shadow:inset_0_0_56px_32px_rgba(0,0,0,0.22)] motion-reduce:[box-shadow:inset_0_0_48px_28px_rgba(0,0,0,0.14)]" />
+                <div className="absolute inset-0 rounded-2xl bg-[radial-gradient(ellipse_96%_90%_at_50%_50%,transparent_40%,rgba(0,0,0,0.2)_100%)] mix-blend-multiply opacity-90 motion-reduce:opacity-55" />
+              </div>
             </motion.div>
-
-            {replayMode && moves.length > 0 && (
-              <ReplayModeControls
-                replayPlyIndex={replayPlyIndex}
-                totalPlies={moves.length}
-                onFirst={() => setReplayPlyIndex(0)}
-                onPrev={() => setReplayPlyIndex((i) => Math.max(0, i - 1))}
-                onNext={() =>
-                  setReplayPlyIndex((i) => Math.min(moves.length, i + 1))
-                }
-                onLast={() => setReplayPlyIndex(moves.length)}
-                onExit={exitReplay}
-              />
-            )}
 
             {/* Current user strip — shown at bottom */}
             <PlayerStrip
@@ -1979,7 +2054,7 @@ export function GamePageClient({ game, currentUser }: Props) {
               color={game.my_color}
               isCurrentUser
               isTheirTurn={
-                replayMode ? visualTurn === game.my_color : isMyTurn
+                !atLivePosition ? visualTurn === game.my_color : isMyTurn
               }
               timer={buildTimer(game.my_color)}
               moveCount={moveCounts[game.my_color]}
@@ -1996,7 +2071,7 @@ export function GamePageClient({ game, currentUser }: Props) {
             />
 
             {/* Resign + Draw + Moves row */}
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {isActiveGame && !showModal && (
                 <>
                   <button
@@ -2028,19 +2103,36 @@ export function GamePageClient({ game, currentUser }: Props) {
                 </>
               )}
 
-              {/* Mobile: Moves button — opens bottom sheet */}
-              <button
-                onClick={() => setMovesSheetOpen(true)}
-                className="lg:hidden ml-auto flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 active:bg-gray-100 transition-colors"
-              >
-                <ChevronUp className="w-4 h-4 text-gray-400" />
-                {t("moves")}
+              {/* Mobile: prev/next + Moves — sheet stays readable (no heavy backdrop blur) */}
+              <div className="ml-auto flex items-center gap-1.5 lg:hidden">
                 {moves.length > 0 && (
-                  <span className="ml-0.5 text-gray-400 font-normal text-xs">
-                    ({moves.length})
-                  </span>
+                  <MoveHistoryNavButtons
+                    compact
+                    className="justify-end shrink-0"
+                    viewPlyIndex={viewPlyIndex}
+                    movesLength={moves.length}
+                    onPrev={() =>
+                      setViewPlyIndex((i) => Math.max(0, i - 1))
+                    }
+                    onNext={() =>
+                      setViewPlyIndex((i) => Math.min(moves.length, i + 1))
+                    }
+                  />
                 )}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setMovesSheetOpen(true)}
+                  className="flex shrink-0 items-center justify-center gap-1.5 px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                >
+                  <ChevronUp className="w-4 h-4 text-gray-400" />
+                  {t("moves")}
+                  {moves.length > 0 && (
+                    <span className="ml-0.5 text-gray-400 font-normal text-xs">
+                      ({moves.length})
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -2050,11 +2142,29 @@ export function GamePageClient({ game, currentUser }: Props) {
               moves={moves}
               className="flex-1 min-h-[200px]"
               highlightHalfMoveIndex={
-                replayMode
-                  ? replayPlyIndex === 0
+                !atLivePosition
+                  ? viewPlyIndex === 0
                     ? null
-                    : replayPlyIndex - 1
+                    : viewPlyIndex - 1
                   : undefined
+              }
+              onSelectHalfMove={(halfIdx) =>
+                setViewPlyIndex(halfIdx + 1)
+              }
+              headerNav={
+                moves.length > 0 ? (
+                  <MoveHistoryNavButtons
+                    className="justify-end"
+                    viewPlyIndex={viewPlyIndex}
+                    movesLength={moves.length}
+                    onPrev={() =>
+                      setViewPlyIndex((i) => Math.max(0, i - 1))
+                    }
+                    onNext={() =>
+                      setViewPlyIndex((i) => Math.min(moves.length, i + 1))
+                    }
+                  />
+                ) : null
               }
             />
           </div>
@@ -2137,7 +2247,7 @@ export function GamePageClient({ game, currentUser }: Props) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setMovesSheetOpen(false)}
-              className="lg:hidden fixed inset-0 z-30 bg-black/40 backdrop-blur-sm"
+              className="lg:hidden fixed inset-0 z-30 bg-black/20"
             />
             {/* Sheet */}
             <motion.div
@@ -2151,38 +2261,31 @@ export function GamePageClient({ game, currentUser }: Props) {
               <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
                 <div className="w-10 h-1 rounded-full bg-gray-300" />
               </div>
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 flex-shrink-0">
-                <h3 className="text-base font-bold text-gray-900">
-                  {t("moves")}
-                  {moves.length > 0 && (
-                    <span className="ml-2 text-sm font-normal text-gray-400">
-                      ({moves.length})
-                    </span>
-                  )}
-                </h3>
-                <button
-                  onClick={() => setMovesSheetOpen(false)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-                >
-                  <X className="w-4 h-4 text-gray-500" />
-                </button>
-              </div>
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto min-h-0">
-                <MoveHistoryPanel
-                  moves={moves}
-                  className="border-0 rounded-none h-full"
-                  hideHeader
-                  highlightHalfMoveIndex={
-                    replayMode
-                      ? replayPlyIndex === 0
-                        ? null
-                        : replayPlyIndex - 1
-                      : undefined
-                  }
-                />
-              </div>
+              <MoveHistoryPanel
+                moves={moves}
+                className="border-0 rounded-none flex flex-1 flex-col min-h-0"
+                headerVariant="sheet"
+                highlightHalfMoveIndex={
+                  !atLivePosition
+                    ? viewPlyIndex === 0
+                      ? null
+                      : viewPlyIndex - 1
+                    : undefined
+                }
+                onSelectHalfMove={(halfIdx) =>
+                  setViewPlyIndex(halfIdx + 1)
+                }
+                headerEnd={
+                  <button
+                    type="button"
+                    onClick={() => setMovesSheetOpen(false)}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+                    aria-label={t("closeMovesSheet")}
+                  >
+                    <X className="h-4 w-4 text-gray-500" />
+                  </button>
+                }
+              />
             </motion.div>
           </>
         )}

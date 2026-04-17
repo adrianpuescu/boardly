@@ -101,7 +101,9 @@
     "replayFirst": "First move",
     "replayPrev": "Previous move",
     "replayNext": "Next move",
-    "replayLast": "Last move"
+    "replayLast": "Last move",
+    "replayGoToMove": "View position after {san}",
+    "closeMovesSheet": "Close"
   },
   "gameOver": {
     "wonOnTime": "You won on time!",

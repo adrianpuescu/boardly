@@ -101,7 +101,9 @@
     "replayFirst": "Primera jugada",
     "replayPrev": "Jugada anterior",
     "replayNext": "Siguiente jugada",
-    "replayLast": "Última jugada"
+    "replayLast": "Última jugada",
+    "replayGoToMove": "Ver posición tras {san}",
+    "closeMovesSheet": "Cerrar"
   },
   "gameOver": {
     "wonOnTime": "¡Ganaste por tiempo!",

@@ -101,7 +101,9 @@
     "replayFirst": "Prima mutare",
     "replayPrev": "Mutarea anterioară",
     "replayNext": "Mutarea următoare",
-    "replayLast": "Ultima mutare"
+    "replayLast": "Ultima mutare",
+    "replayGoToMove": "Vezi poziția după {san}",
+    "closeMovesSheet": "Închide"
   },
   "gameOver": {
     "wonOnTime": "Ai câștigat la timp!",
