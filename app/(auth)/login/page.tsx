@@ -1,27 +1,22 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-/* ─── Animated chess knight SVG ──────────────────────────────────────────── */
 function KnightIllustration() {
   return (
-    <div className="relative flex items-center justify-center mb-2 select-none">
-      {/* Outer glow ring */}
-      <div className="absolute w-32 h-32 rounded-full bg-orange-200 opacity-30 blur-xl" />
+    <div className="relative flex select-none items-center justify-start">
+      <div className="absolute h-32 w-32 rounded-full bg-orange-200 opacity-30 blur-xl" />
 
-      {/* Floating piece */}
-      <div className="animate-float relative z-10">
-        {/* Knight piece circle */}
-        <div className="w-28 h-28 rounded-[2rem] bg-gradient-to-br from-orange-400 to-orange-600 shadow-2xl flex items-center justify-center ring-4 ring-orange-200">
-          {/* Chess knight SVG */}
+      <div className="relative z-10 animate-float">
+        <div className="flex h-28 w-28 items-center justify-center rounded-[2rem] bg-gradient-to-br from-orange-400 to-orange-600 shadow-2xl ring-4 ring-orange-200">
           <svg
             viewBox="0 0 45 45"
-            className="w-16 h-16 drop-shadow-md"
+            className="h-16 w-16 drop-shadow-md"
             aria-hidden="true"
           >
             <g fill="none" fillRule="evenodd">
@@ -50,20 +45,30 @@ function KnightIllustration() {
         </div>
       </div>
 
-      {/* Sparkles */}
-      <span className="absolute top-1 right-6 text-lg animate-bounce" style={{ animationDelay: "0.2s" }}>✨</span>
-      <span className="absolute bottom-2 left-6 text-sm animate-bounce" style={{ animationDelay: "0.6s" }}>⭐</span>
+      <span
+        className="absolute right-6 top-1 text-lg animate-bounce"
+        style={{ animationDelay: "0.2s" }}
+      >
+        ✨
+      </span>
+      <span
+        className="absolute bottom-2 left-6 text-sm animate-bounce"
+        style={{ animationDelay: "0.6s" }}
+      >
+        ⭐
+      </span>
     </div>
   );
 }
 
 function LoginForm() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const redirectTo = searchParams.get("redirectTo") ?? "/dashboard";
-  const t = useTranslations("login");
 
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [magicLinkLoading, setMagicLinkLoading] = useState(false);
+  const [guestLoading, setGuestLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,7 +81,7 @@ function LoginForm() {
 
   async function handleMagicLink(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
+    setMagicLinkLoading(true);
     setError(null);
 
     const { error } = await supabase.auth.signInWithOtp({
@@ -84,7 +89,7 @@ function LoginForm() {
       options: { emailRedirectTo: callbackUrl() },
     });
 
-    setLoading(false);
+    setMagicLinkLoading(false);
 
     if (error) {
       setError(error.message);
@@ -93,8 +98,25 @@ function LoginForm() {
     }
   }
 
+  async function handleAnonymousSignIn() {
+    setGuestLoading(true);
+    setError(null);
+
+    const { error } = await supabase.auth.signInAnonymously();
+
+    if (error) {
+      setError(error.message);
+      setGuestLoading(false);
+      return;
+    }
+
+    router.push("/lobby");
+    router.refresh();
+  }
+
   async function handleGoogle() {
     setError(null);
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: callbackUrl() },
@@ -107,134 +129,215 @@ function LoginForm() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden"
-      style={{ background: "radial-gradient(ellipse at 50% 40%, #FFF8F0 0%, #F5EFE6 100%)" }}
+      className="relative overflow-hidden"
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "radial-gradient(ellipse at 50% 40%, #FFF8F0 0%, #F5EFE6 100%)",
+      }}
     >
-      {/* Decorative blobs */}
-      <div className="absolute top-0 -left-20 w-72 h-72 bg-orange-200 rounded-full blur-3xl opacity-20 pointer-events-none" />
-      <div className="absolute bottom-0 -right-20 w-96 h-96 bg-amber-200 rounded-full blur-3xl opacity-20 pointer-events-none" />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.14]"
+        style={{
+          backgroundImage:
+            "linear-gradient(45deg, rgba(255,160,64,0.12) 25%, transparent 25%, transparent 75%, rgba(255,160,64,0.12) 75%), linear-gradient(45deg, rgba(255,160,64,0.12) 25%, transparent 25%, transparent 75%, rgba(255,160,64,0.12) 75%)",
+          backgroundSize: "48px 48px",
+          backgroundPosition: "0 0, 24px 24px",
+          animation: "chess-drift 24s linear infinite",
+        }}
+      />
+      <div className="pointer-events-none absolute -left-20 top-0 h-72 w-72 rounded-full bg-orange-200 opacity-20 blur-3xl" />
+      <div className="pointer-events-none absolute -right-20 bottom-0 h-96 w-96 rounded-full bg-amber-200 opacity-20 blur-3xl" />
 
-      <div className="w-full max-w-sm relative z-10 animate-fade-up">
-        {/* Logo & branding */}
-        <div className="text-center mb-8">
-          <KnightIllustration />
+      <main className="relative z-10 mx-auto w-full max-w-7xl px-10 py-10 md:px-16 lg:px-20 md:py-12">
+        <div className="relative mt-8 flex flex-col gap-12 md:mt-0 md:flex-row md:items-center md:gap-20">
+          <div className="flex items-center gap-4 md:absolute md:bottom-full md:left-0 md:mb-2">
+            <KnightIllustration />
+            <p
+              className="text-5xl font-black leading-none tracking-tight text-gray-900 sm:text-6xl"
+              style={{
+                fontFamily: "var(--font-nunito), sans-serif",
+                letterSpacing: "-1px",
+              }}
+            >
+              Boardly
+            </p>
+          </div>
 
-          <h1
-            className="text-6xl font-black text-gray-900 mt-5 leading-none tracking-tight"
-            style={{ fontFamily: "var(--font-nunito), sans-serif", letterSpacing: "-1px" }}
-          >
-            Boardly
-          </h1>
-          <p
-            className="mt-3 text-base text-gray-500 font-semibold"
-            style={{ fontFamily: "var(--font-nunito), sans-serif" }}
-          >
-            {t("tagline")}
-          </p>
-        </div>
+          <section className="relative flex flex-1 flex-col items-start justify-start space-y-8 text-left md:space-y-9">
+            <h1
+              className="max-w-xl text-3xl font-black leading-tight text-gray-800 sm:text-4xl"
+              style={{ fontFamily: "var(--font-nunito), sans-serif" }}
+            >
+              Play board games with friends, your way.
+            </h1>
 
-        {/* Card */}
-        <div className="bg-white rounded-3xl shadow-xl shadow-orange-100/60 p-7 space-y-5 border border-orange-50">
-          {sent ? (
-            <div className="text-center py-4 space-y-4">
-              <div className="text-6xl animate-bounce">📬</div>
-              <h2
-                className="text-2xl font-black text-gray-900"
+            <ul className="space-y-3 text-base font-semibold text-gray-700 sm:text-xl">
+              <li className="flex items-center gap-3">
+                <span aria-hidden="true" className="text-xl">
+                  ♟️
+                </span>
+                <span>Chess and more — new games coming soon</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <span aria-hidden="true" className="text-xl">
+                  ⚡
+                </span>
+                <span>Play multiple games simultaneously</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <span aria-hidden="true" className="text-xl">
+                  🌍
+                </span>
+                <span>Challenge anyone, anywhere, anytime</span>
+              </li>
+            </ul>
+
+            <div className="space-y-3">
+              <Button
+                type="button"
+                onClick={handleAnonymousSignIn}
+                disabled={guestLoading}
+                className="h-14 w-full max-w-md rounded-2xl bg-orange-500 px-5 text-base font-extrabold text-white shadow-lg shadow-orange-200 transition hover:-translate-y-0.5 hover:bg-orange-600 sm:text-lg"
                 style={{ fontFamily: "var(--font-nunito), sans-serif" }}
               >
-                {t("checkInbox")}
-              </h2>
-              <p className="text-gray-500 text-sm leading-relaxed">
-                {t("magicLinkSentTo")}{" "}
-                <span className="font-bold text-orange-500">{email}</span>.
-                <br />
-                {t("clickToJump")}
+                {guestLoading ? "Entering lobby..." : "Play now — no account needed"}
+              </Button>
+              <p className="text-sm text-gray-500">
+                Or sign in to save your progress and stats
               </p>
-              <button
-                onClick={() => { setSent(false); setEmail(""); }}
-                className="mt-2 text-sm text-orange-500 hover:text-orange-600 font-semibold underline underline-offset-4 transition-colors"
-              >
-                {t("useDifferentEmail")}
-              </button>
             </div>
-          ) : (
-            <>
-              <div className="space-y-1">
+          </section>
+
+          <section className="relative w-full md:max-w-lg">
+            <div className="pointer-events-none absolute -left-20 top-1/2 z-0 hidden w-56 -translate-y-1/2 -rotate-6 lg:block">
+              <div className="absolute -inset-3 rounded-3xl bg-gradient-to-br from-orange-200/45 via-amber-100/35 to-transparent blur-lg" />
+              <div className="relative overflow-hidden rounded-2xl border border-orange-100/80 bg-white shadow-xl shadow-orange-200/55">
+                <Image
+                  src="/images/chess-preview.png"
+                  alt="Boardly chess game preview"
+                  width={1600}
+                  height={900}
+                  className="h-auto w-full object-cover"
+                />
+              </div>
+            </div>
+            <div className="relative z-10 rounded-3xl border-2 border-orange-100 bg-white/95 p-6 shadow-xl shadow-orange-100/80 backdrop-blur-sm sm:p-8">
+            {sent ? (
+              <div className="space-y-4 text-center">
+                <div aria-hidden="true" className="text-5xl">
+                  📬
+                </div>
                 <h2
                   className="text-2xl font-black text-gray-900"
                   style={{ fontFamily: "var(--font-nunito), sans-serif" }}
                 >
-                  {t("letsGetYouIn")}
+                  Check your inbox
                 </h2>
-                <p className="text-sm text-gray-500">
-                  {t("noPasswordNeeded")}
+                <p className="text-sm leading-relaxed text-gray-600">
+                  We sent a magic link to{" "}
+                  <span className="font-semibold text-orange-600">{email}</span>. Open
+                  it to continue.
                 </p>
+                <button
+                  onClick={() => {
+                    setSent(false);
+                    setEmail("");
+                  }}
+                  className="text-sm font-semibold text-orange-600 underline underline-offset-4 transition-colors hover:text-orange-700"
+                >
+                  Use a different email
+                </button>
               </div>
-
-              <form onSubmit={handleMagicLink} className="space-y-3">
-                <Input
-                  type="email"
-                  placeholder={t("emailPlaceholder")}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="h-12 rounded-xl text-base border-gray-200 focus:border-orange-400 focus:ring-orange-400 bg-gray-50/50"
-                />
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full h-12 rounded-xl text-base font-bold bg-orange-500 hover:bg-orange-600 active:scale-95 text-white transition-all shadow-md shadow-orange-200 hover:shadow-lg hover:shadow-orange-200"
+            ) : (
+              <>
+                <h2
+                  className="text-3xl font-black text-gray-900"
                   style={{ fontFamily: "var(--font-nunito), sans-serif" }}
                 >
-                  {loading ? (
-                    <span className="flex items-center gap-2">
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" />
-                      </svg>
-                      {t("sending")}
-                    </span>
-                  ) : (
-                    t("sendMagicLink")
-                  )}
+                  Sign in
+                </h2>
+                <p className="mt-1 text-sm text-gray-500">No password needed.</p>
+
+                <form onSubmit={handleMagicLink} className="mt-5 space-y-3">
+                  <Input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="h-12 rounded-xl border-gray-200 bg-gray-50/50 text-base focus:border-orange-400 focus:ring-orange-400"
+                  />
+                  <Button
+                    type="submit"
+                    disabled={magicLinkLoading}
+                    className="h-12 w-full rounded-xl bg-gray-900 text-base font-extrabold text-white transition hover:bg-gray-800"
+                  >
+                    {magicLinkLoading ? "Sending..." : "Send magic link"}
+                  </Button>
+                </form>
+
+                <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-wide text-gray-400">
+                  <div className="h-px flex-1 bg-gray-200" />
+                  <span>or</span>
+                  <div className="h-px flex-1 bg-gray-200" />
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={handleGoogle}
+                  variant="outline"
+                  className="h-12 w-full rounded-xl border-2 border-gray-200 text-sm font-bold transition hover:bg-gray-50"
+                >
+                  Continue with Google
                 </Button>
-              </form>
 
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-100" />
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="px-3 bg-white text-gray-400 font-medium">{t("orContinueWith")}</span>
-                </div>
-              </div>
+                <button
+                  type="button"
+                  onClick={handleAnonymousSignIn}
+                  disabled={guestLoading}
+                  className="mt-4 text-sm font-medium text-gray-500 underline underline-offset-4 transition-colors hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {guestLoading ? "Continuing as guest..." : "Continue as guest"}
+                </button>
+              </>
+            )}
 
-              <Button
-                type="button"
-                onClick={handleGoogle}
-                variant="outline"
-                className="w-full h-12 rounded-xl text-sm font-semibold border-gray-200 hover:bg-gray-50 hover:border-gray-300 active:scale-95 transition-all flex items-center gap-3"
-              >
-                <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                </svg>
-                {t("google")}
-              </Button>
+            {error && <p className="mt-4 text-sm font-medium text-red-500">{error}</p>}
+            </div>
 
-              {error && (
-                <p className="text-sm text-red-500 text-center font-medium">{error}</p>
-              )}
-            </>
-          )}
+            <p className="mt-5 text-xs text-gray-400">
+              By continuing, you agree to Boardly&apos;s terms and privacy policy.
+            </p>
+          </section>
         </div>
+      </main>
+      <style jsx global>{`
+        @keyframes float {
+          0%,
+          100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-8px);
+          }
+        }
 
-        <p className="mt-6 text-center text-xs text-gray-400 font-medium">
-          {t("terms")}
-        </p>
-      </div>
+        @keyframes chess-drift {
+          0% {
+            transform: translate3d(0, 0, 0);
+          }
+          100% {
+            transform: translate3d(-48px, -48px, 0);
+          }
+        }
+
+        .animate-float {
+          animation: float 4.2s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 }
