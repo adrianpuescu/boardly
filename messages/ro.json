@@ -131,7 +131,10 @@
     "rematchDeclinedHint": "Adversarul a refuzat revanșa",
     "opponentLeftRematch": "Adversarul a părăsit jocul",
     "backToDashboard": "Înapoi la tablou de bord",
-    "createAccount": "Creează cont"
+    "createAccount": "Creează cont",
+    "guestPromptTitle": "Vrei să-ți salvezi progresul și să joci mai multe partide?",
+    "guestPromptCreateAccount": "Creează cont gratuit",
+    "guestPromptPlayAsGuest": "Joacă ca invitat"
   },
   "rematchOffer": {
     "opponentWantsRematch": "Adversarul vrea revanșă! Accepți?",
@@ -181,7 +184,10 @@
     "somethingWentWrong": "Ceva nu a mers bine. Încearcă din nou.",
     "networkError": "Eroare de rețea. Verifică conexiunea.",
     "min": "min",
-    "friendEmailPlaceholder": "prieten@exemplu.com"
+    "friendEmailPlaceholder": "prieten@exemplu.com",
+    "guestLimitTitle": "Ai folosit deja jocul gratuit de invitat!",
+    "guestLimitMessage": "Creează un cont gratuit ca să joci nelimitat și să-ți salvezi progresul.",
+    "guestLimitCreateAccount": "Creează cont"
   },
   "login": {
     "tagline": "Șah cu prietenii ♟  Regulile tale. Ritmul tău.",
@@ -262,7 +268,9 @@
     "joiningGame": "Te ducem la joc…",
     "tryAgain": "Încearcă din nou",
     "signInInstead": "Conectează-te cu un cont",
-    "guestInviteRequiresSignIn": "Conectează-te pentru a accepta invitația — jocul fără cont nu este disponibil pe acest server."
+    "guestInviteRequiresSignIn": "Conectează-te pentru a accepta invitația — jocul fără cont nu este disponibil pe acest server.",
+    "guestLimitMessage": "Ai folosit deja jocul gratuit de invitat! Creează un cont gratuit ca să joci nelimitat și să-ți salvezi progresul.",
+    "guestLimitCreateAccount": "Creează cont"
   },
   "common": {
     "loading": "Se încarcă...",

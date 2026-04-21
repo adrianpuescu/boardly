@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Copy, Check, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import { createClient } from "@/lib/supabase/client";
+import { guestReachedGameLimit, incrementGuestGamesCount } from "@/lib/guestLimits";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type TimeControlType = "unlimited" | "per_turn" | "per_game";
@@ -154,6 +157,26 @@ export default function LobbyPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdGame, setCreatedGame] = useState<{ gameId: string; inviteToken: string } | null>(null);
+  const [isAnonymousUser, setIsAnonymousUser] = useState(false);
+  const [guestLimitReached, setGuestLimitReached] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function detectAnonymousUser() {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      const anonymous = !!data.user?.is_anonymous;
+      if (cancelled) return;
+      setIsAnonymousUser(anonymous);
+      setGuestLimitReached(anonymous && guestReachedGameLimit());
+    }
+
+    void detectAnonymousUser();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Card label/description/unit derived from translations
   const cardMeta: Record<TimeControlType, { label: string; description: string; unit?: string }> = {
@@ -192,8 +215,16 @@ export default function LobbyPage() {
       }
 
       if (data.inviteToken) {
+        if (isAnonymousUser) {
+          incrementGuestGamesCount();
+          setGuestLimitReached(guestReachedGameLimit());
+        }
         setCreatedGame({ gameId: data.gameId, inviteToken: data.inviteToken });
       } else {
+        if (isAnonymousUser) {
+          incrementGuestGamesCount();
+          setGuestLimitReached(guestReachedGameLimit());
+        }
         router.push(`/game/${data.gameId}`);
       }
     } catch {
@@ -225,7 +256,21 @@ export default function LobbyPage() {
           )}
         </AnimatePresence>
 
-        {createdGame ? null : (
+        {createdGame ? null : guestLimitReached ? (
+          <div className="rounded-3xl border border-orange-100 bg-white p-6 shadow-md shadow-orange-100/60">
+            <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">
+              {t("guestLimitTitle")}
+            </h2>
+            <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+              {t("guestLimitMessage")}
+            </p>
+            <Link href="/login" className="mt-5 block">
+              <Button className="h-12 w-full rounded-xl bg-orange-500 text-base font-bold text-white hover:bg-orange-600">
+                {t("guestLimitCreateAccount")}
+              </Button>
+            </Link>
+          </div>
+        ) : (
           <>
         {/* Title */}
         <div className="mb-8">

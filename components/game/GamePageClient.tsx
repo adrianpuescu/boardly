@@ -47,6 +47,7 @@ import {
   type CapturedPieces,
 } from "@/lib/chess/capturedPieces";
 import { cn } from "@/lib/utils";
+import { getGuestGamesCount, GUEST_GAMES_LIMIT } from "@/lib/guestLimits";
 
 /** Tiled fractal noise for CRT-style static (SVG filter). */
 const REPLAY_TV_NOISE_DATA_URL =
@@ -425,6 +426,10 @@ function GameOverModal({
   canReviewGame,
   exitGameLabel,
   reviewGameLabel,
+  isGuest,
+  guestCanPlayMore,
+  onCreateAccount,
+  onPlayAsGuest,
 }: {
   result: GameResult | string | null;
   iWon: boolean;
@@ -441,6 +446,10 @@ function GameOverModal({
   /** When set (e.g. guests), replaces "Back to dashboard" button text. */
   exitGameLabel?: string;
   reviewGameLabel: string;
+  isGuest?: boolean;
+  guestCanPlayMore?: boolean;
+  onCreateAccount?: () => void;
+  onPlayAsGuest?: () => void;
 }) {
   const t = useTranslations("gameOver");
   const rematchDisabled =
@@ -525,7 +534,30 @@ function GameOverModal({
         )}
 
         <div className="flex flex-col gap-3">
-          {rematchWaiting ? (
+          {isGuest ? (
+            <>
+              <p className="text-sm text-gray-600 mb-1">
+                {t("guestPromptTitle")}
+              </p>
+              <Button
+                type="button"
+                onClick={onCreateAccount}
+                className="w-full h-12 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-md"
+              >
+                {t("guestPromptCreateAccount")}
+              </Button>
+              {guestCanPlayMore && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onPlayAsGuest}
+                  className="w-full rounded-xl border-gray-200 text-gray-700"
+                >
+                  {t("guestPromptPlayAsGuest")}
+                </Button>
+              )}
+            </>
+          ) : rematchWaiting ? (
             <div className="space-y-3">
               <p className="text-sm text-gray-600 flex items-center justify-center gap-2">
                 <svg
@@ -1178,6 +1210,7 @@ export function GamePageClient({ game, currentUser }: Props) {
   const boardControls = useAnimation();
 
   const [showGuestBanner, setShowGuestBanner] = useState(false);
+  const [guestGamesCount, setGuestGamesCount] = useState(0);
   useEffect(() => {
     if (!currentUser.isGuest) return;
     try {
@@ -1189,6 +1222,11 @@ export function GamePageClient({ game, currentUser }: Props) {
       setShowGuestBanner(true);
     }
   }, [currentUser.id, currentUser.isGuest]);
+
+  useEffect(() => {
+    if (!currentUser.isGuest) return;
+    setGuestGamesCount(getGuestGamesCount());
+  }, [currentUser.isGuest]);
 
   function dismissGuestBanner() {
     try {
@@ -1815,6 +1853,8 @@ export function GamePageClient({ game, currentUser }: Props) {
     setViewPlyIndex(0);
   }, [moves.length]);
 
+  const guestCanPlayMore = guestGamesCount < GUEST_GAMES_LIMIT;
+
   // Build timer nodes for each player
   function buildTimer(playerColor: "white" | "black"): React.ReactNode {
     if (!hasTimer || showModal || !atLivePosition) return undefined;
@@ -2189,6 +2229,10 @@ export function GamePageClient({ game, currentUser }: Props) {
             canReviewGame={moves.length > 0}
             onReviewGame={startReplay}
             reviewGameLabel={t("replayReview")}
+            isGuest={currentUser.isGuest}
+            guestCanPlayMore={guestCanPlayMore}
+            onCreateAccount={() => router.push("/login")}
+            onPlayAsGuest={() => router.push("/lobby")}
             onInviteToNewGame={
               () => {
                 const params = new URLSearchParams();

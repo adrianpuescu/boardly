@@ -70,25 +70,47 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ gameId: invite.game_id });
   }
 
-  // ── Check if the black slot is still open ─────────────────────────────────
-  const { data: blackPlayer } = await adminClient
+  // ── Determine accepter color as opposite of inviter ───────────────────────
+  const { data: inviterPlayer, error: inviterPlayerError } = await adminClient
+    .from("game_players")
+    .select("color")
+    .eq("game_id", invite.game_id)
+    .eq("user_id", invite.inviter_id)
+    .maybeSingle();
+
+  if (inviterPlayerError || !inviterPlayer?.color) {
+    console.error("failed to resolve inviter color:", inviterPlayerError);
+    return NextResponse.json(
+      { error: "Failed to determine player color" },
+      { status: 500 }
+    );
+  }
+
+  const accepterColor = inviterPlayer.color === "white" ? "black" : "white";
+
+  // ── Check if the target slot is still open ────────────────────────────────
+  const { data: slotPlayer } = await adminClient
     .from("game_players")
     .select("user_id")
     .eq("game_id", invite.game_id)
-    .eq("color", "black")
+    .eq("color", accepterColor)
     .maybeSingle();
 
-  if (blackPlayer) {
+  if (slotPlayer) {
     return NextResponse.json(
       { error: "This game is already full" },
       { status: 409 }
     );
   }
 
-  // ── Add user as black ──────────────────────────────────────────────────────
+  // ── Add user as opposite color of inviter ─────────────────────────────────
   const { error: addPlayerError } = await adminClient
     .from("game_players")
-    .insert({ game_id: invite.game_id, user_id: user.id, color: "black" });
+    .insert({
+      game_id: invite.game_id,
+      user_id: user.id,
+      color: accepterColor,
+    });
 
   if (addPlayerError) {
     console.error("game_players insert (accepter) error:", addPlayerError);

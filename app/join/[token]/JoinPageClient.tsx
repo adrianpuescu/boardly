@@ -6,6 +6,10 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import {
+  guestReachedGameLimit,
+  incrementGuestGamesCount,
+} from "@/lib/guestLimits";
 
 /** Avoid duplicate anonymous join flows in React Strict Mode (dev double mount). */
 const guestJoinStartedForToken = new Set<string>();
@@ -63,6 +67,34 @@ export default function JoinPageClient({
   const [guestJoining, setGuestJoining] = useState(!isLoggedIn);
   /** Supabase project has Anonymous Auth off — offer sign-in instead of guest play. */
   const [guestSignInOnly, setGuestSignInOnly] = useState(false);
+  const [isAnonymousUser, setIsAnonymousUser] = useState(false);
+  const [guestLimitReached, setGuestLimitReached] = useState(false);
+
+  const isGuestPath = !isLoggedIn || isAnonymousUser;
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setIsAnonymousUser(true);
+      setGuestLimitReached(guestReachedGameLimit());
+      return;
+    }
+
+    let cancelled = false;
+
+    async function detectAnonymousUser() {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      const anonymous = !!data.user?.is_anonymous;
+      if (cancelled) return;
+      setIsAnonymousUser(anonymous);
+      setGuestLimitReached(anonymous && guestReachedGameLimit());
+    }
+
+    void detectAnonymousUser();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn]);
 
   function formatTimeControl(tc: TimeControl): string {
     if (tc.type === "unlimited") return t("unlimitedTime");
@@ -72,6 +104,11 @@ export default function JoinPageClient({
   }
 
   const runGuestJoin = useCallback(async () => {
+    if (guestLimitReached) {
+      setGuestJoining(false);
+      return;
+    }
+
     setGuestJoining(true);
     setError(null);
     const supabase = createClient();
@@ -107,23 +144,27 @@ export default function JoinPageClient({
         return;
       }
 
+      incrementGuestGamesCount();
+      setGuestLimitReached(guestReachedGameLimit());
       router.replace(`/game/${data.gameId}`);
     } catch {
       setError(t("networkError"));
       setGuestJoining(false);
     }
-  }, [token, router, t]);
+  }, [guestLimitReached, token, router, t]);
 
   useEffect(() => {
-    if (isLoggedIn || guestSignInOnly) return;
+    if (isLoggedIn || guestSignInOnly || guestLimitReached) return;
     if (guestJoinStartedForToken.has(token)) return;
     guestJoinStartedForToken.add(token);
     void runGuestJoin().finally(() => {
       guestJoinStartedForToken.delete(token);
     });
-  }, [isLoggedIn, guestSignInOnly, token, runGuestJoin]);
+  }, [isLoggedIn, guestSignInOnly, guestLimitReached, token, runGuestJoin]);
 
   async function handleAccept() {
+    if (isAnonymousUser && guestLimitReached) return;
+
     setLoading(true);
     setError(null);
 
@@ -138,6 +179,10 @@ export default function JoinPageClient({
         return;
       }
 
+      if (isAnonymousUser) {
+        incrementGuestGamesCount();
+        setGuestLimitReached(guestReachedGameLimit());
+      }
       router.push(`/game/${data.gameId}`);
     } catch {
       setError(t("networkError"));
@@ -204,7 +249,18 @@ export default function JoinPageClient({
           </div>
 
           {/* CTA */}
-          {isLoggedIn ? (
+          {isGuestPath && guestLimitReached ? (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600 text-center leading-relaxed">
+                {t("guestLimitMessage")}
+              </p>
+              <Link href="/login" className="block">
+                <Button className="w-full h-12 rounded-xl text-base font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-200 transition-all">
+                  {t("guestLimitCreateAccount")}
+                </Button>
+              </Link>
+            </div>
+          ) : isLoggedIn ? (
             <div className="space-y-3">
               <Button
                 onClick={handleAccept}

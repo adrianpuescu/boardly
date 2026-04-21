@@ -131,7 +131,10 @@
     "rematchDeclinedHint": "El rival ha rechazado la revancha",
     "opponentLeftRematch": "El rival ha salido de la partida",
     "backToDashboard": "Volver al panel",
-    "createAccount": "Crear cuenta"
+    "createAccount": "Crear cuenta",
+    "guestPromptTitle": "¿Quieres guardar tu progreso y jugar más partidas?",
+    "guestPromptCreateAccount": "Crear cuenta gratis",
+    "guestPromptPlayAsGuest": "Seguir como invitado"
   },
   "rematchOffer": {
     "opponentWantsRematch": "¡El rival quiere la revancha! ¿Aceptas?",
@@ -181,7 +184,10 @@
     "somethingWentWrong": "Algo salió mal. Inténtalo de nuevo.",
     "networkError": "Error de red. Comprueba tu conexión.",
     "min": "min",
-    "friendEmailPlaceholder": "amigo@ejemplo.com"
+    "friendEmailPlaceholder": "amigo@ejemplo.com",
+    "guestLimitTitle": "¡Ya usaste tu partida gratis como invitado!",
+    "guestLimitMessage": "Crea una cuenta gratis para jugar partidas ilimitadas y guardar tu progreso.",
+    "guestLimitCreateAccount": "Crear cuenta"
   },
   "login": {
     "tagline": "Ajedrez con amigos ♟  Tus reglas. Tu ritmo.",
@@ -262,7 +268,9 @@
     "joiningGame": "Llevándote a la partida…",
     "tryAgain": "Reintentar",
     "signInInstead": "Iniciar sesión con una cuenta",
-    "guestInviteRequiresSignIn": "Inicia sesión para aceptar la invitación — jugar aquí sin cuenta no está disponible en este servidor."
+    "guestInviteRequiresSignIn": "Inicia sesión para aceptar la invitación — jugar aquí sin cuenta no está disponible en este servidor.",
+    "guestLimitMessage": "¡Ya usaste tu partida gratis como invitado! Crea una cuenta gratis para jugar partidas ilimitadas y guardar tu progreso.",
+    "guestLimitCreateAccount": "Crear cuenta"
   },
   "common": {
     "loading": "Cargando...",

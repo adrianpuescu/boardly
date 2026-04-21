@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isAnonymousAuthUser } from "@/lib/auth/isAnonymous";
 import JoinPageClient from "./JoinPageClient";
 
 interface Props {
@@ -80,9 +81,11 @@ export default async function JoinPage({ params }: Props) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const isAnonymousUser = isAnonymousAuthUser(user);
 
-  // If user is already a player in this game, send them straight there
-  if (user) {
+  // If an authenticated non-guest user is already a player, send them straight there.
+  // Guests should stay on /join/[token] (no server redirect) to avoid forced 307 hops.
+  if (user && !isAnonymousUser) {
     const { data: existingPlayer } = await adminClient
       .from("game_players")
       .select("user_id")
