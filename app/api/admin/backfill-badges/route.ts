@@ -143,7 +143,9 @@ export async function GET(request: NextRequest) {
     if (longestWinStreak >= 3) qualifiesFor.add("win_streak_3");
     if (longestWinStreak >= 5) qualifiesFor.add("win_streak_5");
 
-    const missingBadgeIds = [...qualifiesFor].filter((badgeId) => !earnedBadgeIds.has(badgeId));
+    const missingBadgeIds = Array.from(qualifiesFor).filter(
+      (badgeId) => !earnedBadgeIds.has(badgeId)
+    );
     if (missingBadgeIds.length === 0) continue;
 
     const { data: insertedRows, error: insertError } = await admin
