@@ -1,13 +1,21 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Pencil, X, Camera, ArrowLeft, Loader2, Lock } from "lucide-react";
+import { countries } from "countries-list";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { ProfileBadge, ProfileStats, RecentGame } from "@/lib/types";
 
 interface ProfileData {
@@ -15,6 +23,10 @@ interface ProfileData {
   username: string;
   avatar_url: string | null;
   created_at: string;
+  elo_rating: number;
+  country: string | null;
+  city: string | null;
+  continent: string | null;
 }
 
 interface Props {
@@ -34,6 +46,24 @@ type PopoverFriendStatus =
   | "declined_by_them";
 
 const USERNAME_RE = /^[a-zA-Z0-9._]+$/;
+const CONTINENT_NAMES: Record<string, string> = {
+  AF: "Africa",
+  AN: "Antarctica",
+  AS: "Asia",
+  EU: "Europe",
+  NA: "North America",
+  OC: "Oceania",
+  SA: "South America",
+};
+
+const COUNTRY_OPTIONS: Array<{ code: string; label: string; continent: string }> = Object
+  .entries(countries as Record<string, { name: string; continent: string }>)
+  .map(([code, data]) => ({
+    code,
+    label: data.name,
+    continent: CONTINENT_NAMES[data.continent] ?? data.continent,
+  }))
+  .sort((a, b) => a.label.localeCompare(b.label));
 
 function formatMemberSince(iso: string, locale: string) {
   return new Date(iso).toLocaleDateString(
@@ -221,7 +251,22 @@ export function ProfileClient({
     "none"
   );
   const [isFollowing, setIsFollowing] = useState(false);
+  const [country, setCountry] = useState(profile.country ?? "");
+  const [countrySelectOpen, setCountrySelectOpen] = useState(false);
+  const [countryQuery, setCountryQuery] = useState("");
+  const [city, setCity] = useState(profile.city ?? "");
+  const [locationSaving, setLocationSaving] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const earnedBadgesCount = badges.filter((badge) => badge.earned_at).length;
+  const filteredCountryOptions = useMemo(() => {
+    const query = countryQuery.trim().toLowerCase();
+    if (!query) return COUNTRY_OPTIONS;
+    return COUNTRY_OPTIONS.filter(
+      (option) =>
+        option.label.toLowerCase().includes(query) ||
+        option.code.toLowerCase().includes(query)
+    );
+  }, [countryQuery]);
 
   function validateUsername(value: string): string | null {
     if (value.length < 3) return t("usernameMin");
@@ -372,6 +417,35 @@ export function ProfileClient({
     return (game.friend_request_status ?? "none") as PopoverFriendStatus;
   }
 
+  async function saveLocation() {
+    const normalizedCountry = country.trim().toUpperCase();
+    const continent =
+      COUNTRY_OPTIONS.find((option) => option.code === normalizedCountry)?.continent ??
+      "";
+
+    setLocationSaving(true);
+    setLocationError(null);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          country: normalizedCountry,
+          city: city.trim(),
+          continent,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLocationError(data.error ?? t("failedToSave"));
+      }
+    } catch {
+      setLocationError(t("networkError"));
+    } finally {
+      setLocationSaving(false);
+    }
+  }
+
   return (
     <div
       className="min-h-screen px-4 py-8"
@@ -517,15 +591,21 @@ export function ProfileClient({
               <p className="text-xs text-gray-400 mt-0.5">
                 {t("memberSince")} {formatMemberSince(profile.created_at, locale)}
               </p>
-              {isOwnProfile ? (
-                <button
-                  type="button"
-                  onClick={() => router.push("/friends")}
-                  className="mt-3 inline-flex items-center rounded-xl border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 transition-colors hover:bg-orange-100"
-                >
-                  {t("viewFriends")}
-                </button>
-              ) : (
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <p className="inline-flex items-center rounded-full bg-orange-50 px-3 py-1 text-sm font-bold text-orange-700">
+                  {t("elo")}: {profile.elo_rating}
+                </p>
+                {isOwnProfile && (
+                  <button
+                    type="button"
+                    onClick={() => router.push("/friends")}
+                    className="inline-flex items-center rounded-xl border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 transition-colors hover:bg-orange-100"
+                  >
+                    {t("viewFriends")}
+                  </button>
+                )}
+              </div>
+              {!isOwnProfile && (
                 <div className="mt-3 flex items-center gap-2">
                   <Button
                     type="button"
@@ -566,6 +646,69 @@ export function ProfileClient({
             </div>
           </div>
         </motion.section>
+
+        {isOwnProfile && (
+          <motion.section
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: 0.03 }}
+            className="bg-white rounded-3xl p-6 shadow-md border border-orange-50"
+          >
+            <h2 className="text-base font-bold text-gray-800 mb-4">{t("location")}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Select
+                  open={countrySelectOpen}
+                  onOpenChange={(open) => {
+                    setCountrySelectOpen(open);
+                    if (!open) setCountryQuery("");
+                  }}
+                  value={country || "__none__"}
+                  onValueChange={(value) => setCountry(value === "__none__" ? "" : value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("selectCountry")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <div className="bg-white p-2 border-b border-orange-100">
+                      <input
+                        value={countryQuery}
+                        onChange={(e) => setCountryQuery(e.target.value)}
+                        placeholder={t("searchCountry")}
+                        className="w-full rounded-md border border-orange-200 bg-orange-50/40 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+                        onKeyDown={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <SelectItem value="__none__">{t("selectCountry")}</SelectItem>
+                    {filteredCountryOptions.map((option) => (
+                      <SelectItem key={option.code} value={option.code}>
+                        {option.label} ({option.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <input
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder={t("city")}
+                maxLength={80}
+                className="rounded-xl border border-orange-200 bg-orange-50/40 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+              />
+            </div>
+            {locationError ? (
+              <p className="mt-2 text-xs text-red-500">{locationError}</p>
+            ) : null}
+            <Button
+              type="button"
+              onClick={saveLocation}
+              disabled={locationSaving}
+              className="mt-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              {locationSaving ? t("saving") : t("saveLocation")}
+            </Button>
+          </motion.section>
+        )}
 
         {/* ── Stats grid ─────────────────────────────────────────────────── */}
         <motion.section

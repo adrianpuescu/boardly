@@ -602,6 +602,9 @@ export function Navbar({ currentUser }: Props) {
               {/* Email header */}
               <div className="px-4 py-2.5">
                 <p className="text-xs font-medium text-gray-400 truncate">{currentUser.email}</p>
+                <p className="mt-1 text-xs font-semibold text-orange-600">
+                  ELO: {currentUser.elo_rating ?? 1200}
+                </p>
               </div>
 
               <div className="h-px bg-gray-100 mx-2 my-1" />
@@ -627,6 +630,17 @@ export function Navbar({ currentUser }: Props) {
               >
                 <span className="text-gray-400">👥</span>
                 {t("friends")}
+              </button>
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setOpenProfile(false);
+                  router.push("/rankings");
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+              >
+                <span className="text-gray-400">🏆</span>
+                {t("rankings")}
               </button>
 
               {/* Language options */}

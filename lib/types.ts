@@ -51,6 +51,8 @@ export interface CurrentUser {
   email: string;
   username: string;
   avatar_url: string | null;
+  elo_rating?: number;
+  country?: string | null;
   /** Supabase anonymous auth — show guest UI and limit account-only routes. */
   isGuest?: boolean;
 }
@@ -68,6 +70,7 @@ export interface DashboardGame {
     id: string;
     username: string;
     avatar_url: string | null;
+    elo_rating?: number;
   } | null;
 }
 
@@ -76,6 +79,19 @@ export interface ProfileStats {
   wins: number;
   losses: number;
   draws: number;
+  win_rate: number;
+}
+
+export interface RankingPlayer {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+  elo_rating: number;
+  country: string | null;
+  city: string | null;
+  continent: string | null;
+  games_played: number;
+  wins: number;
   win_rate: number;
 }
 
@@ -97,6 +113,7 @@ export interface RecentGame {
     id: string;
     username: string;
     avatar_url: string | null;
+    elo_rating?: number;
   } | null;
   result: "win" | "loss" | "draw";
   time_control: { type: string; minutes?: number };

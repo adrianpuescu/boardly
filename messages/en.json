@@ -7,7 +7,8 @@
     "viewProfile": "View profile",
     "profile": "Profile",
     "language": "Language",
-    "friends": "Friends"
+    "friends": "Friends",
+    "rankings": "Rankings"
   },
   "notifications": {
     "title": "Notifications",
@@ -254,7 +255,32 @@
     "declinedByYou": "Declined by you",
     "declinedByThem": "Declined",
     "badges": "Badges",
-    "badgesProgress": "{earned} / {total} badges"
+    "badgesProgress": "{earned} / {total} badges",
+    "elo": "ELO",
+    "location": "Location",
+    "country": "Country (ISO code)",
+    "selectCountry": "Select country",
+    "searchCountry": "Search country...",
+    "city": "City",
+    "continent": "Continent",
+    "saveLocation": "Save location",
+    "saving": "Saving..."
+  },
+  "rankings": {
+    "title": "Rankings",
+    "subtitle": "Top players by ELO.",
+    "back": "Back",
+    "global": "Global",
+    "friends": "Friends",
+    "country": "Country",
+    "loading": "Loading rankings...",
+    "empty": "No players found for this category.",
+    "rank": "Rank",
+    "player": "Player",
+    "elo": "ELO",
+    "winRate": "Win rate",
+    "gamesPlayed": "Games played",
+    "you": "You"
   },
   "friends": {
     "title": "Friends",

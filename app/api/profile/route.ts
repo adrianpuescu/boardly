@@ -15,10 +15,27 @@ const patchSchema = z
       )
       .optional(),
     avatar_url: z.string().url("Invalid avatar URL").optional(),
+    country: z
+      .string()
+      .trim()
+      .transform((value) => value.toUpperCase())
+      .pipe(z.string().regex(/^[A-Z]{2}$/, "Country must be an ISO alpha-2 code"))
+      .optional()
+      .or(z.literal("")),
+    city: z.string().trim().max(80, "City is too long").optional().or(z.literal("")),
+    continent: z.string().trim().max(80, "Continent is too long").optional().or(z.literal("")),
   })
-  .refine((d) => d.username !== undefined || d.avatar_url !== undefined, {
+  .refine(
+    (d) =>
+      d.username !== undefined ||
+      d.avatar_url !== undefined ||
+      d.country !== undefined ||
+      d.city !== undefined ||
+      d.continent !== undefined,
+    {
     message: "At least one field must be provided",
-  });
+    }
+  );
 
 export async function PATCH(request: NextRequest) {
   const supabase = createClient();
@@ -45,7 +62,7 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
-  const { username, avatar_url } = parsed.data;
+  const { username, avatar_url, country, city, continent } = parsed.data;
   const admin = createAdminClient();
 
   if (username !== undefined) {
@@ -65,9 +82,12 @@ export async function PATCH(request: NextRequest) {
     }
   }
 
-  const updates: Record<string, string> = {};
+  const updates: Record<string, string | null> = {};
   if (username !== undefined) updates.username = username;
   if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+  if (country !== undefined) updates.country = country === "" ? null : country;
+  if (city !== undefined) updates.city = city === "" ? null : city;
+  if (continent !== undefined) updates.continent = continent === "" ? null : continent;
 
   const { error } = await admin
     .from("users")

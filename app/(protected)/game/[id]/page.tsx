@@ -42,7 +42,8 @@ export default async function GamePage({ params }: Props) {
         users (
           id,
           username,
-          avatar_url
+          avatar_url,
+          elo_rating
         )
       )
     `
@@ -56,7 +57,7 @@ export default async function GamePage({ params }: Props) {
   const players = (game.game_players ?? []) as unknown as Array<{
     user_id: string;
     color: string;
-    users: { id: string; username: string; avatar_url: string | null } | null;
+    users: { id: string; username: string; avatar_url: string | null; elo_rating?: number } | null;
   }>;
 
   // Verify current user is actually in this game
@@ -75,7 +76,8 @@ export default async function GamePage({ params }: Props) {
         users (
           id,
           username,
-          avatar_url
+          avatar_url,
+          elo_rating
         )
       `
       )
@@ -101,7 +103,7 @@ export default async function GamePage({ params }: Props) {
   if (opponentRow && !opponentProfile) {
     const { data: opponentUser } = await admin
       .from("users")
-      .select("id, username, avatar_url")
+      .select("id, username, avatar_url, elo_rating")
       .eq("id", opponentRow.user_id)
       .maybeSingle();
 
@@ -110,6 +112,7 @@ export default async function GamePage({ params }: Props) {
           id: opponentUser.id as string,
           username: opponentUser.username as string,
           avatar_url: (opponentUser.avatar_url as string | null) ?? null,
+          elo_rating: (opponentUser.elo_rating as number | undefined) ?? 1200,
         }
       : {
           id: opponentRow.user_id,
@@ -145,6 +148,7 @@ export default async function GamePage({ params }: Props) {
       (user.user_metadata?.avatar_url as string | null) ??
       (user.user_metadata?.picture as string | null) ??
       null,
+    elo_rating: (myProfile?.elo_rating as number | undefined) ?? 1200,
     isGuest,
   };
 

@@ -204,9 +204,14 @@ export function GameCard({ game }: Props) {
             </div>
           )}
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-800 truncate">
-              {opponentName}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-semibold text-gray-800 truncate">{opponentName}</p>
+              {typeof game.opponent?.elo_rating === "number" && (
+                <span className="rounded-full bg-orange-50 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700">
+                  {game.opponent.elo_rating}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-gray-400">{t("opponent")}</p>
           </div>
         </div>

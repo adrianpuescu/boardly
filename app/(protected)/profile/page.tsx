@@ -29,7 +29,7 @@ export default async function ProfilePage() {
   // Fetch public profile
   const { data: profile } = await admin
     .from("users")
-    .select("id, username, avatar_url, created_at")
+    .select("id, username, avatar_url, created_at, elo_rating, country, city, continent")
     .eq("id", user.id)
     .single();
 
@@ -213,13 +213,24 @@ export default async function ProfilePage() {
       (user.user_metadata?.avatar_url as string | null) ??
       (user.user_metadata?.picture as string | null) ??
       null,
+    elo_rating: (profile.elo_rating as number | undefined) ?? 1200,
+    country: (profile.country as string | null | undefined) ?? null,
   };
 
   return (
     <>
       <Navbar currentUser={currentUser} />
       <ProfileClient
-        profile={profile as { id: string; username: string; avatar_url: string | null; created_at: string }}
+        profile={profile as {
+          id: string;
+          username: string;
+          avatar_url: string | null;
+          created_at: string;
+          elo_rating: number;
+          country: string | null;
+          city: string | null;
+          continent: string | null;
+        }}
         stats={stats}
         recentGames={recentGames}
         badges={badges}

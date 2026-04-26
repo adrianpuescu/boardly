@@ -23,7 +23,7 @@ export default async function DashboardPage() {
   // Fetch the current user's public profile (has the uploaded avatar_url)
   const { data: myProfile } = await admin
     .from("users")
-    .select("username, avatar_url")
+    .select("username, avatar_url, elo_rating, country")
     .eq("id", user.id)
     .single();
 
@@ -63,7 +63,8 @@ export default async function DashboardPage() {
           users (
             id,
             username,
-            avatar_url
+            avatar_url,
+            elo_rating
           )
         )
       `
@@ -78,7 +79,7 @@ export default async function DashboardPage() {
       const players = (g.game_players ?? []) as unknown as Array<{
         user_id: string;
         color: string;
-        users: { id: string; username: string; avatar_url: string | null } | null;
+        users: { id: string; username: string; avatar_url: string | null; elo_rating?: number } | null;
       }>;
 
       const opponentRow = players.find((p) => p.user_id !== user.id);
@@ -106,6 +107,8 @@ export default async function DashboardPage() {
       (user.user_metadata?.avatar_url as string | null) ??
       (user.user_metadata?.picture as string | null) ??
       null,
+    elo_rating: (myProfile?.elo_rating as number | undefined) ?? 1200,
+    country: (myProfile?.country as string | null | undefined) ?? null,
   };
 
   return <DashboardClient games={games} currentUser={currentUser} />;

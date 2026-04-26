@@ -5,6 +5,7 @@ import type { Square, PieceSymbol } from "chess.js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkAndAwardBadges } from "@/lib/badges/checkBadges";
+import { calculateElo, getKFactor } from "@/lib/elo";
 
 const INITIAL_FEN =
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -14,6 +15,90 @@ const bodySchema = z.object({
   to: z.string().min(2).max(2),
   promotion: z.string().length(1).optional(),
 });
+
+async function updateEloAfterCompletedGame(params: {
+  adminClient: ReturnType<typeof createAdminClient>;
+  gameId: string;
+  winnerId: string;
+  loserId: string;
+}) {
+  const { adminClient, gameId, winnerId, loserId } = params;
+  const participantIds = [winnerId, loserId];
+
+  const { data: users, error: usersError } = await adminClient
+    .from("users")
+    .select("id, elo_rating")
+    .in("id", participantIds);
+
+  if (usersError || !users || users.length < 2) {
+    throw new Error(usersError?.message ?? "Could not load users for ELO update");
+  }
+
+  const winner = users.find((row) => row.id === winnerId);
+  const loser = users.find((row) => row.id === loserId);
+  if (!winner || !loser) {
+    throw new Error("Missing winner/loser profile for ELO update");
+  }
+
+  const [{ count: winnerGames }, { count: loserGames }] = await Promise.all([
+    adminClient
+      .from("elo_history")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", winnerId),
+    adminClient
+      .from("elo_history")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", loserId),
+  ]);
+
+  const winnerK = getKFactor(winnerGames ?? 0);
+  const loserK = getKFactor(loserGames ?? 0);
+  const effectiveK = Math.max(winnerK, loserK);
+
+  const { newWinnerElo, newLoserElo } = calculateElo(
+    winner.elo_rating ?? 1200,
+    loser.elo_rating ?? 1200,
+    effectiveK
+  );
+
+  const winnerChange = newWinnerElo - (winner.elo_rating ?? 1200);
+  const loserChange = newLoserElo - (loser.elo_rating ?? 1200);
+
+  const { error: updateUsersError } = await adminClient
+    .from("users")
+    .upsert(
+      [
+        { id: winnerId, elo_rating: newWinnerElo },
+        { id: loserId, elo_rating: newLoserElo },
+      ],
+      { onConflict: "id" }
+    );
+
+  if (updateUsersError) {
+    throw new Error(updateUsersError.message);
+  }
+
+  const { error: historyError } = await adminClient.from("elo_history").insert([
+    {
+      user_id: winnerId,
+      game_id: gameId,
+      elo_before: winner.elo_rating ?? 1200,
+      elo_after: newWinnerElo,
+      change: winnerChange,
+    },
+    {
+      user_id: loserId,
+      game_id: gameId,
+      elo_before: loser.elo_rating ?? 1200,
+      elo_after: newLoserElo,
+      change: loserChange,
+    },
+  ]);
+
+  if (historyError) {
+    throw new Error(historyError.message);
+  }
+}
 
 // ── POST /api/moves/[id] ────────────────────────────────────────────────────
 export async function POST(
@@ -286,6 +371,20 @@ export async function POST(
   }
 
   if (isOver && winnerId) {
+    const loser = players.find((p) => p.user_id !== winnerId);
+    if (loser?.user_id) {
+      try {
+        await updateEloAfterCompletedGame({
+          adminClient,
+          gameId,
+          winnerId,
+          loserId: loser.user_id,
+        });
+      } catch (error) {
+        console.error("[moves POST] ELO update failed:", error);
+      }
+    }
+
     try {
       await checkAndAwardBadges(winnerId, "game_completed");
     } catch (error) {

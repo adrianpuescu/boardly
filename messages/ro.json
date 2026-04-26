@@ -7,7 +7,8 @@
     "viewProfile": "Vezi profilul",
     "profile": "Profil",
     "language": "Limbă",
-    "friends": "Prieteni"
+    "friends": "Prieteni",
+    "rankings": "Clasament"
   },
   "notifications": {
     "title": "Notificări",
@@ -254,7 +255,32 @@
     "declinedByYou": "Refuzată de tine",
     "declinedByThem": "Refuzată",
     "badges": "Insigne",
-    "badgesProgress": "{earned} / {total} insigne"
+    "badgesProgress": "{earned} / {total} insigne",
+    "elo": "ELO",
+    "location": "Locație",
+    "country": "Țară (cod ISO)",
+    "selectCountry": "Selectează țara",
+    "searchCountry": "Caută țara...",
+    "city": "Oraș",
+    "continent": "Continent",
+    "saveLocation": "Salvează locația",
+    "saving": "Se salvează..."
+  },
+  "rankings": {
+    "title": "Clasament",
+    "subtitle": "Top jucători după ELO.",
+    "back": "Înapoi",
+    "global": "Global",
+    "friends": "Prieteni",
+    "country": "Țară",
+    "loading": "Se încarcă clasamentul...",
+    "empty": "Nu s-au găsit jucători pentru această categorie.",
+    "rank": "Loc",
+    "player": "Jucător",
+    "elo": "ELO",
+    "winRate": "Rată victorii",
+    "gamesPlayed": "Jocuri jucate",
+    "you": "Tu"
   },
   "friends": {
     "title": "Prieteni",

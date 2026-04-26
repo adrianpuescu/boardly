@@ -7,7 +7,8 @@
     "viewProfile": "Ver perfil",
     "profile": "Perfil",
     "language": "Idioma",
-    "friends": "Amigos"
+    "friends": "Amigos",
+    "rankings": "Clasificación"
   },
   "notifications": {
     "title": "Notificaciones",
@@ -254,7 +255,32 @@
     "declinedByYou": "Rechazada por ti",
     "declinedByThem": "Rechazada",
     "badges": "Insignias",
-    "badgesProgress": "{earned} / {total} insignias"
+    "badgesProgress": "{earned} / {total} insignias",
+    "elo": "ELO",
+    "location": "Ubicación",
+    "country": "País (código ISO)",
+    "selectCountry": "Selecciona país",
+    "searchCountry": "Buscar país...",
+    "city": "Ciudad",
+    "continent": "Continente",
+    "saveLocation": "Guardar ubicación",
+    "saving": "Guardando..."
+  },
+  "rankings": {
+    "title": "Clasificación",
+    "subtitle": "Mejores jugadores por ELO.",
+    "back": "Atrás",
+    "global": "Global",
+    "friends": "Amigos",
+    "country": "País",
+    "loading": "Cargando clasificación...",
+    "empty": "No hay jugadores en esta categoría.",
+    "rank": "Puesto",
+    "player": "Jugador",
+    "elo": "ELO",
+    "winRate": "Victorias",
+    "gamesPlayed": "Partidas jugadas",
+    "you": "Tú"
   },
   "friends": {
     "title": "Amigos",
