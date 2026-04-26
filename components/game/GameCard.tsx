@@ -120,7 +120,7 @@ export function GameCard({ game }: Props) {
       whileHover={{ scale: 1.025, y: -2 }}
       whileTap={{ scale: 0.98 }}
       onClick={() => router.push(`/game/${game.id}`)}
-      className="bg-white rounded-3xl shadow-md hover:shadow-xl transition-shadow cursor-pointer overflow-hidden border border-orange-50"
+      className="h-full bg-white rounded-3xl shadow-md hover:shadow-xl transition-shadow cursor-pointer overflow-hidden border border-orange-50 flex flex-col"
     >
       {/* Mini board preview */}
       <div className="relative flex items-center justify-center overflow-hidden select-none"
@@ -157,7 +157,7 @@ export function GameCard({ game }: Props) {
       </div>
 
       {/* Card body */}
-      <div className="px-4 pt-4 pb-2.5 space-y-3">
+      <div className="px-4 pt-4 pb-2.5 flex-1 flex flex-col gap-3">
         {/* Status badge */}
         {isMyTurn ? (
           <div className="flex items-center gap-2">
@@ -211,8 +211,19 @@ export function GameCard({ game }: Props) {
           </div>
         </div>
 
+        <div className="min-h-[20px]">
+          {game.name ? (
+            <p className="min-w-0 flex items-center gap-1 text-xs italic text-gray-500 truncate">
+              <span aria-hidden>🏷️</span>
+              <span className="truncate">
+                {game.name.length > 30 ? `${game.name.slice(0, 30)}...` : game.name}
+              </span>
+            </p>
+          ) : null}
+        </div>
+
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-gray-50 pt-3">
+        <div className="mt-auto flex items-center justify-between border-t border-gray-50 pt-3">
           <span className="text-xs text-gray-400">{timeLabel}</span>
           <span className="text-xs text-gray-400">{ago}</span>
         </div>

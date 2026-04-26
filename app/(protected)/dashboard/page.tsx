@@ -51,6 +51,7 @@ export default async function DashboardPage() {
       .select(
         `
         id,
+        name,
         status,
         game_type,
         time_control,
@@ -84,6 +85,7 @@ export default async function DashboardPage() {
 
       return {
         id: g.id,
+        name: (g.name as string | null) ?? null,
         status: g.status as "waiting" | "active",
         game_type: g.game_type as string,
         time_control: g.time_control as { type: string },

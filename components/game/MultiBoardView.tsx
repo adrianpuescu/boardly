@@ -237,6 +237,12 @@ function BoardItem({ game }: BoardItemProps) {
         </span>
       </div>
 
+      {game.name ? (
+        <div className="px-3 py-2 border-b border-gray-50">
+          <p className="text-xs text-gray-600 truncate">{game.name}</p>
+        </div>
+      ) : null}
+
       {/* Board — interactive when it's my turn, view-only otherwise */}
       <motion.div
         animate={boardControls}

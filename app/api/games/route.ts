@@ -15,6 +15,13 @@ const bodySchema = z.object({
     v === "" ? undefined : v
   ),
   opponentId: z.string().uuid().optional(),
+  name: z
+    .string()
+    .trim()
+    .max(50)
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => (v === "" ? undefined : v)),
   timeControl: timeControlSchema,
 });
 
@@ -50,7 +57,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { opponentEmail, opponentId, timeControl } = parsed.data;
+  const { opponentEmail, opponentId, name, timeControl } = parsed.data;
 
   // ── Insert game ────────────────────────────────────────────────────────────
   const { data: game, error: gameError } = await adminClient
@@ -60,6 +67,7 @@ export async function POST(request: NextRequest) {
       status: "waiting",
       state: { fen: INITIAL_FEN, turn: "white" },
       time_control: timeControl,
+      name: name ?? null,
       created_by: user.id,
     })
     .select("id")
@@ -227,7 +235,7 @@ export async function GET() {
     .from("games")
     .select(
       `
-      id, status, game_type, time_control, state, created_at,
+      id, name, status, game_type, time_control, state, created_at,
       game_players (user_id, color)
     `
     )

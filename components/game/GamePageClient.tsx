@@ -2016,6 +2016,14 @@ export function GamePageClient({ game, currentUser }: Props) {
               timer={buildTimer(opponentColor)}
               moveCount={moveCounts[opponentColor]}
             />
+            {game.name ? (
+              <p className="px-1 min-w-0 flex items-center gap-1 text-xs italic text-gray-500 truncate">
+                <span aria-hidden>🏷️</span>
+                <span className="truncate">
+                  {game.name.length > 30 ? `${game.name.slice(0, 30)}...` : game.name}
+                </span>
+              </p>
+            ) : null}
 
             {/* Chess board with shake animation wrapper */}
             <motion.div

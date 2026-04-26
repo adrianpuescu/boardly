@@ -142,6 +142,7 @@ export default function LobbyPage() {
   const opponentNameFromQuery = searchParams.get("opponentName") ?? "";
 
   const [opponentEmail, setOpponentEmail] = useState("");
+  const [gameName, setGameName] = useState("");
   const [selectedOpponentId, setSelectedOpponentId] = useState(
     () => opponentIdFromQuery
   );
@@ -201,6 +202,7 @@ export default function LobbyPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          name: gameName.trim() || undefined,
           opponentEmail: opponentEmail.trim() || undefined,
           opponentId: selectedOpponentId || undefined,
           timeControl: getTimeControl(),
@@ -281,6 +283,27 @@ export default function LobbyPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* ── Game name ──────────────────────────────────────── */}
+          <section className="bg-white rounded-3xl p-6 shadow-md border border-orange-50 space-y-3">
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium text-gray-700">
+                {t("gameName")}{" "}
+                <span className="text-gray-400 font-normal">{t("optional")}</span>
+              </span>
+              <Input
+                type="text"
+                placeholder={t("gameNamePlaceholder")}
+                maxLength={50}
+                value={gameName}
+                onChange={(e) => setGameName(e.target.value)}
+                className="h-11 rounded-xl border-gray-200 focus:border-orange-400 focus:ring-orange-400"
+              />
+              <p className="text-xs text-gray-400 text-right tabular-nums">
+                {t("gameNameCount", { current: gameName.length, max: 50 })}
+              </p>
+            </label>
+          </section>
+
           {/* ── Opponent ───────────────────────────────────────── */}
           <section className="bg-white rounded-3xl p-6 shadow-md border border-orange-50 space-y-3">
             <h2 className="text-base font-bold text-gray-800">{t("opponent")}</h2>

@@ -57,6 +57,7 @@ export interface CurrentUser {
 
 export interface DashboardGame {
   id: string;
+  name?: string | null;
   status: "waiting" | "active";
   game_type: string;
   time_control: { type: string };
@@ -92,6 +93,7 @@ export interface RecentGame {
 
 export interface GamePageData {
   id: string;
+  name?: string | null;
   status: "waiting" | "active" | "completed" | "abandoned";
   game_type: string;
   state: {
