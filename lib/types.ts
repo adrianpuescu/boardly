@@ -93,6 +93,10 @@ export interface RankingPlayer {
   games_played: number;
   wins: number;
   win_rate: number;
+  current_win_streak?: number;
+  games_last_30_days?: number;
+  weekly_elo_gain?: number;
+  monthly_elo_gain?: number;
 }
 
 export interface Badge {

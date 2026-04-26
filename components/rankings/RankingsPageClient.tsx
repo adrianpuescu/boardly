@@ -6,7 +6,15 @@ import { useTranslations } from "next-intl";
 import { ArrowLeft } from "lucide-react";
 import type { RankingPlayer } from "@/lib/types";
 
-type RankingTab = "global" | "friends" | "country";
+type RankingTab =
+  | "global"
+  | "friends"
+  | "country"
+  | "continent"
+  | "win_streak"
+  | "most_active"
+  | "weekly"
+  | "monthly";
 
 interface Props {
   currentUserId: string;
@@ -64,6 +72,39 @@ export function RankingsPageClient({ currentUserId }: Props) {
     [players]
   );
 
+  const metricConfig = useMemo(() => {
+    if (activeTab === "win_streak") {
+      return {
+        label: t("streak"),
+        getValue: (player: RankingPlayer) => String(player.current_win_streak ?? 0),
+      };
+    }
+    if (activeTab === "most_active") {
+      return {
+        label: t("gamesLast30Days"),
+        getValue: (player: RankingPlayer) => String(player.games_last_30_days ?? 0),
+      };
+    }
+    if (activeTab === "weekly") {
+      return {
+        label: t("weeklyEloGain"),
+        getValue: (player: RankingPlayer) =>
+          `${(player.weekly_elo_gain ?? 0) >= 0 ? "+" : ""}${player.weekly_elo_gain ?? 0}`,
+      };
+    }
+    if (activeTab === "monthly") {
+      return {
+        label: t("monthlyEloGain"),
+        getValue: (player: RankingPlayer) =>
+          `${(player.monthly_elo_gain ?? 0) >= 0 ? "+" : ""}${player.monthly_elo_gain ?? 0}`,
+      };
+    }
+    return {
+      label: t("winRate"),
+      getValue: (player: RankingPlayer) => `${player.win_rate}%`,
+    };
+  }, [activeTab, t]);
+
   return (
     <div
       className="min-h-screen px-4 py-8"
@@ -89,7 +130,18 @@ export function RankingsPageClient({ currentUserId }: Props) {
 
         <section className="bg-white rounded-3xl p-6 shadow-md border border-orange-50">
           <div className="mb-4 flex flex-wrap gap-2">
-            {(["global", "friends", "country"] as RankingTab[]).map((tab) => (
+            {(
+              [
+                "global",
+                "friends",
+                "country",
+                "continent",
+                "win_streak",
+                "most_active",
+                "weekly",
+                "monthly",
+              ] as RankingTab[]
+            ).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -117,7 +169,7 @@ export function RankingsPageClient({ currentUserId }: Props) {
                     <th className="py-2 pl-3 pr-2">{t("rank")}</th>
                     <th className="py-2 pr-2">{t("player")}</th>
                     <th className="py-2 pr-2">{t("elo")}</th>
-                    <th className="py-2 pr-2">{t("winRate")}</th>
+                    <th className="py-2 pr-2">{metricConfig.label}</th>
                     <th className="py-2 pr-2">{t("gamesPlayed")}</th>
                   </tr>
                 </thead>
@@ -146,7 +198,9 @@ export function RankingsPageClient({ currentUserId }: Props) {
                         <td className="py-3 pr-2 font-semibold text-gray-900">
                           {player.elo_rating}
                         </td>
-                        <td className="py-3 pr-2 text-gray-700">{player.win_rate}%</td>
+                        <td className="py-3 pr-2 text-gray-700">
+                          {metricConfig.getValue(player)}
+                        </td>
                         <td className="py-3 pr-2 text-gray-700">{player.games_played}</td>
                       </tr>
                     );
