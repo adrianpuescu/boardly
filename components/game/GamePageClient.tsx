@@ -34,6 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useGameRealtime } from "@/hooks/useGameRealtime";
 import { usePieceSet } from "@/hooks/usePieceSet";
 import { useBoardTheme } from "@/hooks/useBoardTheme";
@@ -2362,59 +2363,48 @@ export function GamePageClient({ game, currentUser }: Props) {
         )}
       </AnimatePresence>
 
-      {/* Mobile: Move history bottom sheet */}
-      <AnimatePresence>
-        {movesSheetOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setMovesSheetOpen(false)}
-              className="lg:hidden fixed inset-0 z-30 bg-black/20"
-            />
-            {/* Sheet */}
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-2xl max-h-[70vh] flex flex-col"
-            >
-              {/* Drag handle */}
-              <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-                <div className="w-10 h-1 rounded-full bg-gray-300" />
-              </div>
-              <MoveHistoryPanel
-                moves={moves}
-                className="border-0 rounded-none flex flex-1 flex-col min-h-0"
-                headerVariant="sheet"
-                highlightHalfMoveIndex={
-                  !atLivePosition
-                    ? viewPlyIndex === 0
-                      ? null
-                      : viewPlyIndex - 1
-                    : undefined
-                }
-                onSelectHalfMove={(halfIdx) =>
-                  setViewPlyIndex(halfIdx + 1)
-                }
-                headerEnd={
-                  <button
-                    type="button"
-                    onClick={() => setMovesSheetOpen(false)}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-                    aria-label={t("closeMovesSheet")}
-                  >
-                    <X className="h-4 w-4 text-gray-500" />
-                  </button>
-                }
-              />
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {/* Mobile: move history — bottom sheet */}
+      <Sheet
+        open={movesSheetOpen}
+        onOpenChange={setMovesSheetOpen}
+        modal
+      >
+        <SheetContent
+          side="bottom"
+          showCloseButton={false}
+          overlayClassName="lg:hidden fixed inset-0 z-30 bg-black/20"
+          className="lg:hidden z-40 flex max-h-[70vh] flex-col gap-0 rounded-t-3xl border-0 bg-white p-0 pt-0 shadow-2xl"
+        >
+          <div className="flex flex-shrink-0 justify-center pt-3 pb-1">
+            <div className="h-1 w-10 rounded-full bg-gray-300" />
+          </div>
+          <MoveHistoryPanel
+            moves={moves}
+            className="border-0 rounded-none flex min-h-0 flex-1 flex-col"
+            headerVariant="sheet"
+            highlightHalfMoveIndex={
+              !atLivePosition
+                ? viewPlyIndex === 0
+                  ? null
+                  : viewPlyIndex - 1
+                : undefined
+            }
+            onSelectHalfMove={(halfIdx) => setViewPlyIndex(halfIdx + 1)}
+            headerEnd={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setMovesSheetOpen(false)}
+                className="h-8 w-8 shrink-0 rounded-full"
+                aria-label={t("closeMovesSheet")}
+              >
+                <X className="h-4 w-4 text-gray-500" />
+              </Button>
+            }
+          />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

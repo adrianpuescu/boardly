@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { RankingPlayer } from "@/lib/types";
 
@@ -125,13 +126,15 @@ export function RankingsPageClient({ currentUserId }: Props) {
       }}
     >
       <div className="max-w-5xl mx-auto space-y-6">
-        <button
+        <Button
+          type="button"
+          variant="ghost"
           onClick={() => router.push("/dashboard")}
-          className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 transition-colors group"
+          className="h-auto -ml-1 gap-1.5 px-2 text-gray-500 hover:text-gray-800"
         >
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          <ArrowLeft className="h-4 w-4" />
           <span className="text-sm font-medium">{t("back")}</span>
-        </button>
+        </Button>
 
         <section className="bg-white rounded-3xl p-6 shadow-md border border-orange-50">
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">

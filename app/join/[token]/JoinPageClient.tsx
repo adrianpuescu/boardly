@@ -295,12 +295,14 @@ export default function JoinPageClient({
                 )}
               </Button>
 
-              <button
+              <Button
+                type="button"
+                variant="link"
                 onClick={() => router.push(`/game/${gameId}`)}
-                className="w-full text-sm text-gray-400 hover:text-gray-600 transition-colors py-1"
+                className="h-auto w-full py-1 text-sm font-normal text-gray-400 hover:text-gray-600"
               >
                 {t("viewWithoutJoining")}
-              </button>
+              </Button>
 
               {error && (
                 <p className="text-sm text-red-500 text-center font-medium">

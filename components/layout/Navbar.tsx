@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
@@ -8,6 +8,19 @@ import { BellIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, es, ro } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { CurrentUser } from "@/lib/types";
 
 interface Props {
@@ -29,14 +42,6 @@ interface NotificationItem {
   payload: Record<string, unknown>;
   sent_at: string;
   read_at: string | null;
-}
-
-function Check() {
-  return (
-    <svg className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-      <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z" />
-    </svg>
-  );
 }
 
 function UserIcon() {
@@ -74,39 +79,12 @@ export function Navbar({ currentUser }: Props) {
   const [friendRequestResolution, setFriendRequestResolution] = useState<
     Record<string, "accepted" | "declined" | "invalid">
   >({});
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Sync locale from cookie on mount (handles SSR/client mismatch)
   useEffect(() => {
     const match = document.cookie.match(/(?:^|;\s*)NEXT_LOCALE=([^;]+)/);
     if (match) setLocale(match[1]);
   }, []);
-
-  // Close on click outside
-  useEffect(() => {
-    if (!openProfile && !openNotifications) return;
-    function handleClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpenProfile(false);
-        setOpenNotifications(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [openProfile, openNotifications]);
-
-  // Close on Escape
-  useEffect(() => {
-    if (!openProfile && !openNotifications) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setOpenProfile(false);
-        setOpenNotifications(false);
-      }
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [openProfile, openNotifications]);
 
   const unreadCount = notifications.filter((n) => !n.read_at).length;
 
@@ -346,14 +324,10 @@ export function Navbar({ currentUser }: Props) {
   function switchLocale(next: string) {
     document.cookie = `NEXT_LOCALE=${next}; path=/; max-age=31536000; samesite=lax`;
     setLocale(next);
-    setOpenProfile(false);
-    setOpenNotifications(false);
     router.refresh();
   }
 
   async function handleSignOut() {
-    setOpenProfile(false);
-    setOpenNotifications(false);
     await supabase.auth.signOut();
     router.push("/login");
   }
@@ -428,10 +402,11 @@ export function Navbar({ currentUser }: Props) {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
 
         {/* Logo */}
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={() => router.push(currentUser.isGuest ? "/" : "/dashboard")}
-          className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+          className="h-auto gap-1.5 p-0 font-normal hover:opacity-80"
         >
           <span className="text-2xl chess-sym select-none" aria-hidden="true">♞</span>
           <span
@@ -440,45 +415,49 @@ export function Navbar({ currentUser }: Props) {
           >
             Boardly
           </span>
-        </button>
+        </Button>
 
-        <div className="relative flex items-center gap-2" ref={dropdownRef}>
-          <button
-            onClick={() => {
-              setOpenNotifications((v) => !v);
-              setOpenProfile(false);
+        <div className="relative flex items-center gap-2">
+          <Popover
+            open={openNotifications}
+            onOpenChange={(open) => {
+              setOpenNotifications(open);
+              if (open) setOpenProfile(false);
             }}
-            aria-haspopup="true"
-            aria-expanded={openNotifications}
-            title={nt("title")}
-            className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-all ${
-              openNotifications
-                ? "bg-orange-100 text-orange-600 ring-2 ring-orange-400 ring-offset-2"
-                : "bg-orange-50 text-orange-500 hover:bg-orange-100 hover:text-orange-600"
-            }`}
           >
-            <BellIcon className="w-4 h-4" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold px-1 flex items-center justify-center">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            )}
-          </button>
-
-          {openNotifications && (
-            <div
-              role="menu"
-              className="absolute right-0 top-11 w-80 rounded-2xl bg-white border border-gray-100 shadow-xl shadow-black/10 z-50 animate-fade-up overflow-hidden"
+            <PopoverTrigger
+              className={`relative flex h-9 w-9 items-center justify-center rounded-full border-0 transition-all outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${
+                openNotifications
+                  ? "bg-orange-100 text-orange-600 ring-2 ring-orange-400 ring-offset-2"
+                  : "bg-orange-50 text-orange-500 hover:bg-orange-100 hover:text-orange-600"
+              }`}
+              aria-label={nt("title")}
             >
-              <div className="flex items-center justify-between px-4 py-3 border-b border-orange-100 bg-orange-50/40">
+              <BellIcon className="w-4 h-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold px-1 flex items-center justify-center">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              side="bottom"
+              sideOffset={8}
+              className="w-80 max-w-[min(20rem,calc(100vw-2rem))] flex-col gap-0 rounded-2xl border border-gray-100 bg-white p-0 text-gray-900 shadow-xl shadow-black/10"
+            >
+              <div className="flex items-center justify-between border-b border-orange-100 bg-orange-50/40 px-4 py-3">
                 <p className="text-sm font-semibold text-gray-800">{nt("title")}</p>
-                <button
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
                   onClick={markAllAsRead}
                   disabled={unreadCount === 0}
-                  className="text-xs font-medium text-orange-600 hover:text-orange-700 disabled:text-gray-300 disabled:cursor-not-allowed"
+                  className="h-auto px-2 py-1 text-xs font-medium text-orange-600 hover:text-orange-700 disabled:text-gray-300"
                 >
                   {nt("markAllAsRead")}
-                </button>
+                </Button>
               </div>
 
               <div className="max-h-[400px] overflow-y-auto">
@@ -527,34 +506,37 @@ export function Navbar({ currentUser }: Props) {
                             ) : (
                               notification.read_at ? null : (
                                 <div className="flex items-center gap-2">
-                                  <button
+                                  <Button
                                     type="button"
+                                    size="xs"
                                     disabled={processingNotificationId === notification.id}
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
                                       void handleFriendRequestAction(notification, "accept");
                                     }}
-                                    className="rounded-md bg-orange-500 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-orange-600 disabled:opacity-60"
+                                    className="h-7 rounded-md bg-orange-500 px-2.5 text-[11px] font-semibold text-white hover:bg-orange-600"
                                   >
                                     {nt("acceptFriendRequest")}
-                                  </button>
-                                  <button
+                                  </Button>
+                                  <Button
                                     type="button"
+                                    size="xs"
+                                    variant="outline"
                                     disabled={processingNotificationId === notification.id}
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
                                       void handleFriendRequestAction(notification, "decline");
                                     }}
-                                    className="rounded-md border border-gray-200 px-2.5 py-1 text-[11px] font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+                                    className="h-7 rounded-md border-gray-200 px-2.5 text-[11px] font-semibold text-gray-600 hover:bg-gray-50"
                                   >
                                     {nt("declineFriendRequest")}
-                                  </button>
+                                  </Button>
                                 </div>
                               )
                             )
-                          ) : action ? (
+                            ) : action ? (
                             <Link
                               href={action.href}
                               onClick={() => {
@@ -572,124 +554,120 @@ export function Navbar({ currentUser }: Props) {
                   })
                 )}
               </div>
-            </div>
-          )}
+            </PopoverContent>
+          </Popover>
 
-          {/* Profile icon trigger + dropdown */}
-          <button
-            onClick={() => {
-              setOpenProfile((v) => !v);
-              setOpenNotifications(false);
+          <DropdownMenu
+            open={openProfile}
+            onOpenChange={(open) => {
+              setOpenProfile(open);
+              if (open) setOpenNotifications(false);
             }}
-            aria-haspopup="true"
-            aria-expanded={openProfile}
-            title={t("viewProfile")}
-            className={`w-9 h-9 flex items-center justify-center rounded-full transition-all ${
-              openProfile
-                ? "bg-orange-100 text-orange-600 ring-2 ring-orange-400 ring-offset-2"
-                : "bg-orange-50 text-orange-500 hover:bg-orange-100 hover:text-orange-600"
-            }`}
           >
-            <UserIcon />
-          </button>
-
-          {/* Dropdown card */}
-          {openProfile && (
-            <div
-              role="menu"
-              className="absolute right-0 top-full mt-2.5 w-56 rounded-2xl bg-white border border-gray-100 shadow-xl shadow-black/10 py-1.5 z-50 animate-fade-up"
+            <DropdownMenuTrigger
+              className={`flex h-9 w-9 items-center justify-center rounded-full border-0 transition-all outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${
+                openProfile
+                  ? "bg-orange-100 text-orange-600 ring-2 ring-orange-400 ring-offset-2"
+                  : "bg-orange-50 text-orange-500 hover:bg-orange-100 hover:text-orange-600"
+              }`}
+              aria-label={t("viewProfile")}
             >
-              {/* Email header */}
+              <UserIcon />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              side="bottom"
+              sideOffset={8}
+              className="w-56 max-w-[min(14rem,calc(100vw-2rem))] gap-0 rounded-2xl border border-gray-100 bg-white p-0 py-1.5 text-gray-900 shadow-xl shadow-black/10"
+            >
               <div className="px-4 py-2.5">
-                <p className="text-xs font-medium text-gray-400 truncate">{currentUser.email}</p>
+                <p className="truncate text-xs font-medium text-gray-400">{currentUser.email}</p>
                 <p className="mt-1 text-xs font-semibold text-orange-600">
                   ELO: {currentUser.elo_rating ?? 1200}
                 </p>
               </div>
 
-              <div className="h-px bg-gray-100 mx-2 my-1" />
+              <DropdownMenuSeparator className="my-1 bg-gray-100" />
 
-              {/* Profile */}
-              <button
-                role="menuitem"
-                onClick={() => { setOpenProfile(false); router.push("/profile"); }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+              <DropdownMenuItem
+                onClick={() => {
+                  setOpenProfile(false);
+                  router.push("/profile");
+                }}
+                className="cursor-pointer gap-3 rounded-none px-4 py-2.5 text-sm font-medium text-gray-700 focus:bg-orange-50 focus:text-orange-600"
               >
-                <span className="text-gray-400 group-hover:text-orange-500">
+                <span className="text-gray-400">
                   <UserIcon />
                 </span>
                 {t("profile")}
-              </button>
-              <button
-                role="menuitem"
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 onClick={() => {
                   setOpenProfile(false);
                   router.push("/friends");
                 }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                className="cursor-pointer gap-3 rounded-none px-4 py-2.5 text-sm font-medium text-gray-700 focus:bg-orange-50 focus:text-orange-600"
               >
                 <span className="text-gray-400">👥</span>
                 {t("friends")}
-              </button>
-              <button
-                role="menuitem"
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 onClick={() => {
                   setOpenProfile(false);
                   router.push("/rankings");
                 }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                className="cursor-pointer gap-3 rounded-none px-4 py-2.5 text-sm font-medium text-gray-700 focus:bg-orange-50 focus:text-orange-600"
               >
                 <span className="text-gray-400">🏆</span>
                 {t("rankings")}
-              </button>
+              </DropdownMenuItem>
 
-              {/* Language options */}
-              <div className="px-2 pt-1 pb-0.5">
-                <p className="px-2 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+              <DropdownMenuGroup className="px-2 pt-1 pb-0.5">
+                <DropdownMenuLabel className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
                   {t("language")}
-                </p>
-                <button
-                  role="menuitem"
-                  onClick={() => switchLocale("en")}
-                  className="w-full flex items-center gap-3 px-2 py-2 rounded-xl text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                </DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={locale}
+                  onValueChange={(v) => {
+                    switchLocale(v);
+                  }}
                 >
-                  <span className="text-base leading-none">🇬🇧</span>
-                  <span className="flex-1 text-left font-medium">English</span>
-                  {locale === "en" && <Check />}
-                </button>
-                <button
-                  role="menuitem"
-                  onClick={() => switchLocale("ro")}
-                  className="w-full flex items-center gap-3 px-2 py-2 rounded-xl text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
-                >
-                  <span className="text-base leading-none">🇷🇴</span>
-                  <span className="flex-1 text-left font-medium">Română</span>
-                  {locale === "ro" && <Check />}
-                </button>
-                <button
-                  role="menuitem"
-                  onClick={() => switchLocale("es")}
-                  className="w-full flex items-center gap-3 px-2 py-2 rounded-xl text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
-                >
-                  <span className="text-base leading-none">🇪🇸</span>
-                  <span className="flex-1 text-left font-medium">Español</span>
-                  {locale === "es" && <Check />}
-                </button>
-              </div>
+                  <DropdownMenuRadioItem
+                    value="en"
+                    className="cursor-pointer gap-3 rounded-xl px-2 py-2 pl-2 text-sm"
+                  >
+                    <span className="text-base leading-none">🇬🇧</span>
+                    <span className="flex-1 text-left font-medium">English</span>
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem
+                    value="ro"
+                    className="cursor-pointer gap-3 rounded-xl px-2 py-2 pl-2 text-sm"
+                  >
+                    <span className="text-base leading-none">🇷🇴</span>
+                    <span className="flex-1 text-left font-medium">Română</span>
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem
+                    value="es"
+                    className="cursor-pointer gap-3 rounded-xl px-2 py-2 pl-2 text-sm"
+                  >
+                    <span className="text-base leading-none">🇪🇸</span>
+                    <span className="flex-1 text-left font-medium">Español</span>
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuGroup>
 
-              <div className="h-px bg-gray-100 mx-2 my-1" />
+              <DropdownMenuSeparator className="my-1 bg-gray-100" />
 
-              {/* Sign out */}
-              <button
-                role="menuitem"
+              <DropdownMenuItem
+                variant="destructive"
                 onClick={handleSignOut}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors rounded-b-2xl"
+                className="cursor-pointer gap-3 rounded-b-2xl rounded-t-none px-4 py-2.5 text-sm font-medium"
               >
                 <SignOutIcon />
                 {t("signOut")}
-              </button>
-            </div>
-          )}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
       </div>

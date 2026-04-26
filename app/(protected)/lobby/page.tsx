@@ -276,13 +276,15 @@ export default function LobbyPage() {
     <div className="min-h-screen px-4 py-8" style={{ background: "linear-gradient(160deg, #FAF7F2 0%, #FFF8F0 50%, #FAF7F2 100%)" }}>
       <div className="max-w-lg mx-auto">
         {/* Back button */}
-        <button
-          onClick={() => createdGame ? setCreatedGame(null) : router.push("/dashboard")}
-          className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 transition-colors mb-8 group"
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => (createdGame ? setCreatedGame(null) : router.push("/dashboard"))}
+          className="mb-8 h-auto -ml-1 gap-1.5 self-start px-2 text-gray-500 hover:text-gray-800"
         >
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          <ArrowLeft className="h-4 w-4" />
           <span className="text-sm font-medium">{t("back")}</span>
-        </button>
+        </Button>
 
         {/* Share step — shown after successful game creation */}
         <AnimatePresence mode="wait">
@@ -373,15 +375,16 @@ export default function LobbyPage() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {friends.map((friend) => (
-                    <button
+                    <Button
                       key={friend.id}
                       type="button"
+                      variant="outline"
                       onClick={() => {
                         setSelectedOpponentId(friend.id);
                         setSelectedOpponentName(friend.username);
                         setOpponentEmail("");
                       }}
-                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                      className={`h-auto inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-normal ${
                         selectedOpponentId === friend.id && !opponentEmail.trim()
                           ? "border-orange-400 bg-orange-50 text-orange-700"
                           : "border-orange-100 bg-white text-gray-700 hover:bg-orange-50"
@@ -391,7 +394,7 @@ export default function LobbyPage() {
                         {friend.username.slice(0, 2).toUpperCase()}
                       </span>
                       <span className="font-medium">{friend.username}</span>
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
