@@ -110,7 +110,9 @@ export async function checkAndAwardBadges(
     if (friendsCount >= 10) candidateBadgeIds.add("friends_10");
   }
 
-  const newBadgeIds = [...candidateBadgeIds].filter((badgeId) => !earnedSet.has(badgeId));
+  const newBadgeIds = Array.from(candidateBadgeIds).filter(
+    (badgeId) => !earnedSet.has(badgeId)
+  );
   if (newBadgeIds.length === 0) {
     return [];
   }
