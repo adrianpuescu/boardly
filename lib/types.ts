@@ -60,6 +60,7 @@ export interface CurrentUser {
 export interface DashboardGame {
   id: string;
   name?: string | null;
+  created_by: string | null;
   status: "waiting" | "active";
   game_type: string;
   time_control: { type: string };

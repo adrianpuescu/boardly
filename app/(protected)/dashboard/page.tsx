@@ -52,6 +52,7 @@ export default async function DashboardPage() {
         `
         id,
         name,
+        created_by,
         status,
         game_type,
         time_control,
@@ -87,6 +88,7 @@ export default async function DashboardPage() {
       return {
         id: g.id,
         name: (g.name as string | null) ?? null,
+        created_by: (g.created_by as string | null) ?? null,
         status: g.status as "waiting" | "active",
         game_type: g.game_type as string,
         time_control: g.time_control as { type: string },

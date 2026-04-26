@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import dynamic from "next/dynamic";
@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, es, ro } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
-import type { DashboardGame } from "@/lib/types";
+import type { CurrentUser, DashboardGame } from "@/lib/types";
 import { usePieceSet } from "@/hooks/usePieceSet";
 import { useBoardTheme } from "@/hooks/useBoardTheme";
 import { buildPieces } from "@/lib/chess/pieces";
@@ -29,9 +29,10 @@ const Chessboard = dynamic(
 
 interface Props {
   game: DashboardGame;
+  currentUser: CurrentUser;
 }
 
-export function GameCard({ game }: Props) {
+export function GameCard({ game, currentUser }: Props) {
   const router = useRouter();
   const t = useTranslations("gameCard");
   const tDashboard = useTranslations("dashboard");
@@ -45,6 +46,98 @@ export function GameCard({ game }: Props) {
   const customPieces = buildPieces(pieceSet);
 
   const [moves, setMoves] = useState<MoveRecord[]>([]);
+
+  const canEditName =
+    game.created_by != null
+      ? game.created_by === currentUser.id
+      : game.my_color === "white";
+
+  const [gameName, setGameName] = useState(game.name ?? "");
+  const [draftName, setDraftName] = useState(game.name ?? "");
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [savingName, setSavingName] = useState(false);
+  const [isTitleHovering, setIsTitleHovering] = useState(false);
+  const [showHoverCaret, setShowHoverCaret] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const initial = game.name ?? "";
+    setGameName(initial);
+    setDraftName(initial);
+    setIsEditingName(false);
+    setSavingName(false);
+  }, [game.id, game.name]);
+
+  useEffect(() => {
+    if (!isEditingName) return;
+    const id = requestAnimationFrame(() => {
+      const el = nameInputRef.current;
+      if (el) {
+        el.focus();
+        el.select();
+      }
+    });
+    return () => cancelAnimationFrame(id);
+  }, [isEditingName]);
+
+  useEffect(() => {
+    if (!isTitleHovering || isEditingName || !canEditName || savingName) {
+      setShowHoverCaret(false);
+      return;
+    }
+    setShowHoverCaret(true);
+    const id = window.setInterval(() => {
+      setShowHoverCaret((v) => !v);
+    }, 500);
+    return () => window.clearInterval(id);
+  }, [isTitleHovering, isEditingName, canEditName, savingName]);
+
+  const startEditingName = useCallback(() => {
+    if (!canEditName || savingName) return;
+    setDraftName(gameName);
+    setIsEditingName(true);
+  }, [canEditName, savingName, gameName]);
+
+  const cancelEditingName = useCallback(() => {
+    setDraftName(gameName);
+    setIsEditingName(false);
+  }, [gameName]);
+
+  const submitName = useCallback(async () => {
+    if (!canEditName || savingName) return;
+    const next = draftName.trim();
+    if (next === gameName) {
+      setDraftName(gameName);
+      setIsEditingName(false);
+      return;
+    }
+    setSavingName(true);
+    try {
+      const res = await fetch(`/api/games/${game.id}/name`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: next }),
+      });
+      const data = (await res.json()) as { name?: string; error?: string };
+      if (!res.ok) {
+        console.error("[game-name]", data.error ?? "Failed to update game name");
+        setDraftName(gameName);
+        setIsEditingName(false);
+        return;
+      }
+      const saved = data.name ?? "";
+      setGameName(saved);
+      setDraftName(saved);
+      setIsEditingName(false);
+      router.refresh();
+    } catch (err) {
+      console.error("[game-name]", err);
+      setDraftName(gameName);
+      setIsEditingName(false);
+    } finally {
+      setSavingName(false);
+    }
+  }, [canEditName, savingName, draftName, gameName, game.id, router]);
 
   useEffect(() => {
     fetch(`/api/moves/${game.id}`)
@@ -112,6 +205,10 @@ export function GameCard({ game }: Props) {
     locale: locale === "ro" ? ro : locale === "es" ? es : enUS,
   });
 
+  const titleTextClass = gameName.trim()
+    ? "text-base font-extrabold tracking-tight text-gray-800"
+    : "text-base font-bold tracking-tight text-gray-500/90";
+
   return (
     <motion.div
       variants={{
@@ -123,17 +220,73 @@ export function GameCard({ game }: Props) {
       onClick={() => router.push(`/game/${game.id}`)}
       className="h-full bg-white rounded-3xl shadow-md hover:shadow-xl transition-shadow cursor-pointer overflow-hidden border border-orange-50 flex flex-col"
     >
-      {/* Game name/title */}
+      {/* Game name/title — fixed h-9 so layout stays stable when editing */}
       <div className="px-5 pt-4 pb-3 border-b border-gray-100 min-w-0 flex items-center gap-3">
-        <p
-          className={`truncate whitespace-nowrap min-w-0 flex-1 ${
-            game.name?.trim()
-              ? "text-xl font-extrabold tracking-tight text-gray-800"
-              : "text-xl font-bold tracking-tight text-gray-400"
-          }`}
-        >
-          {game.name?.trim() || tDashboard("untitledGame")}
-        </p>
+        {canEditName ? (
+          <div
+            className="min-w-0 flex-1 h-9"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {isEditingName ? (
+              <input
+                ref={nameInputRef}
+                maxLength={50}
+                value={draftName}
+                placeholder={tDashboard("untitledGame")}
+                disabled={savingName}
+                onChange={(e) => setDraftName(e.target.value)}
+                onBlur={() => void submitName()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void submitName();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    cancelEditingName();
+                  }
+                }}
+                className={
+                  "h-9 w-full min-w-0 max-w-full cursor-text border-0 bg-transparent p-0 shadow-none " +
+                  "text-base font-extrabold tracking-tight text-gray-800 caret-gray-800 " +
+                  "placeholder:font-bold placeholder:tracking-tight placeholder:text-gray-500/80 " +
+                  "outline-none ring-0 focus:outline-none focus:ring-0 " +
+                  "focus-visible:outline-none focus-visible:ring-0 disabled:opacity-60"
+                }
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={startEditingName}
+                disabled={savingName}
+                onMouseEnter={() => setIsTitleHovering(true)}
+                onMouseLeave={() => setIsTitleHovering(false)}
+                className="flex w-full h-9 min-w-0 cursor-text items-center text-left disabled:opacity-60"
+              >
+                <span className={`min-w-0 max-w-full inline-flex items-center ${titleTextClass}`}>
+                  <span className="truncate">
+                    {gameName.trim() || tDashboard("untitledGame")}
+                  </span>
+                  {showHoverCaret && (
+                    <span
+                      aria-hidden
+                      className={`ml-0.5 -translate-y-[1px] leading-none ${
+                        gameName.trim() ? "text-gray-800" : "text-gray-500/70"
+                      }`}
+                    >
+                      |
+                    </span>
+                  )}
+                </span>
+              </button>
+            )}
+          </div>
+        ) : (
+          <p
+            className={`h-9 min-w-0 flex-1 flex items-center truncate ${titleTextClass}`}
+          >
+            {gameName.trim() || tDashboard("untitledGame")}
+          </p>
+        )}
         <span className="flex items-center gap-1.5 whitespace-nowrap text-[11px] font-semibold bg-gray-50 text-gray-600 rounded-full px-3 py-1 border border-gray-200 shrink-0 shadow-sm">
           <span className="text-lg chess-sym leading-none">{game.my_color === "white" ? "♔" : "♚"}</span>
           {game.my_color === "white" ? t("white") : t("black")}

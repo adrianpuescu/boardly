@@ -213,7 +213,11 @@ export function DashboardClient({ games, currentUser }: Props) {
             }}
           >
             {games.map((game) => (
-              <GameCard key={game.id} game={game} />
+              <GameCard
+                key={game.id}
+                game={game}
+                currentUser={currentUser}
+              />
             ))}
           </motion.div>
         )}
