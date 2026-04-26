@@ -1,13 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type BadgeTrigger = "game_completed" | "friend_added";
-
-interface BadgeMeta {
-  id: string;
-  name: string;
-  icon: string;
-}
-
 function getLongestWinStreak(winsByGame: boolean[]): number {
   let longest = 0;
   let current = 0;
