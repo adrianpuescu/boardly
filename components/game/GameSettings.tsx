@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SlidersHorizontal, Volume2, VolumeX, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ALL_PIECE_SETS, PIECE_SET_LABELS, type PieceSet } from "@/lib/chess/pieces";
@@ -73,16 +73,23 @@ export function GameSettings({
   const hasGameBoardOverride = gameBoardTheme != null;
   const hasAnyGameOverride = hasGamePieceOverride || hasGameBoardOverride;
 
+  const requestClose = useCallback(() => {
+    if (canEditGameName && isEditingGameName) {
+      void onSubmitGameName?.();
+    }
+    setOpen(false);
+  }, [canEditGameName, isEditingGameName, onSubmitGameName]);
+
   useEffect(() => {
     if (!open) return;
     function handler(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
+        requestClose();
       }
     }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+  }, [open, requestClose]);
 
   useEffect(() => {
     if (!hasGameId) setTab("global");
@@ -102,7 +109,13 @@ export function GameSettings({
     <div ref={ref} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (open) {
+            requestClose();
+            return;
+          }
+          setOpen(true);
+        }}
         title={t("gameSettingsTitle")}
         aria-label={t("gameSettingsTitle")}
         className={`relative flex items-center justify-center w-9 h-9 rounded-xl border transition-colors ${

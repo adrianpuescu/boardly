@@ -34,6 +34,7 @@ interface Props {
 export function GameCard({ game }: Props) {
   const router = useRouter();
   const t = useTranslations("gameCard");
+  const tDashboard = useTranslations("dashboard");
   const locale = useLocale();
   const [avatarError, setAvatarError] = useState(false);
   const boardContainerRef = useRef<HTMLDivElement>(null);
@@ -122,6 +123,23 @@ export function GameCard({ game }: Props) {
       onClick={() => router.push(`/game/${game.id}`)}
       className="h-full bg-white rounded-3xl shadow-md hover:shadow-xl transition-shadow cursor-pointer overflow-hidden border border-orange-50 flex flex-col"
     >
+      {/* Game name/title */}
+      <div className="px-5 pt-4 pb-3 border-b border-gray-100 min-w-0 flex items-center gap-3">
+        <p
+          className={`truncate whitespace-nowrap min-w-0 flex-1 ${
+            game.name?.trim()
+              ? "text-xl font-extrabold tracking-tight text-gray-800"
+              : "text-xl font-bold tracking-tight text-gray-400"
+          }`}
+        >
+          {game.name?.trim() || tDashboard("untitledGame")}
+        </p>
+        <span className="flex items-center gap-1.5 whitespace-nowrap text-[11px] font-semibold bg-gray-50 text-gray-600 rounded-full px-3 py-1 border border-gray-200 shrink-0 shadow-sm">
+          <span className="text-lg chess-sym leading-none">{game.my_color === "white" ? "♔" : "♚"}</span>
+          {game.my_color === "white" ? t("white") : t("black")}
+        </span>
+      </div>
+
       {/* Mini board preview */}
       <div className="relative flex items-center justify-center overflow-hidden select-none"
            style={{ height: "148px", background: "linear-gradient(160deg, #FFF8F0 0%, #F0E8DC 100%)" }}>
@@ -143,12 +161,6 @@ export function GameCard({ game }: Props) {
             }}
           />
         </div>
-
-        {/* Color badge */}
-        <span className="absolute top-2 right-2 flex items-center gap-1 text-xs font-semibold bg-white/80 backdrop-blur-sm text-gray-700 rounded-full px-2.5 py-0.5 shadow-sm">
-          <span className="text-base chess-sym">{game.my_color === "white" ? "♔" : "♚"}</span>
-          {game.my_color === "white" ? t("white") : t("black")}
-        </span>
 
         {/* Turn indicator stripe */}
         {isMyTurn && (
@@ -214,17 +226,6 @@ export function GameCard({ game }: Props) {
             </div>
             <p className="text-xs text-gray-400">{t("opponent")}</p>
           </div>
-        </div>
-
-        <div className="min-h-[20px]">
-          {game.name ? (
-            <p className="min-w-0 flex items-center gap-1 text-xs italic text-gray-500 truncate">
-              <span aria-hidden>🏷️</span>
-              <span className="truncate">
-                {game.name.length > 30 ? `${game.name.slice(0, 30)}...` : game.name}
-              </span>
-            </p>
-          ) : null}
         </div>
 
         {/* Footer */}
