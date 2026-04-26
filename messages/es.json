@@ -47,7 +47,9 @@
     "nextGame": "Partida siguiente",
     "goToGameN": "Ir a la partida {n}",
     "gridView": "Vista en cuadrícula",
-    "multiBoardView": "Vista multitable"
+    "multiBoardView": "Vista multitable",
+    "untitledGame": "Partida sin título",
+    "gameNameLabel": "Partida"
   },
   "game": {
     "yourTurn": "¡Es tu turno!",
@@ -112,7 +114,12 @@
     "replayNext": "Siguiente jugada",
     "replayLast": "Última jugada",
     "replayGoToMove": "Ver posición tras {san}",
-    "closeMovesSheet": "Cerrar"
+    "closeMovesSheet": "Cerrar",
+    "editNamePlaceholder": "Escribe el nombre de la partida",
+    "editNameCount": "{current}/{max} caracteres",
+    "addNamePlaceholder": "Añadir nombre...",
+    "settingsGameNameSection": "Nombre de la partida",
+    "settingsSoundSection": "Sonido"
   },
   "gameOver": {
     "wonOnTime": "¡Ganaste por tiempo!",

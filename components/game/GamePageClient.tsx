@@ -1350,6 +1350,10 @@ export function GamePageClient({ game, currentUser }: Props) {
     from: string;
     to: string;
   } | null>(null);
+  const [gameName, setGameName] = useState(game.name ?? "");
+  const [draftGameName, setDraftGameName] = useState(game.name ?? "");
+  const [isEditingGameName, setIsEditingGameName] = useState(false);
+  const [savingGameName, setSavingGameName] = useState(false);
 
   /**
    * Ply count after which the board shows live `fen` (0 = start, `moves.length` = current).
@@ -1365,6 +1369,14 @@ export function GamePageClient({ game, currentUser }: Props) {
     prevMovesLenRef.current = 0;
     setViewPlyIndex(0);
   }, [game.id]);
+
+  useEffect(() => {
+    const initialName = game.name ?? "";
+    setGameName(initialName);
+    setDraftGameName(initialName);
+    setIsEditingGameName(false);
+    setSavingGameName(false);
+  }, [game.id, game.name]);
 
   useEffect(() => {
     const prev = prevMovesLenRef.current;
@@ -1835,8 +1847,58 @@ export function GamePageClient({ game, currentUser }: Props) {
   };
 
   const opponentUsername = game.opponent?.username ?? t("waitingForOpponent") + "…";
+  const canEditGameName =
+    game.created_by != null
+      ? game.created_by === currentUser.id
+      : game.my_color === "white";
   const timeControlType = game.time_control?.type;
   const hasTimer = timeControlType === "per_turn" || timeControlType === "per_game";
+
+  const startEditingGameName = useCallback(() => {
+    if (!canEditGameName || savingGameName) return;
+    setDraftGameName(gameName);
+    setIsEditingGameName(true);
+  }, [canEditGameName, savingGameName, gameName]);
+
+  const cancelEditingGameName = useCallback(() => {
+    setDraftGameName(gameName);
+    setIsEditingGameName(false);
+  }, [gameName]);
+
+  const submitGameName = useCallback(async () => {
+    if (!canEditGameName || savingGameName) return;
+    const nextName = draftGameName.trim();
+    if (nextName === gameName) {
+      setDraftGameName(gameName);
+      setIsEditingGameName(false);
+      return;
+    }
+    setSavingGameName(true);
+    try {
+      const res = await fetch(`/api/games/${game.id}/name`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: nextName }),
+      });
+      const data = (await res.json()) as { name?: string; error?: string };
+      if (!res.ok) {
+        console.error("[game-name]", data.error ?? "Failed to update game name");
+        setDraftGameName(gameName);
+        setIsEditingGameName(false);
+        return;
+      }
+      const savedName = data.name ?? "";
+      setGameName(savedName);
+      setDraftGameName(savedName);
+      setIsEditingGameName(false);
+    } catch (err) {
+      console.error("[game-name]", err);
+      setDraftGameName(gameName);
+      setIsEditingGameName(false);
+    } finally {
+      setSavingGameName(false);
+    }
+  }, [canEditGameName, savingGameName, draftGameName, gameName, game.id]);
 
   // Resolved timer state: prefer realtime updates, fall back to initial props
   const resolvedTimerState = {
@@ -1941,30 +2003,6 @@ export function GamePageClient({ game, currentUser }: Props) {
               )}
 
               <div className="ml-auto flex items-center gap-1 flex-shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    void sfx.primeAudio();
-                    sfx.toggleSound();
-                  }}
-                  className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 bg-white text-lg hover:bg-gray-50 transition-colors"
-                  title={
-                    sfx.respectReducedMotion
-                      ? t("soundSystemMuted")
-                      : sfx.soundEnabled
-                      ? t("muteSound")
-                      : t("unmuteSound")
-                  }
-                  aria-label={
-                    sfx.respectReducedMotion
-                      ? t("soundSystemMuted")
-                      : sfx.soundEnabled
-                      ? t("muteSound")
-                      : t("unmuteSound")
-                  }
-                >
-                  {sfx.soundEnabled && !sfx.respectReducedMotion ? "🔊" : "🔇"}
-                </button>
                 <GameSettings
                   gameId={game.id}
                   gamePieceSet={gamePieceSet}
@@ -1977,6 +2015,21 @@ export function GamePageClient({ game, currentUser }: Props) {
                   onChangeGameBoardTheme={setGameBoardTheme}
                   onChangeGlobalBoardTheme={setGlobalBoardTheme}
                   onClearGameBoardTheme={clearGameBoardTheme}
+                  canEditGameName={canEditGameName}
+                  gameName={gameName}
+                  draftGameName={draftGameName}
+                  isEditingGameName={isEditingGameName}
+                  savingGameName={savingGameName}
+                  onStartEditingGameName={startEditingGameName}
+                  onDraftGameNameChange={setDraftGameName}
+                  onSubmitGameName={submitGameName}
+                  onCancelEditingGameName={cancelEditingGameName}
+                  soundEnabled={sfx.soundEnabled}
+                  soundSystemMuted={sfx.respectReducedMotion}
+                  onToggleSound={() => {
+                    void sfx.primeAudio();
+                    sfx.toggleSound();
+                  }}
                 />
               </div>
             </div>
@@ -2016,15 +2069,6 @@ export function GamePageClient({ game, currentUser }: Props) {
               timer={buildTimer(opponentColor)}
               moveCount={moveCounts[opponentColor]}
             />
-            {game.name ? (
-              <p className="px-1 min-w-0 flex items-center gap-1 text-xs italic text-gray-500 truncate">
-                <span aria-hidden>🏷️</span>
-                <span className="truncate">
-                  {game.name.length > 30 ? `${game.name.slice(0, 30)}...` : game.name}
-                </span>
-              </p>
-            ) : null}
-
             {/* Chess board with shake animation wrapper */}
             <motion.div
               animate={boardControls}

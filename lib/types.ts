@@ -133,6 +133,7 @@ export interface RecentGame {
 export interface GamePageData {
   id: string;
   name?: string | null;
+  created_by: string | null;
   status: "waiting" | "active" | "completed" | "abandoned";
   game_type: string;
   state: {

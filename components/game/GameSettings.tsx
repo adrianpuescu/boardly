@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Palette, X } from "lucide-react";
+import { SlidersHorizontal, Volume2, VolumeX, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ALL_PIECE_SETS, PIECE_SET_LABELS, type PieceSet } from "@/lib/chess/pieces";
 import {
@@ -24,6 +24,18 @@ interface Props {
   onChangeGameBoardTheme?: (theme: BoardTheme) => void;
   onChangeGlobalBoardTheme: (theme: BoardTheme) => void;
   onClearGameBoardTheme?: () => void;
+  canEditGameName?: boolean;
+  gameName?: string;
+  draftGameName?: string;
+  isEditingGameName?: boolean;
+  savingGameName?: boolean;
+  onStartEditingGameName?: () => void;
+  onDraftGameNameChange?: (value: string) => void;
+  onSubmitGameName?: () => void;
+  onCancelEditingGameName?: () => void;
+  soundEnabled?: boolean;
+  soundSystemMuted?: boolean;
+  onToggleSound?: () => void;
 }
 
 export function GameSettings({
@@ -38,6 +50,18 @@ export function GameSettings({
   onChangeGameBoardTheme,
   onChangeGlobalBoardTheme,
   onClearGameBoardTheme,
+  canEditGameName = false,
+  gameName = "",
+  draftGameName = "",
+  isEditingGameName = false,
+  savingGameName = false,
+  onStartEditingGameName,
+  onDraftGameNameChange,
+  onSubmitGameName,
+  onCancelEditingGameName,
+  soundEnabled = false,
+  soundSystemMuted = false,
+  onToggleSound,
 }: Props) {
   const t = useTranslations("game");
   const [open, setOpen] = useState(false);
@@ -87,7 +111,7 @@ export function GameSettings({
             : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50 hover:border-gray-300"
         }`}
       >
-        <Palette className="w-4 h-4" />
+        <SlidersHorizontal className="w-4 h-4" />
         {hasAnyGameOverride && (
           <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-orange-500 ring-1 ring-white" />
         )}
@@ -144,6 +168,68 @@ export function GameSettings({
           )}
 
           <div className="px-3 pb-3">
+            {(canEditGameName || gameName.trim().length > 0) && (
+              <div className="mb-3 mt-1">
+                <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">
+                  {t("settingsGameNameSection")}
+                </h4>
+                {canEditGameName ? (
+                  <div className="space-y-1">
+                    <input
+                      maxLength={50}
+                      value={draftGameName}
+                      placeholder={t("addNamePlaceholder")}
+                      disabled={savingGameName}
+                      onFocus={() => onStartEditingGameName?.()}
+                      onChange={(e) => onDraftGameNameChange?.(e.target.value)}
+                      onBlur={() => void onSubmitGameName?.()}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void onSubmitGameName?.();
+                        } else if (e.key === "Escape") {
+                          e.preventDefault();
+                          onCancelEditingGameName?.();
+                        }
+                      }}
+                      className="h-8 w-full rounded-md border border-orange-200 bg-orange-50/40 px-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-orange-200 disabled:opacity-70"
+                    />
+                    <p className="h-3 text-[10px] leading-3 text-gray-400">
+                      {t("editNameCount", { current: draftGameName.length, max: 50 })}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="h-8 w-full rounded-md border border-gray-200 bg-gray-50 px-2 text-sm leading-8 italic text-gray-600 truncate">
+                    {gameName}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="mb-3">
+              <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">
+                {t("settingsSoundSection")}
+              </h4>
+              <button
+                type="button"
+                onClick={onToggleSound}
+                className="w-full flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <span className="truncate">
+                  {soundSystemMuted
+                    ? t("soundSystemMuted")
+                    : soundEnabled
+                    ? t("muteSound")
+                    : t("unmuteSound")}
+                </span>
+                {soundEnabled && !soundSystemMuted ? (
+                  <Volume2 className="w-4 h-4 text-gray-500" />
+                ) : (
+                  <VolumeX className="w-4 h-4 text-gray-500" />
+                )}
+              </button>
+            </div>
+
             <div className="flex items-center justify-between mb-2 mt-1">
               <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide">
                 {t("settingsPiecesSection")}

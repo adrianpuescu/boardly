@@ -31,6 +31,7 @@ export default async function GamePage({ params }: Props) {
       `
       id,
       name,
+      created_by,
       status,
       game_type,
       state,
@@ -124,6 +125,7 @@ export default async function GamePage({ params }: Props) {
   const gameData: GamePageData = {
     id: game.id as string,
     name: (game.name as string | null) ?? null,
+    created_by: (game.created_by as string | null) ?? null,
     status: game.status as GamePageData["status"],
     game_type: game.game_type as string,
     state: {
@@ -151,6 +153,8 @@ export default async function GamePage({ params }: Props) {
     elo_rating: (myProfile?.elo_rating as number | undefined) ?? 1200,
     isGuest,
   };
+
+  console.log("Game created_by:", game.created_by, "Current user:", currentUser.id);
 
   return <GamePageClient game={gameData} currentUser={currentUser} />;
 }

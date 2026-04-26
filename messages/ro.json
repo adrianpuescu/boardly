@@ -47,7 +47,9 @@
     "nextGame": "Jocul următor",
     "goToGameN": "Mergi la jocul {n}",
     "gridView": "Vizualizare grilă",
-    "multiBoardView": "Vizualizare multi-tablă"
+    "multiBoardView": "Vizualizare multi-tablă",
+    "untitledGame": "Joc fără titlu",
+    "gameNameLabel": "Joc"
   },
   "game": {
     "yourTurn": "Rândul tău!",
@@ -112,7 +114,12 @@
     "replayNext": "Mutarea următoare",
     "replayLast": "Ultima mutare",
     "replayGoToMove": "Vezi poziția după {san}",
-    "closeMovesSheet": "Închide"
+    "closeMovesSheet": "Închide",
+    "editNamePlaceholder": "Introdu numele jocului",
+    "editNameCount": "{current}/{max} caractere",
+    "addNamePlaceholder": "Adaugă nume...",
+    "settingsGameNameSection": "Numele jocului",
+    "settingsSoundSection": "Sunet"
   },
   "gameOver": {
     "wonOnTime": "Ai câștigat la timp!",

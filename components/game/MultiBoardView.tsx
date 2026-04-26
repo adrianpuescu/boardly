@@ -48,6 +48,7 @@ function BoardItem({ game }: BoardItemProps) {
   const customPieces = buildPieces(pieceSet);
   const router = useRouter();
   const t = useTranslations("game");
+  const tDashboard = useTranslations("dashboard");
   const boardControls = useAnimation();
 
   const { fen, setFen, gameStatus, gameOver, moves } = useGameRealtime(
@@ -237,11 +238,22 @@ function BoardItem({ game }: BoardItemProps) {
         </span>
       </div>
 
-      {game.name ? (
-        <div className="px-3 py-2 border-b border-gray-50">
-          <p className="text-xs text-gray-600 truncate">{game.name}</p>
+      <div className="px-3 py-1.5 border-b border-gray-50">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 flex-shrink-0">
+            {tDashboard("gameNameLabel")}
+          </span>
+          <p
+            className={`text-xs truncate min-w-0 ${
+              game.name?.trim()
+                ? "text-gray-700 font-medium"
+                : "text-gray-400"
+            }`}
+          >
+            {game.name?.trim() || tDashboard("untitledGame")}
+          </p>
         </div>
-      ) : null}
+      </div>
 
       {/* Board — interactive when it's my turn, view-only otherwise */}
       <motion.div

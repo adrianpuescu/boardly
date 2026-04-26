@@ -47,7 +47,9 @@
     "nextGame": "Next game",
     "goToGameN": "Go to game {n}",
     "gridView": "Grid view",
-    "multiBoardView": "Multi-board view"
+    "multiBoardView": "Multi-board view",
+    "untitledGame": "Untitled game",
+    "gameNameLabel": "Game"
   },
   "game": {
     "yourTurn": "Your turn!",
@@ -112,7 +114,12 @@
     "replayNext": "Next move",
     "replayLast": "Last move",
     "replayGoToMove": "View position after {san}",
-    "closeMovesSheet": "Close"
+    "closeMovesSheet": "Close",
+    "editNamePlaceholder": "Enter game name",
+    "editNameCount": "{current}/{max} characters",
+    "addNamePlaceholder": "Add name...",
+    "settingsGameNameSection": "Game name",
+    "settingsSoundSection": "Sound"
   },
   "gameOver": {
     "wonOnTime": "You won on time!",
