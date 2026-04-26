@@ -27,6 +27,7 @@
     "friendRequestAccepted": "✓ Aceptada",
     "friendRequestDeclined": "✗ Rechazada",
     "friendRequestInvalid": "Solicitud ya no válida",
+    "badgeEarned": "🏅 ¡Has conseguido la insignia {name}! {icon}",
     "rematchOffer": "🔄 ¡{name} quiere la revancha!",
     "opponentFallback": "tu rival",
     "resultFallback": "terminada"
@@ -251,7 +252,9 @@
     "sendingFriendRequest": "Enviando solicitud...",
     "friendRequestSent": "Solicitud enviada",
     "declinedByYou": "Rechazada por ti",
-    "declinedByThem": "Rechazada"
+    "declinedByThem": "Rechazada",
+    "badges": "Insignias",
+    "badgesProgress": "{earned} / {total} insignias"
   },
   "friends": {
     "title": "Amigos",

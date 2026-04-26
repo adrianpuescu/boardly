@@ -20,7 +20,8 @@ type NotificationType =
   | "invite"
   | "rematch_offer"
   | "game_started"
-  | "friend_request";
+  | "friend_request"
+  | "badge_earned";
 
 interface NotificationItem {
   id: string;
@@ -386,6 +387,12 @@ export function Navbar({ currentUser }: Props) {
         opponent: String(notification.payload.opponent_name ?? nt("opponentFallback")),
       });
     }
+    if (notification.type === "badge_earned") {
+      return nt("badgeEarned", {
+        name: String(notification.payload.badgeName ?? "Badge"),
+        icon: String(notification.payload.badgeIcon ?? "🏅"),
+      });
+    }
     return nt("rematchOffer", {
       name: String(notification.payload.name ?? nt("opponentFallback")),
     });
@@ -406,6 +413,9 @@ export function Navbar({ currentUser }: Props) {
         href: `/join/${String(notification.payload.token ?? "")}`,
         label: nt("acceptInvite"),
       };
+    }
+    if (notification.type === "badge_earned") {
+      return null;
     }
     return {
       href: `/game/${String(notification.payload.game_id ?? "")}`,

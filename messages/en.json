@@ -27,6 +27,7 @@
     "friendRequestAccepted": "✓ Accepted",
     "friendRequestDeclined": "✗ Declined",
     "friendRequestInvalid": "Request no longer valid",
+    "badgeEarned": "🏅 You earned the {name} badge! {icon}",
     "rematchOffer": "🔄 {name} wants a rematch!",
     "opponentFallback": "your opponent",
     "resultFallback": "finished"
@@ -251,7 +252,9 @@
     "sendingFriendRequest": "Sending request...",
     "friendRequestSent": "Request sent",
     "declinedByYou": "Declined by you",
-    "declinedByThem": "Declined"
+    "declinedByThem": "Declined",
+    "badges": "Badges",
+    "badgesProgress": "{earned} / {total} badges"
   },
   "friends": {
     "title": "Friends",

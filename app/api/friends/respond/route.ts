@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { checkAndAwardBadges } from "@/lib/badges/checkBadges";
 
 const bodySchema = z.object({
   friendshipId: z.string().uuid(),
@@ -78,6 +79,17 @@ export async function POST(request: NextRequest) {
       );
     }
     return NextResponse.json({ error: updateError.message }, { status: 500 });
+  }
+
+  if (action === "accept") {
+    try {
+      await Promise.all([
+        checkAndAwardBadges(updated.requester_id, "friend_added"),
+        checkAndAwardBadges(updated.addressee_id, "friend_added"),
+      ]);
+    } catch (error) {
+      console.error("[friends/respond] badge check failed:", error);
+    }
   }
 
   return NextResponse.json({ friendship: updated });

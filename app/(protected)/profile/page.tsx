@@ -3,7 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Navbar } from "@/components/layout/Navbar";
 import { ProfileClient } from "@/components/profile/ProfileClient";
-import type { CurrentUser, ProfileStats, RecentGame } from "@/lib/types";
+import type {
+  CurrentUser,
+  ProfileBadge,
+  ProfileStats,
+  RecentGame,
+} from "@/lib/types";
 
 interface FriendshipStatusRow {
   requester_id: string;
@@ -46,6 +51,7 @@ export default async function ProfilePage() {
     win_rate: 0,
   };
   let recentGames: RecentGame[] = [];
+  let badges: ProfileBadge[] = [];
 
   if (gameIds.length > 0) {
     const { data: completedRows } = await admin
@@ -169,6 +175,35 @@ export default async function ProfilePage() {
     });
   }
 
+  const { data: badgesRows } = await admin
+    .from("badges")
+    .select("id, name, description, icon, category")
+    .order("name", { ascending: true });
+
+  const { data: earnedBadgeRows } = await admin
+    .from("user_badges")
+    .select("badge_id, earned_at")
+    .eq("user_id", user.id);
+
+  const earnedAtByBadgeId = new Map(
+    (earnedBadgeRows ?? []).map((row) => [row.badge_id as string, row.earned_at as string])
+  );
+
+  badges = ((badgesRows ?? []) as Array<{
+    id: string;
+    name: string;
+    description: string;
+    icon: string;
+    category: "wins" | "social" | "special";
+  }>).map((badge) => ({
+    id: badge.id,
+    name: badge.name,
+    description: badge.description,
+    icon: badge.icon,
+    category: badge.category,
+    earned_at: earnedAtByBadgeId.get(badge.id) ?? null,
+  }));
+
   const currentUser: CurrentUser = {
     id: user.id,
     email: user.email ?? "",
@@ -187,6 +222,7 @@ export default async function ProfilePage() {
         profile={profile as { id: string; username: string; avatar_url: string | null; created_at: string }}
         stats={stats}
         recentGames={recentGames}
+        badges={badges}
         email={user.email ?? ""}
         isOwnProfile
       />

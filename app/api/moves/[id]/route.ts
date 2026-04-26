@@ -4,6 +4,7 @@ import { Chess } from "chess.js";
 import type { Square, PieceSymbol } from "chess.js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkAndAwardBadges } from "@/lib/badges/checkBadges";
 
 const INITIAL_FEN =
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -281,6 +282,14 @@ export async function POST(
       if (notificationError) {
         console.error("[moves POST] your_turn notification insert error:", notificationError);
       }
+    }
+  }
+
+  if (isOver && winnerId) {
+    try {
+      await checkAndAwardBadges(winnerId, "game_completed");
+    } catch (error) {
+      console.error("[moves POST] badge check failed:", error);
     }
   }
 

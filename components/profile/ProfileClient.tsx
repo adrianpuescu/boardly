@@ -6,9 +6,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Pencil, X, Camera, ArrowLeft, Loader2 } from "lucide-react";
+import { Check, Pencil, X, Camera, ArrowLeft, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { ProfileStats, RecentGame } from "@/lib/types";
+import type { ProfileBadge, ProfileStats, RecentGame } from "@/lib/types";
 
 interface ProfileData {
   id: string;
@@ -21,6 +21,7 @@ interface Props {
   profile: ProfileData;
   stats: ProfileStats;
   recentGames: RecentGame[];
+  badges: ProfileBadge[];
   email: string;
   isOwnProfile?: boolean;
 }
@@ -192,6 +193,7 @@ export function ProfileClient({
   profile,
   stats,
   recentGames,
+  badges,
   email,
   isOwnProfile = true,
 }: Props) {
@@ -219,6 +221,7 @@ export function ProfileClient({
     "none"
   );
   const [isFollowing, setIsFollowing] = useState(false);
+  const earnedBadgesCount = badges.filter((badge) => badge.earned_at).length;
 
   function validateUsername(value: string): string | null {
     if (value.length < 3) return t("usernameMin");
@@ -580,6 +583,63 @@ export function ProfileClient({
               value={`${stats.win_rate}%`}
             />
             <StatCard emoji="🤝" label={t("draws")} value={stats.draws} />
+          </div>
+        </motion.section>
+
+        {/* ── Badges ─────────────────────────────────────────────────────── */}
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.08 }}
+          className="bg-white rounded-3xl p-6 shadow-md border border-orange-50"
+        >
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-base font-bold text-gray-800">{t("badges")}</h2>
+            <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">
+              {t("badgesProgress", { earned: earnedBadgesCount, total: badges.length })}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {badges.map((badge) => {
+              const earned = Boolean(badge.earned_at);
+              return (
+                <div
+                  key={badge.id}
+                  className={`rounded-2xl border p-3 transition-colors ${
+                    earned
+                      ? "border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50"
+                      : "border-gray-200 bg-gray-50"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`flex h-10 w-10 items-center justify-center rounded-xl text-xl ${
+                        earned ? "bg-white shadow-sm" : "bg-gray-200 text-gray-500"
+                      }`}
+                    >
+                      {earned ? badge.icon : <Lock className="h-4 w-4" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p
+                        className={`text-sm font-bold ${
+                          earned ? "text-gray-900" : "text-gray-500"
+                        }`}
+                      >
+                        {badge.name}
+                      </p>
+                      <p
+                        className={`mt-0.5 text-xs leading-relaxed ${
+                          earned ? "text-gray-600" : "text-gray-400"
+                        }`}
+                      >
+                        {badge.description}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </motion.section>
 

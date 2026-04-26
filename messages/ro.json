@@ -27,6 +27,7 @@
     "friendRequestAccepted": "✓ Acceptată",
     "friendRequestDeclined": "✗ Refuzată",
     "friendRequestInvalid": "Cererea nu mai este validă",
+    "badgeEarned": "🏅 Ai câștigat insigna {name}! {icon}",
     "rematchOffer": "🔄 {name} vrea revanșă!",
     "opponentFallback": "adversarul tău",
     "resultFallback": "terminat"
@@ -251,7 +252,9 @@
     "sendingFriendRequest": "Se trimite cererea...",
     "friendRequestSent": "Cerere trimisă",
     "declinedByYou": "Refuzată de tine",
-    "declinedByThem": "Refuzată"
+    "declinedByThem": "Refuzată",
+    "badges": "Insigne",
+    "badgesProgress": "{earned} / {total} insigne"
   },
   "friends": {
     "title": "Prieteni",

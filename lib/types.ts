@@ -79,6 +79,18 @@ export interface ProfileStats {
   win_rate: number;
 }
 
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: "wins" | "social" | "special";
+}
+
+export interface ProfileBadge extends Badge {
+  earned_at: string | null;
+}
+
 export interface RecentGame {
   id: string;
   opponent: {
