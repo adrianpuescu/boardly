@@ -19,7 +19,8 @@ type NotificationType =
   | "game_over"
   | "invite"
   | "rematch_offer"
-  | "game_started";
+  | "game_started"
+  | "friend_request";
 
 interface NotificationItem {
   id: string;
@@ -66,6 +67,12 @@ export function Navbar({ currentUser }: Props) {
   const [locale, setLocale] = useState(currentLocale);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [processingNotificationId, setProcessingNotificationId] = useState<string | null>(
+    null
+  );
+  const [friendRequestResolution, setFriendRequestResolution] = useState<
+    Record<string, "accepted" | "declined" | "invalid">
+  >({});
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Sync locale from cookie on mount (handles SSR/client mismatch)
@@ -133,19 +140,79 @@ export function Navbar({ currentUser }: Props) {
     if (!target || target.read_at) return;
 
     const now = new Date().toISOString();
+    const senderId =
+      target.type === "friend_request"
+        ? String(target.payload.fromUserId ?? "")
+        : "";
+    const relatedIds =
+      target.type === "friend_request" && senderId
+        ? notifications
+            .filter(
+              (notification) =>
+                !notification.read_at &&
+                notification.type === "friend_request" &&
+                String(notification.payload.fromUserId ?? "") === senderId
+            )
+            .map((notification) => notification.id)
+        : [notificationId];
+    const idsToMark = relatedIds.length > 0 ? relatedIds : [notificationId];
+
     setNotifications((prev) =>
       prev.map((notification) =>
-        notification.id === notificationId
+        idsToMark.includes(notification.id)
           ? { ...notification, read_at: now }
           : notification
       )
     );
 
-    await fetch(`/api/notifications/${notificationId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ read_at: now }),
-    });
+    await Promise.all(
+      idsToMark.map((id) =>
+        fetch(`/api/notifications/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ read_at: now }),
+        })
+      )
+    );
+  }
+
+  async function markRelatedFriendRequestNotificationsAsRead(
+    notification: NotificationItem,
+    readAt: string
+  ) {
+    const senderId = String(notification.payload.fromUserId ?? "");
+    if (!senderId) {
+      await fetch(`/api/notifications/${notification.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ read_at: readAt }),
+      });
+      return;
+    }
+
+    const idsToMark = notifications
+      .filter(
+        (n) =>
+          !n.read_at &&
+          n.type === "friend_request" &&
+          String(n.payload.fromUserId ?? "") === senderId
+      )
+      .map((n) => n.id);
+
+    await Promise.all(
+      (idsToMark.length > 0 ? idsToMark : [notification.id]).map((id) =>
+        fetch(`/api/notifications/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ read_at: readAt }),
+        })
+      )
+    );
+  }
+
+  function dispatchFriendRequestResolvedEvent() {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(new CustomEvent("friendRequestResolved"));
   }
 
   async function markAllAsRead() {
@@ -184,6 +251,60 @@ export function Navbar({ currentUser }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ read_at: now, gameId }),
     });
+  }
+
+  async function handleFriendRequestAction(
+    notification: NotificationItem,
+    action: "accept" | "decline"
+  ) {
+    const friendshipId = String(notification.payload.friendshipId ?? "");
+    if (!friendshipId) return;
+
+    const now = new Date().toISOString();
+    const resolution = action === "accept" ? "accepted" : "declined";
+    setFriendRequestResolution((prev) => ({
+      ...prev,
+      [notification.id]: resolution,
+    }));
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notification.id ? { ...n, read_at: now } : n))
+    );
+
+    setProcessingNotificationId(notification.id);
+    try {
+      const res = await fetch("/api/friends/respond", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ friendshipId, action }),
+      });
+      if (!res.ok) {
+        if (res.status === 404) {
+          setFriendRequestResolution((prev) => ({
+            ...prev,
+            [notification.id]: "invalid",
+          }));
+          await markRelatedFriendRequestNotificationsAsRead(notification, now);
+          dispatchFriendRequestResolvedEvent();
+          return;
+        }
+        setFriendRequestResolution((prev) => {
+          const next = { ...prev };
+          delete next[notification.id];
+          return next;
+        });
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n.id === notification.id ? { ...n, read_at: notification.read_at } : n
+          )
+        );
+        return;
+      }
+
+      await markRelatedFriendRequestNotificationsAsRead(notification, now);
+      dispatchFriendRequestResolvedEvent();
+    } finally {
+      setProcessingNotificationId(null);
+    }
   }
 
   useEffect(() => {
@@ -253,6 +374,13 @@ export function Navbar({ currentUser }: Props) {
         name: String(notification.payload.name ?? nt("opponentFallback")),
       });
     }
+    if (notification.type === "friend_request") {
+      return nt("friendRequest", {
+        username: String(
+          notification.payload.fromUsername ?? nt("opponentFallback")
+        ),
+      });
+    }
     if (notification.type === "game_started") {
       return nt("gameStarted", {
         opponent: String(notification.payload.opponent_name ?? nt("opponentFallback")),
@@ -264,6 +392,9 @@ export function Navbar({ currentUser }: Props) {
   }
 
   function getNotificationAction(notification: NotificationItem) {
+    if (notification.type === "friend_request") {
+      return null;
+    }
     if (notification.type === "your_turn") {
       return {
         href: `/game/${String(notification.payload.game_id ?? "")}`,
@@ -352,6 +483,7 @@ export function Navbar({ currentUser }: Props) {
                       <div
                         key={notification.id}
                         onClick={() => {
+                          if (notification.type === "friend_request") return;
                           void markNotificationAsRead(notification.id);
                         }}
                         className={`px-4 py-3 border-b border-gray-100/90 transition-colors cursor-pointer ${
@@ -367,16 +499,63 @@ export function Navbar({ currentUser }: Props) {
                           <span className="text-xs text-gray-400">
                             {formatTimeAgo(notification.sent_at)}
                           </span>
-                          <Link
-                            href={action.href}
-                            onClick={() => {
-                              void markNotificationAsRead(notification.id);
-                              setOpenNotifications(false);
-                            }}
-                            className="text-xs font-semibold text-orange-600 hover:text-orange-700"
-                          >
-                            {action.label}
-                          </Link>
+                          {notification.type === "friend_request" ? (
+                            friendRequestResolution[notification.id] ? (
+                              <span
+                                className={`text-xs font-semibold ${
+                                  friendRequestResolution[notification.id] === "accepted"
+                                    ? "text-green-600"
+                                    : "text-gray-500"
+                                }`}
+                              >
+                                {friendRequestResolution[notification.id] === "accepted"
+                                  ? nt("friendRequestAccepted")
+                                  : friendRequestResolution[notification.id] === "declined"
+                                  ? nt("friendRequestDeclined")
+                                  : nt("friendRequestInvalid")}
+                              </span>
+                            ) : (
+                              notification.read_at ? null : (
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={processingNotificationId === notification.id}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      void handleFriendRequestAction(notification, "accept");
+                                    }}
+                                    className="rounded-md bg-orange-500 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-orange-600 disabled:opacity-60"
+                                  >
+                                    {nt("acceptFriendRequest")}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={processingNotificationId === notification.id}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      void handleFriendRequestAction(notification, "decline");
+                                    }}
+                                    className="rounded-md border border-gray-200 px-2.5 py-1 text-[11px] font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+                                  >
+                                    {nt("declineFriendRequest")}
+                                  </button>
+                                </div>
+                              )
+                            )
+                          ) : action ? (
+                            <Link
+                              href={action.href}
+                              onClick={() => {
+                                void markNotificationAsRead(notification.id);
+                                setOpenNotifications(false);
+                              }}
+                              className="text-xs font-semibold text-orange-600 hover:text-orange-700"
+                            >
+                              {action.label}
+                            </Link>
+                          ) : null}
                         </div>
                       </div>
                     );
@@ -427,6 +606,17 @@ export function Navbar({ currentUser }: Props) {
                   <UserIcon />
                 </span>
                 {t("profile")}
+              </button>
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setOpenProfile(false);
+                  router.push("/friends");
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+              >
+                <span className="text-gray-400">👥</span>
+                {t("friends")}
               </button>
 
               {/* Language options */}

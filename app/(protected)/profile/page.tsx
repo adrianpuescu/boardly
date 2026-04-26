@@ -5,6 +5,12 @@ import { Navbar } from "@/components/layout/Navbar";
 import { ProfileClient } from "@/components/profile/ProfileClient";
 import type { CurrentUser, ProfileStats, RecentGame } from "@/lib/types";
 
+interface FriendshipStatusRow {
+  requester_id: string;
+  addressee_id: string;
+  status: "pending" | "accepted" | "declined" | "blocked";
+}
+
 export default async function ProfilePage() {
   const supabase = createClient();
   const admin = createAdminClient();
@@ -112,6 +118,53 @@ export default async function ProfilePage() {
         result,
         time_control: g.time_control as { type: string; minutes?: number },
         played_at: g.updated_at as string,
+        friend_request_status: "none",
+      };
+    });
+  }
+
+  const opponentIds = Array.from(
+    new Set(
+      recentGames
+        .map((game) => game.opponent?.id)
+        .filter((id): id is string => !!id)
+    )
+  );
+
+  if (opponentIds.length > 0) {
+    const { data: friendshipRows } = await admin
+      .from("friendships")
+      .select("requester_id, addressee_id, status")
+      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+      .in("status", ["pending", "accepted", "declined"]);
+
+    const relationByOpponent = new Map<
+      string,
+      RecentGame["friend_request_status"]
+    >();
+
+    for (const row of (friendshipRows ?? []) as FriendshipStatusRow[]) {
+      const opponentId =
+        row.requester_id === user.id ? row.addressee_id : row.requester_id;
+      if (!opponentIds.includes(opponentId)) continue;
+
+      if (row.status === "accepted") {
+        relationByOpponent.set(opponentId, "friends");
+      } else if (row.status === "pending") {
+        relationByOpponent.set(opponentId, "pending");
+      } else if (row.status === "declined") {
+        relationByOpponent.set(
+          opponentId,
+          row.requester_id === user.id ? "declined_by_them" : "declined_by_you"
+        );
+      }
+    }
+
+    recentGames = recentGames.map((game) => {
+      if (!game.opponent?.id) return game;
+      return {
+        ...game,
+        friend_request_status: relationByOpponent.get(game.opponent.id) ?? "none",
       };
     });
   }
@@ -135,6 +188,7 @@ export default async function ProfilePage() {
         stats={stats}
         recentGames={recentGames}
         email={user.email ?? ""}
+        isOwnProfile
       />
     </>
   );

@@ -89,6 +89,12 @@ export interface RecentGame {
   result: "win" | "loss" | "draw";
   time_control: { type: string; minutes?: number };
   played_at: string;
+  friend_request_status?:
+    | "none"
+    | "friends"
+    | "pending"
+    | "declined_by_you"
+    | "declined_by_them";
 }
 
 export interface GamePageData {
@@ -112,4 +118,35 @@ export interface GamePageData {
     username: string;
     avatar_url: string | null;
   } | null;
+}
+
+export interface FriendListItem {
+  friendshipId: string;
+  id: string;
+  username: string;
+  avatar_url: string | null;
+  status: "accepted";
+  created_at: string;
+  updated_at: string;
+  is_online?: boolean;
+}
+
+export interface IncomingFriendRequest {
+  friendshipId: string;
+  requester_id: string;
+  username: string;
+  avatar_url: string | null;
+  status: "pending";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OutgoingFriendRequest {
+  friendshipId: string;
+  addressee_id: string;
+  username: string;
+  avatar_url: string | null;
+  status: "pending" | "declined";
+  created_at: string;
+  updated_at: string;
 }

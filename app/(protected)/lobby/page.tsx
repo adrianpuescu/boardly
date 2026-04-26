@@ -20,6 +20,12 @@ interface TimeControl {
   minutes?: number;
 }
 
+interface FriendChip {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+}
+
 // ── Time-control card config ───────────────────────────────────────────────
 const TIME_CARD_CONFIG = [
   {
@@ -160,6 +166,7 @@ export default function LobbyPage() {
   const [createdGame, setCreatedGame] = useState<{ gameId: string; inviteToken: string } | null>(null);
   const [isAnonymousUser, setIsAnonymousUser] = useState(false);
   const [guestLimitReached, setGuestLimitReached] = useState(false);
+  const [friends, setFriends] = useState<FriendChip[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -174,6 +181,34 @@ export default function LobbyPage() {
     }
 
     void detectAnonymousUser();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadFriends() {
+      try {
+        const res = await fetch("/api/friends", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          friends?: Array<{
+            id: string;
+            username: string;
+            avatar_url: string | null;
+          }>;
+        };
+        if (!cancelled) {
+          setFriends(data.friends ?? []);
+        }
+      } catch {
+        // Friend chips are optional in lobby setup.
+      }
+    }
+
+    void loadFriends();
     return () => {
       cancelled = true;
     };
@@ -330,6 +365,36 @@ export default function LobbyPage() {
                 {t("friendEmailHint")}
               </p>
             </label>
+            {friends.length > 0 && (
+              <div className="pt-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                  {t("inviteFriend")}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {friends.map((friend) => (
+                    <button
+                      key={friend.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedOpponentId(friend.id);
+                        setSelectedOpponentName(friend.username);
+                        setOpponentEmail("");
+                      }}
+                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                        selectedOpponentId === friend.id && !opponentEmail.trim()
+                          ? "border-orange-400 bg-orange-50 text-orange-700"
+                          : "border-orange-100 bg-white text-gray-700 hover:bg-orange-50"
+                      }`}
+                    >
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-100 text-[11px] font-bold text-orange-700">
+                        {friend.username.slice(0, 2).toUpperCase()}
+                      </span>
+                      <span className="font-medium">{friend.username}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
 
           {/* ── Time control ───────────────────────────────────── */}

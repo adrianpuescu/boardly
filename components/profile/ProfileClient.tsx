@@ -22,7 +22,15 @@ interface Props {
   stats: ProfileStats;
   recentGames: RecentGame[];
   email: string;
+  isOwnProfile?: boolean;
 }
+
+type PopoverFriendStatus =
+  | "none"
+  | "friends"
+  | "pending"
+  | "declined_by_you"
+  | "declined_by_them";
 
 const USERNAME_RE = /^[a-zA-Z0-9._]+$/;
 
@@ -180,7 +188,13 @@ function ResultBadge({ result }: { result: "win" | "loss" | "draw" }) {
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2 MB
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export function ProfileClient({ profile, stats, recentGames, email }: Props) {
+export function ProfileClient({
+  profile,
+  stats,
+  recentGames,
+  email,
+  isOwnProfile = true,
+}: Props) {
   const router = useRouter();
   const t = useTranslations("profile");
   const locale = useLocale();
@@ -198,6 +212,13 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [inviteMenuForGame, setInviteMenuForGame] = useState<string | null>(null);
   const inviteMenuRef = useRef<HTMLUListElement>(null);
+  const [friendRequestByUserId, setFriendRequestByUserId] = useState<
+    Record<string, "idle" | "loading" | "sent">
+  >({});
+  const [friendState, setFriendState] = useState<"none" | "pending" | "friends">(
+    "none"
+  );
+  const [isFollowing, setIsFollowing] = useState(false);
 
   function validateUsername(value: string): string | null {
     if (value.length < 3) return t("usernameMin");
@@ -321,6 +342,33 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
     if (e.key === "Escape") cancelEditing();
   }
 
+  async function sendFriendRequest(userId: string) {
+    if (!userId || friendRequestByUserId[userId] === "loading") return;
+    setFriendRequestByUserId((prev) => ({ ...prev, [userId]: "loading" }));
+    try {
+      const res = await fetch("/api/friends/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ addresseeId: userId }),
+      });
+      if (!res.ok) {
+        setFriendRequestByUserId((prev) => ({ ...prev, [userId]: "idle" }));
+        return;
+      }
+      setFriendRequestByUserId((prev) => ({ ...prev, [userId]: "sent" }));
+    } catch {
+      setFriendRequestByUserId((prev) => ({ ...prev, [userId]: "idle" }));
+    }
+  }
+
+  function getPopoverFriendStatus(game: RecentGame): PopoverFriendStatus {
+    const local = game.opponent?.id
+      ? friendRequestByUserId[game.opponent.id]
+      : undefined;
+    if (local === "sent" || local === "loading") return "pending";
+    return (game.friend_request_status ?? "none") as PopoverFriendStatus;
+  }
+
   return (
     <div
       className="min-h-screen px-4 py-8"
@@ -363,18 +411,20 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
                   className="hidden"
                   onChange={handleAvatarChange}
                 />
-                <button
-                  title={t("changeAvatar")}
-                  disabled={uploading}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-orange-500 hover:bg-orange-600 disabled:opacity-70 text-white flex items-center justify-center shadow-md transition-colors"
-                >
-                  {uploading ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Camera className="w-3.5 h-3.5" />
-                  )}
-                </button>
+                {isOwnProfile && (
+                  <button
+                    title={t("changeAvatar")}
+                    disabled={uploading}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-orange-500 hover:bg-orange-600 disabled:opacity-70 text-white flex items-center justify-center shadow-md transition-colors"
+                  >
+                    {uploading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Camera className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                )}
               </div>
               <AnimatePresence>
                 {avatarError && (
@@ -394,7 +444,7 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
             <div className="flex-1 min-w-0 pt-1">
               {/* Username row */}
               <div className="flex items-center gap-2 flex-wrap">
-                {isEditing ? (
+                {isOwnProfile && isEditing ? (
                   <div className="flex items-center gap-2 flex-wrap w-full">
                     <input
                       ref={inputRef}
@@ -429,7 +479,7 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                ) : (
+                ) : isOwnProfile ? (
                   <button
                     onClick={startEditing}
                     className="group flex items-center gap-2"
@@ -439,6 +489,10 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
                     </span>
                     <Pencil className="w-4 h-4 text-gray-300 group-hover:text-orange-400 transition-colors" />
                   </button>
+                ) : (
+                  <span className="text-2xl font-extrabold text-gray-900 tracking-tight">
+                    {username}
+                  </span>
                 )}
               </div>
 
@@ -460,6 +514,52 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
               <p className="text-xs text-gray-400 mt-0.5">
                 {t("memberSince")} {formatMemberSince(profile.created_at, locale)}
               </p>
+              {isOwnProfile ? (
+                <button
+                  type="button"
+                  onClick={() => router.push("/friends")}
+                  className="mt-3 inline-flex items-center rounded-xl border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 transition-colors hover:bg-orange-100"
+                >
+                  {t("viewFriends")}
+                </button>
+              ) : (
+                <div className="mt-3 flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant={friendState === "none" ? "default" : "outline"}
+                    className={
+                      friendState === "none"
+                        ? "bg-orange-500 hover:bg-orange-600 text-white rounded-xl"
+                        : "rounded-xl"
+                    }
+                    onClick={() =>
+                      setFriendState((prev) => {
+                        if (prev === "none") return "pending";
+                        if (prev === "pending") return "friends";
+                        return "friends";
+                      })
+                    }
+                  >
+                    {friendState === "none"
+                      ? t("addFriend")
+                      : friendState === "pending"
+                      ? t("pendingFriend")
+                      : t("friends")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={isFollowing ? "outline" : "default"}
+                    className={
+                      isFollowing
+                        ? "rounded-xl"
+                        : "bg-gray-900 hover:bg-black text-white rounded-xl"
+                    }
+                    onClick={() => setIsFollowing((prev) => !prev)}
+                  >
+                    {isFollowing ? t("following") : t("follow")}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </motion.section>
@@ -565,6 +665,44 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
 
                       {inviteMenuForGame === game.id && (
                         <div className="absolute left-0 top-full mt-2 z-20 min-w-[180px] rounded-xl border border-orange-100 bg-white p-1.5 shadow-lg">
+                          {game.opponent?.id &&
+                            (() => {
+                              const status = getPopoverFriendStatus(game);
+                              if (status === "none") {
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      void sendFriendRequest(game.opponent?.id ?? "");
+                                    }}
+                                    disabled={
+                                      friendRequestByUserId[game.opponent.id] === "loading"
+                                    }
+                                    className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-orange-50 disabled:opacity-70"
+                                  >
+                                    {friendRequestByUserId[game.opponent.id] === "loading"
+                                      ? t("sendingFriendRequest")
+                                      : t("addFriend")}
+                                  </button>
+                                );
+                              }
+
+                              const label =
+                                status === "friends"
+                                  ? t("friends")
+                                  : status === "pending"
+                                  ? t("friendRequestSent")
+                                  : status === "declined_by_you"
+                                  ? t("declinedByYou")
+                                  : t("declinedByThem");
+                              return (
+                                <div className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-gray-500 bg-gray-50">
+                                  {label}
+                                </div>
+                              );
+                            })()}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -578,7 +716,7 @@ export function ProfileClient({ profile, stats, recentGames, email }: Props) {
                             }}
                             className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-orange-50"
                           >
-                            Invite to new game
+                            {t("inviteToNewGame")}
                           </button>
                         </div>
                       )}
