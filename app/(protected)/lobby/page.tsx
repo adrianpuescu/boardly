@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Copy, Check, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
 import { createClient } from "@/lib/supabase/client";
 import { guestReachedGameLimit, incrementGuestGamesCount } from "@/lib/guestLimits";
@@ -401,7 +402,11 @@ export default function LobbyPage() {
           <section className="bg-white rounded-3xl p-6 shadow-md border border-orange-50 space-y-4">
             <h2 className="text-base font-bold text-gray-800">{t("timeControl")}</h2>
 
-            <div className="space-y-3">
+            <RadioGroup
+              value={selectedType}
+              onValueChange={(v) => setSelectedType(v as TimeControlType)}
+              className="space-y-3"
+            >
               {TIME_CARD_CONFIG.map((card) => {
                 const isSelected = selectedType === card.type;
                 const meta = cardMeta[card.type];
@@ -413,29 +418,21 @@ export default function LobbyPage() {
                     : null;
 
                 return (
-                  <motion.div
+                  <motion.label
                     key={card.type}
                     layout
-                    onClick={() => setSelectedType(card.type)}
-                    className={`rounded-2xl border-2 p-4 cursor-pointer transition-colors select-none ${
+                    className={`block rounded-2xl border-2 p-4 cursor-pointer transition-colors select-none ${
                       isSelected
                         ? "border-orange-400 bg-orange-50"
                         : "border-gray-100 hover:border-orange-200 hover:bg-orange-50/40"
                     }`}
                   >
                     <div className="flex items-start gap-3">
-                      {/* Radio dot */}
-                      <div
-                        className={`mt-0.5 w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
-                          isSelected
-                            ? "border-orange-500 bg-orange-500"
-                            : "border-gray-300"
-                        }`}
-                      >
-                        {isSelected && (
-                          <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                        )}
-                      </div>
+                      <RadioGroupItem
+                        value={card.type}
+                        className="mt-0.5 border-2 border-gray-300 data-[checked]:border-orange-500 data-[checked]:bg-orange-500 dark:data-[checked]:bg-orange-500"
+                        aria-label={meta.label}
+                      />
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -450,7 +447,6 @@ export default function LobbyPage() {
                           {meta.description}
                         </p>
 
-                        {/* Slider — shown only when card is selected */}
                         <AnimatePresence initial={false}>
                           {isSelected && card.hasSlider && currentMinutes !== null && (
                             <motion.div
@@ -463,6 +459,7 @@ export default function LobbyPage() {
                               <div
                                 className="mt-4 space-y-3 px-2 pb-5"
                                 onClick={(e) => e.stopPropagation()}
+                                onPointerDown={(e) => e.stopPropagation()}
                               >
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs text-gray-500">
@@ -492,10 +489,10 @@ export default function LobbyPage() {
                         </AnimatePresence>
                       </div>
                     </div>
-                  </motion.div>
+                  </motion.label>
                 );
               })}
-            </div>
+            </RadioGroup>
           </section>
 
           {/* ── Submit ─────────────────────────────────────────── */}

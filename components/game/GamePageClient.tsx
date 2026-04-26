@@ -26,6 +26,14 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useGameRealtime } from "@/hooks/useGameRealtime";
 import { usePieceSet } from "@/hooks/usePieceSet";
 import { useBoardTheme } from "@/hooks/useBoardTheme";
@@ -461,19 +469,27 @@ function GameOverModal({
     : undefined;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+    <Dialog
+      open
+      disablePointerDismissal
+      onOpenChange={(_isOpen, eventDetails) => {
+        if (!_isOpen) {
+          eventDetails.preventUnmountOnClose();
+        }
+      }}
     >
-      <motion.div
-        initial={{ scale: 0.75, opacity: 0, y: 32 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        transition={{ type: "spring", damping: 22, stiffness: 320 }}
-        className="bg-white rounded-3xl p-8 max-w-xs w-full shadow-2xl text-center"
+      <DialogContent
+        showCloseButton={false}
+        overlayClassName="bg-black/50 supports-backdrop-filter:backdrop-blur-sm"
+        className="max-w-xs w-full gap-0 border-0 bg-transparent p-0 text-gray-900 shadow-none ring-0 sm:max-w-xs data-open:animate-none data-closed:animate-none"
       >
+        <motion.div
+          initial={{ scale: 0.75, opacity: 0, y: 32 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          transition={{ type: "spring", damping: 22, stiffness: 320 }}
+          className="bg-white rounded-3xl p-8 text-center shadow-2xl"
+        >
         {result === "timeout" ? (
           <>
             <div className="text-6xl mb-4 select-none">{iWon ? "⏰" : "⌛"}</div>
@@ -681,8 +697,9 @@ function GameOverModal({
             </>
           )}
         </div>
-      </motion.div>
-    </motion.div>
+        </motion.div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -731,41 +748,53 @@ function ResignDialog({
   const t = useTranslations("resign");
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+    <AlertDialog
+      open
+      onOpenChange={(isOpen) => {
+        if (!isOpen && !loading) onCancel();
+      }}
     >
-      <motion.div
-        initial={{ scale: 0.85, opacity: 0, y: 16 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        transition={{ type: "spring", damping: 24, stiffness: 340 }}
-        className="bg-white rounded-2xl p-6 max-w-xs w-full shadow-xl text-center"
+      <AlertDialogContent
+        overlayClassName="bg-black/40 supports-backdrop-filter:backdrop-blur-sm"
+        className="max-w-xs gap-0 border-0 p-0 text-center text-gray-900 shadow-xl ring-0 data-open:animate-none data-closed:animate-none sm:max-w-xs"
+        size="default"
       >
-        <div className="text-4xl mb-3">🏳️</div>
-        <h3 className="text-lg font-bold text-gray-900 mb-1">{t("title")}</h3>
-        <p className="text-sm text-gray-500 mb-5">{t("desc")}</p>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={onCancel}
-            disabled={loading}
-            className="flex-1 rounded-xl border-gray-200 text-gray-600"
-          >
-            {t("cancel")}
-          </Button>
-          <Button
-            onClick={onConfirm}
-            disabled={loading}
-            className="flex-1 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold"
-          >
-            {loading ? t("resigning") : t("confirm")}
-          </Button>
-        </div>
-      </motion.div>
-    </motion.div>
+        <motion.div
+          initial={{ scale: 0.85, opacity: 0, y: 16 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          transition={{ type: "spring", damping: 24, stiffness: 340 }}
+          className="rounded-2xl bg-white p-6"
+        >
+          <div className="text-4xl mb-3">🏳️</div>
+          <AlertDialogHeader className="text-center sm:text-center">
+            <AlertDialogTitle className="text-lg font-bold text-gray-900">
+              {t("title")}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-gray-500">
+              {t("desc")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="mt-5 flex gap-2">
+            <Button
+              variant="outline"
+              onClick={onCancel}
+              disabled={loading}
+              className="flex-1 rounded-xl border-gray-200 text-gray-600"
+            >
+              {t("cancel")}
+            </Button>
+            <Button
+              onClick={onConfirm}
+              disabled={loading}
+              className="flex-1 rounded-xl bg-red-500 font-semibold text-white hover:bg-red-600"
+            >
+              {loading ? t("resigning") : t("confirm")}
+            </Button>
+          </div>
+        </motion.div>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 

@@ -656,7 +656,7 @@ export function ProfileClient({
           >
             <h2 className="text-base font-bold text-gray-800 mb-4">{t("location")}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
+              <div className="min-w-0 w-full">
                 <Select
                   open={countrySelectOpen}
                   onOpenChange={(open) => {
@@ -669,8 +669,8 @@ export function ProfileClient({
                   <SelectTrigger>
                     <SelectValue placeholder={t("selectCountry")} />
                   </SelectTrigger>
-                  <SelectContent>
-                    <div className="bg-white p-2 border-b border-orange-100">
+                  <SelectContent
+                    stickyTop={
                       <input
                         value={countryQuery}
                         onChange={(e) => setCountryQuery(e.target.value)}
@@ -678,7 +678,8 @@ export function ProfileClient({
                         className="w-full rounded-md border border-orange-200 bg-orange-50/40 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
                         onKeyDown={(e) => e.stopPropagation()}
                       />
-                    </div>
+                    }
+                  >
                     <SelectItem value="__none__">{t("selectCountry")}</SelectItem>
                     {filteredCountryOptions.map((option) => (
                       <SelectItem key={option.code} value={option.code}>

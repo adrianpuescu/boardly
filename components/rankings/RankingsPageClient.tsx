@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ArrowLeft } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { RankingPlayer } from "@/lib/types";
 
 type RankingTab =
@@ -15,6 +16,17 @@ type RankingTab =
   | "most_active"
   | "weekly"
   | "monthly";
+
+const RANKING_TAB_ORDER: RankingTab[] = [
+  "global",
+  "friends",
+  "country",
+  "continent",
+  "win_streak",
+  "most_active",
+  "weekly",
+  "monthly",
+];
 
 interface Props {
   currentUserId: string;
@@ -129,34 +141,32 @@ export function RankingsPageClient({ currentUserId }: Props) {
         </section>
 
         <section className="bg-white rounded-3xl p-6 shadow-md border border-orange-50">
-          <div className="mb-4 flex flex-wrap gap-2">
-            {(
-              [
-                "global",
-                "friends",
-                "country",
-                "continent",
-                "win_streak",
-                "most_active",
-                "weekly",
-                "monthly",
-              ] as RankingTab[]
-            ).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`rounded-xl px-3 py-1.5 text-sm font-semibold transition-colors ${
-                  activeTab === tab
-                    ? "bg-orange-500 text-white"
-                    : "bg-orange-50 text-orange-700 hover:bg-orange-100"
-                }`}
-              >
-                {t(tab)}
-              </button>
-            ))}
-          </div>
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) => setActiveTab(v as RankingTab)}
+            className="w-full"
+          >
+            <TabsList
+              variant="line"
+              className="mb-4 h-auto min-h-0 w-full flex flex-wrap justify-start gap-2 rounded-none bg-transparent p-0 [background-image:none] ring-0"
+            >
+              {RANKING_TAB_ORDER.map((tab) => (
+                <TabsTrigger
+                  key={tab}
+                  value={tab}
+                  className="h-auto min-h-0 flex-none rounded-xl px-3 py-1.5 text-sm font-semibold text-orange-700 shadow-none after:hidden bg-orange-50 hover:bg-orange-100 focus-visible:ring-orange-200 data-active:border-transparent data-active:bg-orange-500 data-active:text-white data-active:shadow-none dark:data-active:border-transparent dark:data-active:bg-orange-500"
+                >
+                  {t(tab)}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
 
+          <div
+            role="tabpanel"
+            id={`rankings-${activeTab}`}
+            aria-label={t("title")}
+          >
           {loading ? (
             <p className="text-sm text-gray-500">{t("loading")}</p>
           ) : rows.length === 0 ? (
@@ -209,6 +219,7 @@ export function RankingsPageClient({ currentUserId }: Props) {
               </table>
             </div>
           )}
+          </div>
         </section>
       </div>
     </div>

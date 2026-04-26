@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SlidersHorizontal, Volume2, VolumeX, X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ALL_PIECE_SETS, PIECE_SET_LABELS, type PieceSet } from "@/lib/chess/pieces";
 import {
   ALL_BOARD_THEMES,
@@ -66,7 +67,6 @@ export function GameSettings({
   const t = useTranslations("game");
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>(() => (gameId ? "game" : "global"));
-  const ref = useRef<HTMLDivElement>(null);
 
   const hasGameId = !!gameId;
   const hasGamePieceOverride = gamePieceSet != null;
@@ -79,17 +79,6 @@ export function GameSettings({
     }
     setOpen(false);
   }, [canEditGameName, isEditingGameName, onSubmitGameName]);
-
-  useEffect(() => {
-    if (!open) return;
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        requestClose();
-      }
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open, requestClose]);
 
   useEffect(() => {
     if (!hasGameId) setTab("global");
@@ -106,19 +95,21 @@ export function GameSettings({
   }
 
   return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => {
-          if (open) {
-            requestClose();
-            return;
-          }
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (next) {
           setOpen(true);
-        }}
+        } else {
+          requestClose();
+        }
+      }}
+    >
+      <PopoverTrigger
+        type="button"
         title={t("gameSettingsTitle")}
         aria-label={t("gameSettingsTitle")}
-        className={`relative flex items-center justify-center w-9 h-9 rounded-xl border transition-colors ${
+        className={`relative flex h-9 w-9 items-center justify-center rounded-xl border transition-colors ${
           open
             ? "bg-orange-100 border-orange-300 text-orange-600"
             : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50 hover:border-gray-300"
@@ -128,10 +119,14 @@ export function GameSettings({
         {hasAnyGameOverride && (
           <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-orange-500 ring-1 ring-white" />
         )}
-      </button>
+      </PopoverTrigger>
 
-      {open && (
-        <div className="absolute right-0 top-11 z-50 w-[22rem] bg-white border border-gray-100 rounded-2xl shadow-xl shadow-black/10 overflow-hidden">
+        <PopoverContent
+          align="end"
+          side="bottom"
+          sideOffset={8}
+          className="w-[22rem] max-w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-gray-100 p-0 shadow-xl shadow-black/10"
+        >
           {hasGameId && (
             <>
               <div className="flex border-b border-gray-100">
@@ -349,8 +344,7 @@ export function GameSettings({
               })}
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        </PopoverContent>
+    </Popover>
   );
 }
