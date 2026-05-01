@@ -4,6 +4,8 @@
  * Served by Next.js from the site root (e.g. `/stockfish/stockfish-18-lite-single.js`).
  */
 
+import { Chess } from "chess.js";
+
 const STOCKFISH_SCRIPT_PATH = "/stockfish/stockfish-18-lite-single.js";
 const STOCKFISH_WASM_PATH = "/stockfish/stockfish-18-lite-single.wasm";
 
@@ -18,6 +20,19 @@ function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage: string)
   return Promise.race([promise, timeoutPromise]).finally(() => {
     if (timeoutId !== undefined) clearTimeout(timeoutId);
   }) as Promise<T>;
+}
+
+/** Uniform random legal move in UCI form — used for very low Skill Level to keep bots beatable. */
+function pickRandomLegalUci(fen: string): string {
+  const chess = new Chess(fen);
+  const moves = chess.moves({ verbose: true });
+  if (moves.length === 0) {
+    throw new Error("No legal moves for random pick");
+  }
+  const mv = moves[Math.floor(Math.random() * moves.length)]!;
+  let uci = `${mv.from}${mv.to}`;
+  if (mv.promotion) uci += mv.promotion;
+  return uci;
 }
 
 /**
@@ -178,7 +193,20 @@ export class StockfishEngine {
    */
   async getBestMove(fen: string): Promise<string> {
     await this.init();
+
+    // Beginner (1): pure random — no Stockfish. Easy (2–3): partial randomness.
+    if (this.skillLevel === 1) {
+      return pickRandomLegalUci(fen);
+    }
+
     this.syncSkillOption();
+
+    if (this.skillLevel === 2 && Math.random() < 0.75) {
+      return pickRandomLegalUci(fen);
+    }
+    if (this.skillLevel === 3 && Math.random() < 0.4) {
+      return pickRandomLegalUci(fen);
+    }
 
     this.post("ucinewgame");
     this.post(`position fen ${fen}`);

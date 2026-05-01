@@ -56,10 +56,10 @@
     "yourTurn": "Rândul tău!",
     "botThinking": "Boardly Bot se gândește…",
     "opponentsTurn": "Rândul adversarului",
+    "botDifficultyBeginner": "Începător",
     "botDifficultyEasy": "Ușor",
     "botDifficultyMedium": "Mediu",
     "botDifficultyHard": "Greu",
-    "botDifficultyExpert": "Expert",
     "waitingForOpponent": "Se așteaptă adversarul",
     "gameEnded": "Joc terminat",
     "submitting": "Se trimite…",
@@ -217,10 +217,10 @@
     "playVsFriend": "Joacă vs prieten",
     "playVsBot": "Joacă vs bot",
     "botDifficulty": "Putere bot",
+    "botDifficultyBeginner": "Începător",
     "botDifficultyEasy": "Ușor",
     "botDifficultyMedium": "Mediu",
     "botDifficultyHard": "Greu",
-    "botDifficultyExpert": "Expert",
     "botModeHint": "Joci cu albele — botul joacă cu negrulele, motor Stockfish."
   },
   "login": {

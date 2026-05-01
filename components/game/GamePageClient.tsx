@@ -77,14 +77,14 @@ type PromotionPiece = "q" | "r" | "b" | "n";
 function botDifficultyMsgKey(
   level: number
 ):
+  | "botDifficultyBeginner"
   | "botDifficultyEasy"
   | "botDifficultyMedium"
-  | "botDifficultyHard"
-  | "botDifficultyExpert" {
+  | "botDifficultyHard" {
+  if (level === 1) return "botDifficultyBeginner";
   if (level <= 4) return "botDifficultyEasy";
   if (level <= 10) return "botDifficultyMedium";
-  if (level <= 17) return "botDifficultyHard";
-  return "botDifficultyExpert";
+  return "botDifficultyHard";
 }
 
 function needsPromotionChoice(fen: string, from: Square, to: Square): boolean {

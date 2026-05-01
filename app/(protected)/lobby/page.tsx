@@ -21,7 +21,7 @@ const BOT_DIFFICULTY_PRESETS = [
   { level: 3, labelKey: "botDifficultyEasy" as const },
   { level: 8, labelKey: "botDifficultyMedium" as const },
   { level: 15, labelKey: "botDifficultyHard" as const },
-  { level: 20, labelKey: "botDifficultyExpert" as const },
+  { level: 1, labelKey: "botDifficultyBeginner" as const },
 ];
 
 interface TimeControl {

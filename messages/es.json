@@ -56,10 +56,10 @@
     "yourTurn": "¡Es tu turno!",
     "botThinking": "Boardly Bot está pensando…",
     "opponentsTurn": "Turno del rival",
+    "botDifficultyBeginner": "Principiante",
     "botDifficultyEasy": "Fácil",
     "botDifficultyMedium": "Medio",
     "botDifficultyHard": "Difícil",
-    "botDifficultyExpert": "Experto",
     "waitingForOpponent": "Esperando al rival",
     "gameEnded": "Partida terminada",
     "submitting": "Enviando…",
@@ -217,10 +217,10 @@
     "playVsFriend": "Jugar vs amigo",
     "playVsBot": "Jugar vs bot",
     "botDifficulty": "Fuerza del bot",
+    "botDifficultyBeginner": "Principiante",
     "botDifficultyEasy": "Fácil",
     "botDifficultyMedium": "Medio",
     "botDifficultyHard": "Difícil",
-    "botDifficultyExpert": "Experto",
     "botModeHint": "Juegas blancas — el bot juega negras con Stockfish."
   },
   "login": {
