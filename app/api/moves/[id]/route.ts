@@ -4,7 +4,7 @@ import { Chess } from "chess.js";
 import type { Square, PieceSymbol } from "chess.js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { checkAndAwardBadges } from "@/lib/badges/checkBadges";
+import { awardGameCompletedBadgesForPlayers } from "@/lib/badges/checkBadges";
 import { calculateElo, getKFactor } from "@/lib/elo";
 
 const INITIAL_FEN =
@@ -14,6 +14,8 @@ const bodySchema = z.object({
   from: z.string().min(2).max(2),
   to: z.string().min(2).max(2),
   promotion: z.string().length(1).optional(),
+  /** Human submits the bot's ply through their session so moves stay validated server-side. */
+  asBot: z.boolean().optional(),
 });
 
 async function updateEloAfterCompletedGame(params: {
@@ -135,7 +137,7 @@ export async function POST(
     );
   }
 
-  const { from, to, promotion = "q" } = parsed.data;
+  const { from, to, promotion = "q", asBot = false } = parsed.data;
 
   // Fetch game + players
   const { data: game } = await adminClient
@@ -162,16 +164,62 @@ export async function POST(
     user_id: string;
     color: string;
   }>;
-  const playerRow = players.find((p) => p.user_id === user.id);
-  if (!playerRow) {
-    console.error(
-      `[moves POST] user ${user.id} not found in game ${gameId}. Players:`,
-      players
-    );
-    return NextResponse.json(
-      { error: "You are not a player in this game" },
-      { status: 403 }
-    );
+
+  const rawState = game.state as {
+    fen?: string;
+    turn?: string;
+    vs_bot?: boolean;
+    bot_user_id?: string;
+    turn_started_at?: string;
+    white_time_ms?: number;
+    black_time_ms?: number;
+  };
+  const botUserId =
+    typeof rawState.bot_user_id === "string" ? rawState.bot_user_id : null;
+  const isVsBotGame = !!rawState.vs_bot && !!botUserId;
+
+  let moverUserId = user.id;
+  let actingPlayerRow: { user_id: string; color: string };
+
+  if (asBot) {
+    if (!isVsBotGame || !botUserId) {
+      return NextResponse.json(
+        { error: "This game does not support bot moves" },
+        { status: 400 }
+      );
+    }
+    if (user.id === botUserId) {
+      return NextResponse.json({ error: "Invalid bot move request" }, { status: 403 });
+    }
+
+    const botRow = players.find((p) => p.user_id === botUserId);
+    const humanRow = players.find((p) => p.user_id === user.id);
+
+    if (!botRow || !humanRow) {
+      console.error(
+        `[moves POST asBot] human ${user.id} / bot ${botUserId} missing in game ${gameId}`
+      );
+      return NextResponse.json(
+        { error: "You are not a player in this game" },
+        { status: 403 }
+      );
+    }
+
+    actingPlayerRow = botRow;
+    moverUserId = botUserId;
+  } else {
+    const playerRow = players.find((p) => p.user_id === user.id);
+    if (!playerRow) {
+      console.error(
+        `[moves POST] user ${user.id} not found in game ${gameId}. Players:`,
+        players
+      );
+      return NextResponse.json(
+        { error: "You are not a player in this game" },
+        { status: 403 }
+      );
+    }
+    actingPlayerRow = playerRow;
   }
 
   // ── Auto-activate waiting games ────────────────────────────────────────────
@@ -193,13 +241,7 @@ export async function POST(
   }
 
   // Authoritative FEN from the DB state column
-  const state = game.state as {
-    fen?: string;
-    turn?: string;
-    turn_started_at?: string;
-    white_time_ms?: number;
-    black_time_ms?: number;
-  };
+  const state = rawState;
   const currentFen = (state?.fen && state.fen.trim() !== "")
     ? state.fen
     : INITIAL_FEN;
@@ -207,12 +249,12 @@ export async function POST(
   // Verify it's this player's turn (compare FEN active-colour with player colour)
   const chess = new Chess(currentFen);
   const turnColor = chess.turn() === "w" ? "white" : "black";
-  if (turnColor !== playerRow.color) {
+  if (turnColor !== actingPlayerRow.color) {
     console.error(
-      `[moves POST] wrong turn: FEN says ${turnColor}, player is ${playerRow.color}`
+      `[moves POST] wrong turn: FEN says ${turnColor}, mover color is ${actingPlayerRow.color}`
     );
     return NextResponse.json(
-      { error: `It is not your turn (${playerRow.color})` },
+      { error: `It is not your turn (${actingPlayerRow.color})` },
       { status: 400 }
     );
   }
@@ -244,7 +286,7 @@ export async function POST(
   if (isOver) {
     if (chess.isCheckmate()) {
       result = "checkmate";
-      winnerId = user.id; // the player who just moved delivered checkmate
+      winnerId = moverUserId; // the player who just moved delivered checkmate
     } else if (chess.isStalemate()) {
       result = "stalemate";
     } else {
@@ -264,7 +306,7 @@ export async function POST(
   // Insert move record
   const { error: moveError } = await adminClient.from("moves").insert({
     game_id: gameId,
-    user_id: user.id,
+    user_id: moverUserId,
     move_san: moveSan,
     fen_after: newFen,
     move_number: moveNumber,
@@ -283,11 +325,13 @@ export async function POST(
   const now = new Date().toISOString();
   const timeControl = game.time_control as { type: string; minutes?: number } | null;
 
+  const prevState = (game.state ?? {}) as Record<string, unknown>;
   const newState: Record<string, unknown> = {
+    ...prevState,
     fen: newFen,
     turn: newTurn,
-    ...(result ? { result } : {}),
   };
+  if (result) newState.result = result;
 
   // Attach timer fields based on time control type
   if (!isOver && timeControl?.type === "per_turn") {
@@ -302,7 +346,7 @@ export async function POST(
     // Deduct elapsed time from the player who just moved
     if (state.turn_started_at) {
       const elapsed = Date.now() - new Date(state.turn_started_at).getTime();
-      if (playerRow.color === "white") {
+      if (actingPlayerRow.color === "white") {
         whiteMs = Math.max(0, whiteMs - elapsed);
       } else {
         blackMs = Math.max(0, blackMs - elapsed);
@@ -332,11 +376,14 @@ export async function POST(
 
   if (!isOver) {
     const nextPlayer = players.find((p) => p.color === newTurn);
-    if (nextPlayer && nextPlayer.user_id !== user.id) {
+    const skipTurnNotify =
+      !!botUserId && !!nextPlayer && nextPlayer.user_id === botUserId;
+
+    if (nextPlayer && !skipTurnNotify && nextPlayer.user_id !== moverUserId) {
       const { data: moverProfile } = await adminClient
         .from("users")
         .select("username")
-        .eq("id", user.id)
+        .eq("id", moverUserId)
         .single();
 
       const moverName = moverProfile?.username ?? "Your opponent";
@@ -370,9 +417,14 @@ export async function POST(
     }
   }
 
-  if (isOver && winnerId) {
-    const loser = players.find((p) => p.user_id !== winnerId);
-    if (loser?.user_id) {
+  if (isOver) {
+    const loser = winnerId
+      ? players.find((p) => p.user_id !== winnerId)
+      : undefined;
+    const involvesBot =
+      !!botUserId && players.some((p) => p.user_id === botUserId);
+
+    if (winnerId && !involvesBot && loser?.user_id) {
       try {
         await updateEloAfterCompletedGame({
           adminClient,
@@ -385,11 +437,11 @@ export async function POST(
       }
     }
 
-    try {
-      await checkAndAwardBadges(winnerId, "game_completed");
-    } catch (error) {
-      console.error("[moves POST] badge check failed:", error);
-    }
+    await awardGameCompletedBadgesForPlayers({
+      winnerId,
+      botUserId,
+      players,
+    });
   }
 
   return NextResponse.json({

@@ -61,10 +61,10 @@ export interface DashboardGame {
   id: string;
   name?: string | null;
   created_by: string | null;
-  status: "waiting" | "active";
+  status: "waiting" | "active" | "completed" | "abandoned";
   game_type: string;
   time_control: { type: string };
-  state: { turn?: "white" | "black"; fen?: string };
+  state: { turn?: "white" | "black"; fen?: string; vs_bot?: boolean };
   created_at: string;
   my_color: "white" | "black";
   opponent: {
@@ -144,6 +144,10 @@ export interface GamePageData {
     turn_started_at?: string;
     white_time_ms?: number;
     black_time_ms?: number;
+    /** Present when the black player is the Stockfish bot. */
+    vs_bot?: boolean;
+    bot_difficulty?: number;
+    bot_user_id?: string;
   };
   time_control: { type: string; minutes?: number };
   winner_id: string | null;

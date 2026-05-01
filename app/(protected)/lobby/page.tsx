@@ -15,6 +15,14 @@ import { guestReachedGameLimit, incrementGuestGamesCount } from "@/lib/guestLimi
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type TimeControlType = "unlimited" | "per_turn" | "per_game";
+type PlayMode = "friend" | "bot";
+
+const BOT_DIFFICULTY_PRESETS = [
+  { level: 3, labelKey: "botDifficultyEasy" as const },
+  { level: 8, labelKey: "botDifficultyMedium" as const },
+  { level: 15, labelKey: "botDifficultyHard" as const },
+  { level: 20, labelKey: "botDifficultyExpert" as const },
+];
 
 interface TimeControl {
   type: TimeControlType;
@@ -168,6 +176,8 @@ export default function LobbyPage() {
   const [isAnonymousUser, setIsAnonymousUser] = useState(false);
   const [guestLimitReached, setGuestLimitReached] = useState(false);
   const [friends, setFriends] = useState<FriendChip[]>([]);
+  const [playMode, setPlayMode] = useState<PlayMode>("friend");
+  const [botDifficulty, setBotDifficulty] = useState(8);
 
   useEffect(() => {
     let cancelled = false;
@@ -239,9 +249,13 @@ export default function LobbyPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: gameName.trim() || undefined,
-          opponentEmail: opponentEmail.trim() || undefined,
-          opponentId: selectedOpponentId || undefined,
           timeControl: getTimeControl(),
+          ...(playMode === "bot"
+            ? { vsBot: true, botDifficulty }
+            : {
+                opponentEmail: opponentEmail.trim() || undefined,
+                opponentId: selectedOpponentId || undefined,
+              }),
         }),
       });
 
@@ -321,6 +335,62 @@ export default function LobbyPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* ── Play mode (friend / bot) ───────────────────────── */}
+          <section className="bg-white rounded-3xl p-6 shadow-md border border-orange-50 space-y-4">
+            <div className="flex rounded-2xl border border-gray-100 bg-orange-50/50 p-1 gap-1">
+              <button
+                type="button"
+                onClick={() => setPlayMode("friend")}
+                className={`flex-1 rounded-xl py-3 px-3 text-sm font-bold transition-colors ${
+                  playMode === "friend"
+                    ? "bg-white text-orange-700 shadow-sm ring-1 ring-orange-100"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {t("playVsFriend")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlayMode("bot")}
+                className={`flex-1 rounded-xl py-3 px-3 text-sm font-bold transition-colors ${
+                  playMode === "bot"
+                    ? "bg-white text-orange-700 shadow-sm ring-1 ring-orange-100"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {t("playVsBot")}
+              </button>
+            </div>
+
+            {playMode === "bot" && (
+              <div className="space-y-3 pt-1">
+                <p className="text-xs text-gray-500 leading-relaxed">{t("botModeHint")}</p>
+                <p className="text-sm font-semibold text-gray-700">{t("botDifficulty")}</p>
+                <RadioGroup
+                  value={String(botDifficulty)}
+                  onValueChange={(v) => setBotDifficulty(Number(v))}
+                  className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+                >
+                  {BOT_DIFFICULTY_PRESETS.map((preset) => (
+                    <label
+                      key={preset.level}
+                      className={`flex cursor-pointer items-center gap-2 rounded-xl border-2 px-3 py-2.5 transition-colors ${
+                        botDifficulty === preset.level
+                          ? "border-orange-400 bg-orange-50"
+                          : "border-gray-100 hover:border-orange-200 bg-white"
+                      }`}
+                    >
+                      <RadioGroupItem value={String(preset.level)} className="border-gray-300" />
+                      <span className="text-sm font-semibold text-gray-800">
+                        {t(preset.labelKey)}
+                      </span>
+                    </label>
+                  ))}
+                </RadioGroup>
+              </div>
+            )}
+          </section>
+
           {/* ── Game name ──────────────────────────────────────── */}
           <section className="bg-white rounded-3xl p-6 shadow-md border border-orange-50 space-y-3">
             <label className="block space-y-1.5">
@@ -343,6 +413,7 @@ export default function LobbyPage() {
           </section>
 
           {/* ── Opponent ───────────────────────────────────────── */}
+          {playMode === "friend" && (
           <section className="bg-white rounded-3xl p-6 shadow-md border border-orange-50 space-y-3">
             <h2 className="text-base font-bold text-gray-800">{t("opponent")}</h2>
             <label className="block space-y-1.5">
@@ -400,6 +471,7 @@ export default function LobbyPage() {
               </div>
             )}
           </section>
+          )}
 
           {/* ── Time control ───────────────────────────────────── */}
           <section className="bg-white rounded-3xl p-6 shadow-md border border-orange-50 space-y-4">

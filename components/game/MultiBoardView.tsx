@@ -22,6 +22,7 @@ import { useBoardTheme } from "@/hooks/useBoardTheme";
 import { buildPieces } from "@/lib/chess/pieces";
 import { getBoardThemeStyles } from "@/lib/chess/boardThemes";
 import type { DashboardGame } from "@/lib/types";
+import { isNextImageCompatibleSrc } from "@/lib/utils";
 
 const Chessboard = dynamic(
   () => import("react-chessboard").then((m) => m.Chessboard),
@@ -48,6 +49,7 @@ function BoardItem({ game }: BoardItemProps) {
   const customPieces = buildPieces(pieceSet);
   const router = useRouter();
   const t = useTranslations("game");
+  const tGameCard = useTranslations("gameCard");
   const tDashboard = useTranslations("dashboard");
   const boardControls = useAnimation();
 
@@ -108,7 +110,9 @@ function BoardItem({ game }: BoardItemProps) {
 
   // Derive turn from live FEN for accuracy
   const fenTurn = fen.split(" ")[1] === "b" ? "black" : "white";
-  const isActive = gameStatus === "active" && !gameOver;
+  const isTerminalStatus =
+    gameStatus === "completed" || gameStatus === "abandoned";
+  const isActive = gameStatus === "active" && !gameOver && !isTerminalStatus;
   const isMyTurn = fenTurn === game.my_color && isActive;
   const canMove = isMyTurn && !submitting;
 
@@ -116,7 +120,11 @@ function BoardItem({ game }: BoardItemProps) {
   const opponentInitials = game.opponent
     ? opponentName.slice(0, 2).toUpperCase()
     : "?";
-  const showAvatar = !!game.opponent?.avatar_url && !avatarError;
+  const oppAvatarUrl = game.opponent?.avatar_url;
+  const showAvatar =
+    !!oppAvatarUrl &&
+    !avatarError &&
+    isNextImageCompatibleSrc(oppAvatarUrl);
 
   async function shake() {
     await boardControls.start({
@@ -215,13 +223,17 @@ function BoardItem({ game }: BoardItemProps) {
         {showAvatar ? (
           <div className="relative w-7 h-7 rounded-full ring-1 ring-orange-100 overflow-hidden flex-shrink-0">
             <Image
-              src={game.opponent!.avatar_url!}
+              src={oppAvatarUrl!}
               alt={opponentName}
               fill
               sizes="28px"
               className="object-cover"
               onError={() => setAvatarError(true)}
             />
+          </div>
+        ) : oppAvatarUrl && !isNextImageCompatibleSrc(oppAvatarUrl) ? (
+          <div className="w-7 h-7 rounded-full bg-orange-100 ring-1 ring-orange-100 flex items-center justify-center text-base leading-none flex-shrink-0 select-none">
+            {oppAvatarUrl}
           </div>
         ) : (
           <div className="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-[10px] font-bold flex-shrink-0">
@@ -320,6 +332,13 @@ function BoardItem({ game }: BoardItemProps) {
           <>
             <span className="h-2 w-2 rounded-full bg-blue-300 flex-shrink-0 inline-block" />
             {t("opponentsTurn")}
+          </>
+        ) : isTerminalStatus ? (
+          <>
+            <span className="h-2 w-2 rounded-full bg-violet-300 flex-shrink-0 inline-block" />
+            {gameStatus === "abandoned"
+              ? tGameCard("abandoned")
+              : tGameCard("completed")}
           </>
         ) : (
           <>

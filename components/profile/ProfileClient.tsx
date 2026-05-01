@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { ProfileBadge, ProfileStats, RecentGame } from "@/lib/types";
+import { isNextImageCompatibleSrc } from "@/lib/utils";
 
 interface ProfileData {
   id: string;
@@ -109,7 +110,7 @@ function Avatar({
   const [error, setError] = useState(false);
   const initials = username.slice(0, 2).toUpperCase();
 
-  if (avatarUrl && !error) {
+  if (avatarUrl && !error && isNextImageCompatibleSrc(avatarUrl)) {
     return (
       <div
         className="relative rounded-full ring-4 ring-orange-200 overflow-hidden flex-shrink-0"
@@ -123,6 +124,17 @@ function Avatar({
           className="object-cover"
           onError={() => setError(true)}
         />
+      </div>
+    );
+  }
+
+  if (avatarUrl && !isNextImageCompatibleSrc(avatarUrl)) {
+    return (
+      <div
+        className="rounded-full ring-4 ring-orange-200 bg-orange-50 flex items-center justify-center select-none flex-shrink-0"
+        style={{ width: size, height: size, fontSize: size * 0.45 }}
+      >
+        {avatarUrl}
       </div>
     );
   }
@@ -148,7 +160,7 @@ function SmallAvatar({
   const [error, setError] = useState(false);
   const initials = username.slice(0, 2).toUpperCase();
 
-  if (avatarUrl && !error) {
+  if (avatarUrl && !error && isNextImageCompatibleSrc(avatarUrl)) {
     return (
       <div className="relative w-9 h-9 rounded-full ring-2 ring-orange-100 overflow-hidden flex-shrink-0">
         <Image
@@ -159,6 +171,14 @@ function SmallAvatar({
           className="object-cover"
           onError={() => setError(true)}
         />
+      </div>
+    );
+  }
+
+  if (avatarUrl && !isNextImageCompatibleSrc(avatarUrl)) {
+    return (
+      <div className="w-9 h-9 rounded-full bg-orange-100 ring-2 ring-orange-100 flex items-center justify-center text-lg leading-none flex-shrink-0 select-none">
+        {avatarUrl}
       </div>
     );
   }
@@ -198,6 +218,31 @@ function StatCard({
 }
 
 // ── Result badge ───────────────────────────────────────────────────────────────
+function localizedProfileBadge(
+  t: ReturnType<typeof useTranslations<"profile">>,
+  badge: ProfileBadge
+): { name: string; description: string } {
+  switch (badge.id) {
+    case "first_bot_game":
+      return {
+        name: t("badge_first_bot_game_name"),
+        description: t("badge_first_bot_game_description"),
+      };
+    case "beat_the_bot":
+      return {
+        name: t("badge_beat_the_bot_name"),
+        description: t("badge_beat_the_bot_description"),
+      };
+    case "beat_hard_bot":
+      return {
+        name: t("badge_beat_hard_bot_name"),
+        description: t("badge_beat_hard_bot_description"),
+      };
+    default:
+      return { name: badge.name, description: badge.description };
+  }
+}
+
 function ResultBadge({ result }: { result: "win" | "loss" | "draw" }) {
   const t = useTranslations("profile");
 
@@ -747,6 +792,8 @@ export function ProfileClient({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {badges.map((badge) => {
               const earned = Boolean(badge.earned_at);
+              const { name: badgeTitle, description: badgeBlurb } =
+                localizedProfileBadge(t, badge);
               return (
                 <div
                   key={badge.id}
@@ -770,14 +817,14 @@ export function ProfileClient({
                           earned ? "text-gray-900" : "text-gray-500"
                         }`}
                       >
-                        {badge.name}
+                        {badgeTitle}
                       </p>
                       <p
                         className={`mt-0.5 text-xs leading-relaxed ${
                           earned ? "text-gray-600" : "text-gray-400"
                         }`}
                       >
-                        {badge.description}
+                        {badgeBlurb}
                       </p>
                     </div>
                   </div>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { awardGameCompletedBadgesForPlayers } from "@/lib/badges/checkBadges";
 
 const bodySchema = z.object({
   action: z.enum(["offer", "accept", "decline"]),
@@ -123,6 +124,16 @@ export async function POST(
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  const drawState = stateWithoutOffer as { vs_bot?: boolean; bot_user_id?: string };
+  const drawBotUid =
+    typeof drawState.bot_user_id === "string" ? drawState.bot_user_id : null;
+
+  await awardGameCompletedBadgesForPlayers({
+    winnerId: null,
+    botUserId: drawBotUid,
+    players,
+  });
 
   return NextResponse.json({ success: true, action: "accept" });
 }

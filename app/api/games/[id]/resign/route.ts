@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/resend";
 import { gameOverEmail } from "@/lib/emails/your-turn";
+import { awardGameCompletedBadgesForPlayers } from "@/lib/badges/checkBadges";
 
 export async function POST(
   _request: NextRequest,
@@ -69,6 +70,18 @@ export async function POST(
       { status: 500 }
     );
   }
+
+  const resignState = currentState as { vs_bot?: boolean; bot_user_id?: string };
+  const resignBotUid =
+    typeof resignState.bot_user_id === "string"
+      ? resignState.bot_user_id
+      : undefined;
+
+  await awardGameCompletedBadgesForPlayers({
+    winnerId,
+    botUserId: resignBotUid ?? null,
+    players,
+  });
 
   if (opponentRow?.user_id) {
     const { data: currentUserRecord } = await adminClient

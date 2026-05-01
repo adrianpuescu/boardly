@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { RankingPlayer } from "@/lib/types";
+import { isNextImageCompatibleSrc } from "@/lib/utils";
 
 type RankingTab =
   | "global"
@@ -34,7 +35,7 @@ interface Props {
 }
 
 function Avatar({ username, avatarUrl }: { username: string; avatarUrl: string | null }) {
-  if (avatarUrl) {
+  if (avatarUrl && isNextImageCompatibleSrc(avatarUrl)) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
@@ -42,6 +43,14 @@ function Avatar({ username, avatarUrl }: { username: string; avatarUrl: string |
         alt={username}
         className="h-8 w-8 rounded-full object-cover ring-1 ring-orange-100"
       />
+    );
+  }
+
+  if (avatarUrl && !isNextImageCompatibleSrc(avatarUrl)) {
+    return (
+      <div className="h-8 w-8 rounded-full bg-orange-50 ring-1 ring-orange-100 flex items-center justify-center text-lg leading-none select-none">
+        {avatarUrl}
+      </div>
     );
   }
 

@@ -147,7 +147,7 @@ export function DashboardClient({ games, currentUser }: Props) {
             <p className="text-gray-500 text-sm pl-8 sm:pl-9 truncate">
               {games.length === 0
                 ? t("readyToPlay")
-                : t("gamesInProgress", { count: games.length })}
+                : t("yourGamesSubtitle", { count: games.length })}
             </p>
           </div>
 

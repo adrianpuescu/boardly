@@ -35,6 +35,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
 import { useGameRealtime } from "@/hooks/useGameRealtime";
 import { usePieceSet } from "@/hooks/usePieceSet";
 import { useBoardTheme } from "@/hooks/useBoardTheme";
@@ -55,8 +56,14 @@ import {
   getCapturedPieces,
   type CapturedPieces,
 } from "@/lib/chess/capturedPieces";
-import { cn } from "@/lib/utils";
+import { cn, isNextImageCompatibleSrc } from "@/lib/utils";
 import { getGuestGamesCount, GUEST_GAMES_LIMIT } from "@/lib/guestLimits";
+import { BOARDLY_BOT_USERNAME } from "@/lib/chess/boardlyBot";
+import {
+  disposeSharedStockfishEngine,
+  getSharedStockfishEngine,
+  parseUciMove,
+} from "@/lib/chess/stockfish";
 
 /** Tiled fractal noise for CRT-style static (SVG filter). */
 const REPLAY_TV_NOISE_DATA_URL =
@@ -66,6 +73,19 @@ const REPLAY_TV_NOISE_DATA_URL =
   );
 
 type PromotionPiece = "q" | "r" | "b" | "n";
+
+function botDifficultyMsgKey(
+  level: number
+):
+  | "botDifficultyEasy"
+  | "botDifficultyMedium"
+  | "botDifficultyHard"
+  | "botDifficultyExpert" {
+  if (level <= 4) return "botDifficultyEasy";
+  if (level <= 10) return "botDifficultyMedium";
+  if (level <= 17) return "botDifficultyHard";
+  return "botDifficultyExpert";
+}
 
 function needsPromotionChoice(fen: string, from: Square, to: Square): boolean {
   const chess = new Chess(fen);
@@ -199,6 +219,8 @@ function PlayerStrip({
   isTheirTurn,
   timer,
   moveCount,
+  isBoardlyBot,
+  difficultyLabel,
 }: {
   username: string;
   avatarUrl: string | null;
@@ -207,11 +229,16 @@ function PlayerStrip({
   isTheirTurn: boolean;
   timer?: React.ReactNode;
   moveCount: number;
+  /** Robot avatar + styling for the Stockfish opponent row. */
+  isBoardlyBot?: boolean;
+  /** Short translated preset label (Easy / Medium / …). */
+  difficultyLabel?: string | null;
 }) {
   const t = useTranslations("game");
   const initials = username.slice(0, 2).toUpperCase();
   const [avatarError, setAvatarError] = useState(false);
-  const showAvatar = !!avatarUrl && !avatarError;
+  const showAvatar =
+    !!avatarUrl && !avatarError && isNextImageCompatibleSrc(avatarUrl);
 
   return (
     <div
@@ -222,7 +249,11 @@ function PlayerStrip({
       }`}
     >
       <div className="relative flex-shrink-0">
-        {showAvatar ? (
+        {isBoardlyBot ? (
+          <div className="w-10 h-10 rounded-full ring-2 ring-violet-200 bg-violet-50 flex items-center justify-center text-xl select-none">
+            🤖
+          </div>
+        ) : showAvatar ? (
           <div className="w-10 h-10 rounded-full ring-2 ring-orange-100 overflow-hidden flex-shrink-0">
             <Image
               src={avatarUrl!}
@@ -232,6 +263,10 @@ function PlayerStrip({
               className="w-full h-full object-cover"
               onError={() => setAvatarError(true)}
             />
+          </div>
+        ) : avatarUrl && !isNextImageCompatibleSrc(avatarUrl) ? (
+          <div className="w-10 h-10 rounded-full ring-2 ring-orange-100 bg-orange-50 flex items-center justify-center text-xl select-none">
+            {avatarUrl}
           </div>
         ) : (
           <div
@@ -254,16 +289,20 @@ function PlayerStrip({
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="font-semibold text-gray-900 text-sm truncate">
-          {username}
+        <p className="font-semibold text-gray-900 text-sm truncate flex flex-wrap items-center gap-1.5">
+          <span className="truncate">{username}</span>
+          {isBoardlyBot && difficultyLabel ? (
+            <Badge
+              variant="secondary"
+              className="shrink-0 text-[10px] font-semibold px-2 py-0 bg-violet-100 text-violet-800 border-violet-200"
+            >
+              {difficultyLabel}
+            </Badge>
+          ) : null}
           {isCurrentUser && (
-            <span className="ml-1.5 text-xs font-normal text-orange-500">
-              {t("you")}
-            </span>
+            <span className="text-xs font-normal text-orange-500">{t("you")}</span>
           )}
-          <span className="ml-1.5 text-xs font-normal text-gray-400">
-            {moveCount}
-          </span>
+          <span className="text-xs font-normal text-gray-400 tabular-nums">{moveCount}</span>
         </p>
         <p className="flex items-center gap-1 text-xs text-gray-400">
           <span className="text-base chess-sym">{color === "white" ? "♔" : "♚"}</span>
@@ -355,11 +394,15 @@ function StatusBanner({
   currentTurn,
   myColor,
   submitting,
+  vsBot,
+  botThinking,
 }: {
   status: GamePageData["status"];
   currentTurn: "white" | "black";
   myColor: "white" | "black";
   submitting: boolean;
+  vsBot?: boolean;
+  botThinking?: boolean;
 }) {
   const t = useTranslations("game");
 
@@ -388,6 +431,18 @@ function StatusBanner({
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
         </svg>
         {t("submitting")}
+      </div>
+    );
+  }
+
+  if (vsBot && botThinking && status === "active") {
+    return (
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-violet-50 text-violet-700 border border-violet-200 rounded-xl text-sm font-semibold">
+        <svg className="animate-spin h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+        </svg>
+        {t("botThinking")}
       </div>
     );
   }
@@ -439,6 +494,7 @@ function GameOverModal({
   guestCanPlayMore,
   onCreateAccount,
   onPlayAsGuest,
+  vsBot,
 }: {
   result: GameResult | string | null;
   iWon: boolean;
@@ -459,15 +515,20 @@ function GameOverModal({
   guestCanPlayMore?: boolean;
   onCreateAccount?: () => void;
   onPlayAsGuest?: () => void;
+  /** Bot opponent: rematch always available, no presence / invite UI. */
+  vsBot?: boolean;
 }) {
   const t = useTranslations("gameOver");
-  const rematchDisabled =
-    !opponentOnline || rematchDeclined || rematchWaiting;
-  const rematchTitle = !opponentOnline
-    ? t("opponentLeftRematch")
-    : rematchDeclined
-    ? t("rematchDeclinedHint")
-    : undefined;
+  const rematchDisabled = vsBot
+    ? rematchLoading
+    : rematchLoading || !opponentOnline || rematchDeclined || rematchWaiting;
+  const rematchTitle = vsBot
+    ? undefined
+    : !opponentOnline
+      ? t("opponentLeftRematch")
+      : rematchDeclined
+        ? t("rematchDeclinedHint")
+        : undefined;
 
   return (
     <Dialog
@@ -574,7 +635,7 @@ function GameOverModal({
                 </Button>
               )}
             </>
-          ) : rematchWaiting ? (
+          ) : rematchWaiting && !vsBot ? (
             <div className="space-y-3">
               <p className="text-sm text-gray-600 flex items-center justify-center gap-2">
                 <svg
@@ -621,7 +682,7 @@ function GameOverModal({
             </div>
           ) : (
             <>
-              {rematchDeclined && (
+              {rematchDeclined && !vsBot && (
                 <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
                   {t("rematchDeclinedMessage")}
                 </p>
@@ -661,10 +722,10 @@ function GameOverModal({
                   t("rematch")
                 )}
               </Button>
-              {!opponentOnline && !rematchDeclined && (
+              {!vsBot && !opponentOnline && !rematchDeclined && (
                 <p className="text-xs text-gray-500">{t("opponentLeftRematch")}</p>
               )}
-              {!opponentOnline && (
+              {!vsBot && !opponentOnline && (
                 <Button
                   type="button"
                   variant="outline"
@@ -1239,6 +1300,16 @@ export function GamePageClient({ game, currentUser }: Props) {
   const tDrawOffer = useTranslations("drawOffer");
   const boardControls = useAnimation();
 
+  const shake = useCallback(async () => {
+    await boardControls.start({
+      x: [0, -10, 10, -10, 10, -6, 6, -3, 3, 0],
+      transition: { duration: 0.45, ease: "easeInOut" },
+    });
+  }, [boardControls]);
+
+  const shakeRef = useRef(shake);
+  shakeRef.current = shake;
+
   const [showGuestBanner, setShowGuestBanner] = useState(false);
   const [guestGamesCount, setGuestGamesCount] = useState(0);
   useEffect(() => {
@@ -1625,12 +1696,163 @@ export function GamePageClient({ game, currentUser }: Props) {
   const iOfferedDraw =
     !!drawOfferedBy && drawOfferedBy === currentUser.id;
 
-  async function shake() {
-    await boardControls.start({
-      x: [0, -10, 10, -10, 10, -6, 6, -3, 3, 0],
-      transition: { duration: 0.45, ease: "easeInOut" },
-    });
-  }
+  const vsBotGame = !!game.state.vs_bot;
+  const fenRef = useRef(fen);
+  fenRef.current = fen;
+  const [botThinking, setBotThinking] = useState(false);
+  /** One Stockfish reply per distinct `(game, FEN)` while side to move is the bot. */
+  const botScheduledTriggerKeyRef = useRef<string | null>(null);
+  /** Invalidates in-flight bot async when the effect cleans up (Strict Mode / deps churn). */
+  const botTurnEffectSeqRef = useRef(0);
+  const botSkillLevel = game.state.bot_difficulty ?? 10;
+
+  useEffect(() => {
+    return () => {
+      disposeSharedStockfishEngine();
+    };
+  }, [game.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!vsBotGame || gameStatus !== "active" || showModal || !atLivePosition) {
+      botScheduledTriggerKeyRef.current = null;
+      return undefined;
+    }
+    if (promotionAt) return undefined;
+
+    if (fenTurn !== opponentColor) {
+      botScheduledTriggerKeyRef.current = null;
+      return undefined;
+    }
+
+    const triggerKey = `${game.id}:${fen}`;
+    if (botScheduledTriggerKeyRef.current === triggerKey) {
+      return undefined;
+    }
+
+    const seq = ++botTurnEffectSeqRef.current;
+    botScheduledTriggerKeyRef.current = triggerKey;
+
+    setBotThinking(true);
+
+    const prevFenForSound = fenRef.current;
+    const delayMs = 500 + Math.floor(Math.random() * 1501);
+
+    void (async () => {
+      try {
+        await new Promise((r) => setTimeout(r, delayMs));
+        if (cancelled || seq !== botTurnEffectSeqRef.current) return;
+
+        const chessNow = new Chess(fenRef.current);
+        const turnNow = chessNow.turn() === "w" ? "white" : "black";
+        if (turnNow !== opponentColor || chessNow.isGameOver()) return;
+
+        const engine = getSharedStockfishEngine();
+        try {
+          await engine.init();
+        } catch (e) {
+          console.error("[Bot] engine.init() failed:", e);
+          throw e;
+        }
+
+        engine.setDifficulty(botSkillLevel);
+
+        const fenForEngine = fenRef.current;
+        const uci = await engine.getBestMove(fenForEngine);
+
+        const { from: bf, to: bt, promotion: bp } = parseUciMove(uci);
+
+        if (cancelled || seq !== botTurnEffectSeqRef.current) return;
+
+        const res = await fetch(`/api/moves/${game.id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            from: bf,
+            to: bt,
+            ...(bp ? { promotion: bp } : {}),
+            asBot: true,
+          }),
+        });
+
+        const data = (await res.json()) as {
+          success?: boolean;
+          fen?: string;
+          san?: string;
+          gameOver?: boolean;
+          result?: string;
+          winnerId?: string | null;
+          error?: string;
+        };
+
+        if (!res.ok) {
+          botScheduledTriggerKeyRef.current = null;
+          void shakeRef.current();
+          return;
+        }
+
+        setPendingLastMove({
+          from: bf as Square,
+          to: bt as Square,
+        });
+
+        if (data.fen) setFen(data.fen);
+
+        const api = sfxRef.current;
+        if (data.san) {
+          if (data.gameOver) {
+            if (!endSoundPlayedRef.current) {
+              endSoundPlayedRef.current = true;
+              playGameEndFromChessResult(
+                data.result,
+                data.winnerId,
+                currentUser.id,
+                api
+              );
+            }
+          } else {
+            playPieceMoveSounds(prevFenForSound, data.san, api);
+          }
+        }
+
+        if (data.gameOver) {
+          setGameOver(true);
+          setGameResult(
+            (data.result as import("@/hooks/useGameRealtime").GameResult) ?? null
+          );
+          setWinnerId(data.winnerId ?? null);
+        }
+      } catch (err) {
+        console.error("[Bot] Error:", err);
+        botScheduledTriggerKeyRef.current = null;
+        void shakeRef.current();
+      } finally {
+        setBotThinking(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      botScheduledTriggerKeyRef.current = null;
+    };
+  }, [
+    vsBotGame,
+    botSkillLevel,
+    game.id,
+    gameStatus,
+    showModal,
+    atLivePosition,
+    promotionAt,
+    fenTurn,
+    fen,
+    opponentColor,
+    setFen,
+    currentUser.id,
+    setGameOver,
+    setGameResult,
+    setWinnerId,
+  ]);
 
   // ── Timeout handler ──────────────────────────────────────────────────────
   const handleTimeout = useCallback(async () => {
@@ -1794,7 +2016,15 @@ export function GamePageClient({ game, currentUser }: Props) {
 
   // ── Draw actions ─────────────────────────────────────────────────────────
   const handleRematch = async () => {
-    if (!opponentOnline || rematchDeclined || rematchWaiting) return;
+    const vsBotRematch = !!game.state.vs_bot;
+    if (
+      !vsBotRematch &&
+      (!opponentOnline || rematchDeclined || rematchWaiting)
+    ) {
+      return;
+    }
+    if (vsBotRematch && rematchLoading) return;
+
     setRematchLoading(true);
     try {
       const res = await fetch("/api/games/rematch", {
@@ -1805,6 +2035,10 @@ export function GamePageClient({ game, currentUser }: Props) {
       const data = (await res.json()) as { gameId?: string; error?: string };
       if (!res.ok || !data.gameId) {
         console.error("[rematch]", data.error ?? res.status);
+        return;
+      }
+      if (vsBotRematch) {
+        router.push(`/game/${data.gameId}`);
         return;
       }
       pendingRematchGameIdRef.current = data.gameId;
@@ -1876,7 +2110,13 @@ export function GamePageClient({ game, currentUser }: Props) {
     }
   };
 
-  const opponentUsername = game.opponent?.username ?? t("waitingForOpponent") + "…";
+  const opponentUsername =
+    game.opponent?.username ??
+    (vsBotGame ? BOARDLY_BOT_USERNAME : t("waitingForOpponent") + "…");
+  const botDifficultyBadge =
+    vsBotGame && typeof game.state.bot_difficulty === "number"
+      ? t(botDifficultyMsgKey(game.state.bot_difficulty))
+      : null;
   const canEditGameName =
     game.created_by != null
       ? game.created_by === currentUser.id
@@ -2027,6 +2267,8 @@ export function GamePageClient({ game, currentUser }: Props) {
                   currentTurn={fenTurn}
                   myColor={game.my_color}
                   submitting={submitting}
+                  vsBot={vsBotGame}
+                  botThinking={botThinking}
                 />
               ) : (
                 <div className="flex-1 min-h-[36px]" aria-hidden />
@@ -2098,6 +2340,8 @@ export function GamePageClient({ game, currentUser }: Props) {
               }
               timer={buildTimer(opponentColor)}
               moveCount={moveCounts[opponentColor]}
+              isBoardlyBot={vsBotGame}
+              difficultyLabel={botDifficultyBadge}
             />
             {/* Chess board with shake animation wrapper */}
             <motion.div
@@ -2303,6 +2547,7 @@ export function GamePageClient({ game, currentUser }: Props) {
             opponentOnline={opponentOnline}
             rematchDeclined={rematchDeclined}
             rematchWaiting={rematchWaiting}
+            vsBot={vsBotGame}
             onRematch={handleRematch}
             rematchLoading={rematchLoading}
             onDashboard={() =>

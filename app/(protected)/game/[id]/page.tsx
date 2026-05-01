@@ -96,6 +96,9 @@ export default async function GamePage({ params }: Props) {
     turn_started_at?: string;
     white_time_ms?: number;
     black_time_ms?: number;
+    vs_bot?: boolean;
+    bot_difficulty?: number;
+    bot_user_id?: string;
   };
 
   const myProfile = myPlayerRow.users;
@@ -134,6 +137,11 @@ export default async function GamePage({ params }: Props) {
       turn_started_at: state.turn_started_at,
       white_time_ms: state.white_time_ms,
       black_time_ms: state.black_time_ms,
+      ...(state.vs_bot != null ? { vs_bot: state.vs_bot } : {}),
+      ...(typeof state.bot_difficulty === "number"
+        ? { bot_difficulty: state.bot_difficulty }
+        : {}),
+      ...(typeof state.bot_user_id === "string" ? { bot_user_id: state.bot_user_id } : {}),
     },
     time_control: game.time_control as GamePageData["time_control"],
     winner_id: (game.winner_id as string | null) ?? null,

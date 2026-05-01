@@ -20,6 +20,7 @@ import {
   getSquareStyles,
 } from "@/lib/chess/squareHighlight";
 import type { MoveRecord } from "@/hooks/useGameRealtime";
+import { isNextImageCompatibleSrc } from "@/lib/utils";
 
 // Chessboard is client-only (no SSR)
 const Chessboard = dynamic(
@@ -180,8 +181,12 @@ export function GameCard({ game, currentUser }: Props) {
     [lastMove, inCheck, kingSquare]
   );
 
+  const isTerminal =
+    game.status === "completed" || game.status === "abandoned";
   const isMyTurn =
-    game.status === "active" && game.state?.turn === game.my_color;
+    !isTerminal &&
+    game.status === "active" &&
+    game.state?.turn === game.my_color;
   const isWaiting = game.status === "waiting";
 
   const timeControlLabels: Record<string, string> = {
@@ -341,6 +346,13 @@ export function GameCard({ game, currentUser }: Props) {
           >
             {t("waitingForOpponent")}
           </Badge>
+        ) : isTerminal ? (
+          <Badge
+            variant="secondary"
+            className="text-xs bg-violet-50 text-violet-700 border-0 rounded-full"
+          >
+            {game.status === "abandoned" ? t("abandoned") : t("completed")}
+          </Badge>
         ) : (
           <Badge
             variant="secondary"
@@ -352,7 +364,9 @@ export function GameCard({ game, currentUser }: Props) {
 
         {/* Opponent */}
         <div className="flex items-center gap-2.5">
-          {game.opponent?.avatar_url && !avatarError ? (
+          {game.opponent?.avatar_url &&
+          !avatarError &&
+          isNextImageCompatibleSrc(game.opponent.avatar_url) ? (
             <div className="relative w-8 h-8 rounded-full ring-1 ring-orange-100 overflow-hidden flex-shrink-0">
               <Image
                 src={game.opponent.avatar_url}
@@ -362,6 +376,11 @@ export function GameCard({ game, currentUser }: Props) {
                 className="object-cover"
                 onError={() => setAvatarError(true)}
               />
+            </div>
+          ) : game.opponent?.avatar_url &&
+            !isNextImageCompatibleSrc(game.opponent.avatar_url) ? (
+            <div className="w-8 h-8 rounded-full bg-orange-100 ring-1 ring-orange-100 flex items-center justify-center text-lg leading-none flex-shrink-0 select-none">
+              {game.opponent.avatar_url}
             </div>
           ) : (
             <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-xs font-bold flex-shrink-0">

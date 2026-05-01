@@ -46,7 +46,7 @@ export default async function DashboardPage() {
   let games: DashboardGame[] = [];
 
   if (gameIds.length > 0) {
-    const { data: gameRows } = await admin
+    const { data: gameRows, error: gamesQueryError } = await admin
       .from("games")
       .select(
         `
@@ -71,8 +71,23 @@ export default async function DashboardPage() {
       `
       )
       .in("id", gameIds)
-      .in("status", ["waiting", "active"])
+      .in("status", ["waiting", "active", "completed", "abandoned"])
       .order("updated_at", { ascending: false });
+
+    if (gamesQueryError) {
+      console.error("[dashboard] games query error:", gamesQueryError);
+    }
+
+    console.log(
+      "[dashboard] games fetched:",
+      (gameRows ?? []).length,
+      (gameRows ?? []).map((g) => ({
+        id: g.id,
+        status: g.status,
+        playerCount: Array.isArray(g.game_players) ? g.game_players.length : 0,
+        vs_bot: Boolean((g.state as { vs_bot?: boolean } | null)?.vs_bot),
+      }))
+    );
 
     games = (gameRows ?? []).map((g) => {
       // PostgREST embeds the FK-referenced row (users) as a single object,
@@ -89,10 +104,14 @@ export default async function DashboardPage() {
         id: g.id,
         name: (g.name as string | null) ?? null,
         created_by: (g.created_by as string | null) ?? null,
-        status: g.status as "waiting" | "active",
+        status: g.status as "waiting" | "active" | "completed" | "abandoned",
         game_type: g.game_type as string,
         time_control: g.time_control as { type: string },
-        state: g.state as { turn?: "white" | "black"; fen?: string },
+        state: g.state as {
+          turn?: "white" | "black";
+          fen?: string;
+          vs_bot?: boolean;
+        },
         created_at: g.created_at as string,
         my_color: myColorMap[g.id] ?? "white",
         opponent: opponentRow?.users ?? null,

@@ -17,6 +17,32 @@ function getLongestWinStreak(winsByGame: boolean[]): number {
   return longest;
 }
 
+/** Call after any game reaches `completed` (human vs human or vs bot). */
+export async function awardGameCompletedBadgesForPlayers(params: {
+  winnerId: string | null;
+  botUserId: string | null;
+  players: Array<{ user_id: string }>;
+}): Promise<void> {
+  const { winnerId, botUserId, players } = params;
+  const involvesBot =
+    !!botUserId && players.some((p) => p.user_id === botUserId);
+  const humanPlayerId = involvesBot
+    ? players.find((p) => p.user_id !== botUserId)?.user_id ?? null
+    : null;
+
+  try {
+    if (!involvesBot) {
+      if (winnerId) {
+        await checkAndAwardBadges(winnerId, "game_completed");
+      }
+    } else if (humanPlayerId) {
+      await checkAndAwardBadges(humanPlayerId, "game_completed");
+    }
+  } catch (error) {
+    console.error("[badges] game completion badge check failed:", error);
+  }
+}
+
 export async function checkAndAwardBadges(
   userId: string,
   trigger: BadgeTrigger
@@ -91,6 +117,42 @@ export async function checkAndAwardBadges(
     const longestStreak = getLongestWinStreak(winsByGame);
     if (longestStreak >= 3) candidateBadgeIds.add("win_streak_3");
     if (longestStreak >= 5) candidateBadgeIds.add("win_streak_5");
+
+    const playedGameIds = Array.from(
+      new Set((playerRows ?? []).map((r) => r.game_id))
+    );
+    let botGamesCompleted: Array<{ winner_id: string | null; state: unknown }> =
+      [];
+    if (playedGameIds.length > 0) {
+      const { data: completedStates, error: botGamesError } = await admin
+        .from("games")
+        .select("winner_id, state")
+        .eq("status", "completed")
+        .in("id", playedGameIds);
+
+      if (botGamesError) {
+        console.error("[badges] failed to load bot games:", botGamesError);
+      } else {
+        botGamesCompleted = (completedStates ?? []).filter((g) => {
+          const s = g.state as { vs_bot?: boolean } | null;
+          return !!s?.vs_bot;
+        });
+      }
+    }
+
+    if (botGamesCompleted.length >= 1) candidateBadgeIds.add("first_bot_game");
+
+    const botWinsCount = botGamesCompleted.filter(
+      (g) => g.winner_id === userId
+    ).length;
+    if (botWinsCount >= 1) candidateBadgeIds.add("beat_the_bot");
+
+    const beatHardBot = botGamesCompleted.some((g) => {
+      if (g.winner_id !== userId) return false;
+      const d = (g.state as { bot_difficulty?: number }).bot_difficulty;
+      return typeof d === "number" && d >= 15;
+    });
+    if (beatHardBot) candidateBadgeIds.add("beat_hard_bot");
   }
 
   if (trigger === "friend_added") {

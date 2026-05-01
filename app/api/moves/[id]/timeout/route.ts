@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/resend";
 import { gameOverEmail } from "@/lib/emails/your-turn";
+import { awardGameCompletedBadgesForPlayers } from "@/lib/badges/checkBadges";
 
 // ── POST /api/moves/[id]/timeout ────────────────────────────────────────────
 export async function POST(
@@ -114,6 +115,16 @@ export async function POST(
     console.error("[timeout] games update error:", updateError);
     return NextResponse.json({ error: "Failed to end game" }, { status: 500 });
   }
+
+  const timeoutState = game.state as { vs_bot?: boolean; bot_user_id?: string };
+  const timeoutBotUid =
+    typeof timeoutState.bot_user_id === "string" ? timeoutState.bot_user_id : null;
+
+  await awardGameCompletedBadgesForPlayers({
+    winnerId: winnerRow.user_id,
+    botUserId: timeoutBotUid,
+    players,
+  });
 
   // Fire-and-forget email to the winner
   void (async () => {

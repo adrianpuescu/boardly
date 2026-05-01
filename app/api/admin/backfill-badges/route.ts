@@ -12,7 +12,10 @@ type BadgeId =
   | "games_10"
   | "games_100"
   | "win_streak_3"
-  | "win_streak_5";
+  | "win_streak_5"
+  | "first_bot_game"
+  | "beat_the_bot"
+  | "beat_hard_bot";
 
 function getLongestWinStreak(winsByGame: boolean[]): number {
   let longest = 0;
@@ -129,6 +132,26 @@ export async function GET(request: NextRequest) {
     const winsByGame = (completedGames ?? []).map((game) => game.winner_id === userId);
     const longestWinStreak = getLongestWinStreak(winsByGame);
 
+    const playedGameIds = Array.from(
+      new Set((playerRows ?? []).map((r) => r.game_id))
+    );
+    let botGamesCompleted: Array<{ winner_id: string | null; state: unknown }> =
+      [];
+    if (playedGameIds.length > 0) {
+      const { data: completedStates, error: botGamesError } = await admin
+        .from("games")
+        .select("winner_id, state")
+        .eq("status", "completed")
+        .in("id", playedGameIds);
+
+      if (!botGamesError) {
+        botGamesCompleted = (completedStates ?? []).filter((g) => {
+          const s = g.state as { vs_bot?: boolean } | null;
+          return !!s?.vs_bot;
+        });
+      }
+    }
+
     const qualifiesFor = new Set<BadgeId>();
 
     qualifiesFor.add("early_adopter");
@@ -142,6 +165,18 @@ export async function GET(request: NextRequest) {
     if (friends >= 10) qualifiesFor.add("friends_10");
     if (longestWinStreak >= 3) qualifiesFor.add("win_streak_3");
     if (longestWinStreak >= 5) qualifiesFor.add("win_streak_5");
+
+    if (botGamesCompleted.length >= 1) qualifiesFor.add("first_bot_game");
+    const botWinsCount = botGamesCompleted.filter(
+      (g) => g.winner_id === userId
+    ).length;
+    if (botWinsCount >= 1) qualifiesFor.add("beat_the_bot");
+    const beatHardBot = botGamesCompleted.some((g) => {
+      if (g.winner_id !== userId) return false;
+      const d = (g.state as { bot_difficulty?: number }).bot_difficulty;
+      return typeof d === "number" && d >= 15;
+    });
+    if (beatHardBot) qualifiesFor.add("beat_hard_bot");
 
     const missingBadgeIds = Array.from(qualifiesFor).filter(
       (badgeId) => !earnedBadgeIds.has(badgeId)

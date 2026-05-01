@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { INITIAL_FEN } from "@/lib/chess/squareHighlight";
+import { getOrCreateBoardlyBotUser } from "@/lib/chess/boardlyBot";
 
 const timeControlSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("unlimited") }),
@@ -10,20 +11,35 @@ const timeControlSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("per_game"), minutes: z.number().int().min(5).max(180) }),
 ]);
 
-const bodySchema = z.object({
-  opponentEmail: z.string().email().optional().or(z.literal("")).transform((v) =>
-    v === "" ? undefined : v
-  ),
-  opponentId: z.string().uuid().optional(),
-  name: z
-    .string()
-    .trim()
-    .max(50)
-    .optional()
-    .or(z.literal(""))
-    .transform((v) => (v === "" ? undefined : v)),
-  timeControl: timeControlSchema,
-});
+const bodySchema = z
+  .object({
+    opponentEmail: z
+      .string()
+      .email()
+      .optional()
+      .or(z.literal(""))
+      .transform((v) => (v === "" ? undefined : v)),
+    opponentId: z.string().uuid().optional(),
+    name: z
+      .string()
+      .trim()
+      .max(50)
+      .optional()
+      .or(z.literal(""))
+      .transform((v) => (v === "" ? undefined : v)),
+    timeControl: timeControlSchema,
+    vsBot: z.boolean().optional(),
+    botDifficulty: z.number().int().min(1).max(20).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.vsBot && data.botDifficulty == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "botDifficulty is required when vsBot is true",
+        path: ["botDifficulty"],
+      });
+    }
+  });
 
 export async function POST(request: NextRequest) {
   // ── Auth ───────────────────────────────────────────────────────────────────
@@ -57,7 +73,75 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { opponentEmail, opponentId, name, timeControl } = parsed.data;
+  const { opponentEmail, opponentId, name, timeControl, vsBot, botDifficulty } =
+    parsed.data;
+
+  // ── Vs Stockfish bot (active immediately, no invite) ───────────────────────
+  if (vsBot && botDifficulty != null) {
+    let botUserId: string;
+    try {
+      botUserId = await getOrCreateBoardlyBotUser(adminClient);
+    } catch (e) {
+      console.error("[games POST] bot user:", e);
+      return NextResponse.json({ error: "Failed to set up bot opponent" }, { status: 500 });
+    }
+
+    const { data: botGame, error: botGameError } = await adminClient
+      .from("games")
+      .insert({
+        game_type: "chess",
+        status: "active",
+        state: {
+          fen: INITIAL_FEN,
+          turn: "white",
+          vs_bot: true,
+          bot_difficulty: botDifficulty,
+          bot_user_id: botUserId,
+        },
+        time_control: timeControl,
+        name: name ?? null,
+        created_by: user.id,
+      })
+      .select("id")
+      .single();
+
+    if (botGameError || !botGame) {
+      console.error("games insert error (vs bot):", botGameError);
+      return NextResponse.json({ error: "Failed to create game" }, { status: 500 });
+    }
+
+    const botGameId = botGame.id as string;
+
+    const { error: creatorBotErr } = await adminClient.from("game_players").insert({
+      game_id: botGameId,
+      user_id: user.id,
+      color: "white",
+    });
+
+    if (creatorBotErr) {
+      console.error("game_players insert (creator vs bot):", creatorBotErr);
+      return NextResponse.json(
+        { error: "Failed to add creator to game" },
+        { status: 500 }
+      );
+    }
+
+    const { error: botPlayerErr } = await adminClient.from("game_players").insert({
+      game_id: botGameId,
+      user_id: botUserId,
+      color: "black",
+    });
+
+    if (botPlayerErr) {
+      console.error("game_players insert (bot):", botPlayerErr);
+      return NextResponse.json(
+        { error: "Failed to add bot to game" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ gameId: botGameId }, { status: 201 });
+  }
 
   // ── Insert game ────────────────────────────────────────────────────────────
   const { data: game, error: gameError } = await adminClient
