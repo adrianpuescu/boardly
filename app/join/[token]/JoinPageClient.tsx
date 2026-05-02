@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -10,9 +10,6 @@ import {
   guestReachedGameLimit,
   incrementGuestGamesCount,
 } from "@/lib/guestLimits";
-
-/** Avoid duplicate anonymous join flows in React Strict Mode (dev double mount). */
-const guestJoinStartedForToken = new Set<string>();
 
 function isAnonymousSignInsDisabledError(err: { message?: string } | null): boolean {
   const msg = (err?.message ?? "").toLowerCase();
@@ -30,6 +27,7 @@ interface TimeControl {
 interface JoinPageClientProps {
   token: string;
   gameId: string;
+  gameName: string | null;
   inviterName: string;
   timeControl: TimeControl;
   isLoggedIn: boolean;
@@ -56,6 +54,7 @@ function MiniBoard() {
 export default function JoinPageClient({
   token,
   gameId,
+  gameName,
   inviterName,
   timeControl,
   isLoggedIn,
@@ -64,7 +63,7 @@ export default function JoinPageClient({
   const t = useTranslations("join");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [guestJoining, setGuestJoining] = useState(!isLoggedIn);
+  const [guestJoining, setGuestJoining] = useState(false);
   /** Supabase project has Anonymous Auth off — offer sign-in instead of guest play. */
   const [guestSignInOnly, setGuestSignInOnly] = useState(false);
   const [isAnonymousUser, setIsAnonymousUser] = useState(false);
@@ -72,9 +71,14 @@ export default function JoinPageClient({
 
   const isGuestPath = !isLoggedIn || isAnonymousUser;
 
+  const loginHref = useMemo(
+    () => `/login?redirectTo=${encodeURIComponent(`/join/${token}`)}`,
+    [token]
+  );
+
   useEffect(() => {
     if (!isLoggedIn) {
-      setIsAnonymousUser(true);
+      setIsAnonymousUser(false);
       setGuestLimitReached(guestReachedGameLimit());
       return;
     }
@@ -153,15 +157,6 @@ export default function JoinPageClient({
     }
   }, [guestLimitReached, token, router, t]);
 
-  useEffect(() => {
-    if (isLoggedIn || guestSignInOnly || guestLimitReached) return;
-    if (guestJoinStartedForToken.has(token)) return;
-    guestJoinStartedForToken.add(token);
-    void runGuestJoin().finally(() => {
-      guestJoinStartedForToken.delete(token);
-    });
-  }, [isLoggedIn, guestSignInOnly, guestLimitReached, token, runGuestJoin]);
-
   async function handleAccept() {
     if (isAnonymousUser && guestLimitReached) return;
 
@@ -190,6 +185,8 @@ export default function JoinPageClient({
       setLoading(false);
     }
   }
+
+  const trimmedGameName = gameName?.trim() ?? "";
 
   return (
     <div
@@ -231,10 +228,21 @@ export default function JoinPageClient({
             </p>
           </div>
 
+          {trimmedGameName ? (
+            <div className="rounded-2xl bg-gray-50 border border-gray-100 px-4 py-3 text-center">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                {t("gameTitle")}
+              </p>
+              <p className="text-sm font-bold text-gray-900 truncate mt-0.5">
+                {trimmedGameName}
+              </p>
+            </div>
+          ) : null}
+
           {/* Game details */}
           <div className="flex items-center gap-4 bg-orange-50 rounded-2xl px-4 py-3 border border-orange-100">
             <MiniBoard />
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0 flex-1">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                 {t("timeControl")}
               </p>
@@ -254,7 +262,7 @@ export default function JoinPageClient({
               <p className="text-sm text-gray-600 text-center leading-relaxed">
                 {t("guestLimitMessage")}
               </p>
-              <Link href="/login" className="block">
+              <Link href={loginHref} className="block">
                 <Button className="w-full h-12 rounded-xl text-base font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-200 transition-all">
                   {t("guestLimitCreateAccount")}
                 </Button>
@@ -315,7 +323,7 @@ export default function JoinPageClient({
               <p className="text-sm text-gray-600 text-center leading-relaxed">
                 {t("guestInviteRequiresSignIn")}
               </p>
-              <Link href={`/login?redirectTo=/join/${token}`} className="block">
+              <Link href={loginHref} className="block">
                 <Button className="w-full h-12 rounded-xl text-base font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-200 transition-all">
                   {t("signInToJoin")}
                 </Button>
@@ -324,7 +332,7 @@ export default function JoinPageClient({
             </div>
           ) : (
             <div className="space-y-3">
-              {guestJoining && !error && (
+              {guestJoining && !error ? (
                 <div className="flex flex-col items-center gap-3 py-2">
                   <svg
                     className="animate-spin h-8 w-8 text-orange-500"
@@ -350,31 +358,41 @@ export default function JoinPageClient({
                     {t("joiningGame")}
                   </p>
                 </div>
-              )}
-              {error && (
+              ) : error ? (
                 <>
                   <p className="text-sm text-red-500 text-center font-medium">
                     {error}
                   </p>
                   <Button
                     type="button"
-                    onClick={() => {
-                      if (guestJoinStartedForToken.has(token)) return;
-                      guestJoinStartedForToken.add(token);
-                      void runGuestJoin().finally(() => {
-                        guestJoinStartedForToken.delete(token);
-                      });
-                    }}
+                    onClick={() => void runGuestJoin()}
                     className="w-full h-12 rounded-xl text-base font-bold bg-orange-500 hover:bg-orange-600 text-white"
                   >
                     {t("tryAgain")}
                   </Button>
                   <Link
-                    href={`/login?redirectTo=/join/${token}`}
+                    href={loginHref}
                     className="block text-center text-sm text-gray-500 hover:text-gray-700"
                   >
                     {t("signInInstead")}
                   </Link>
+                </>
+              ) : (
+                <>
+                  <Link href={loginHref} className="block">
+                    <Button className="w-full h-12 rounded-xl text-base font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-200 transition-all">
+                      {t("signInToPlay")}
+                    </Button>
+                  </Link>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void runGuestJoin()}
+                    className="w-full h-12 rounded-xl text-base font-semibold border-orange-200 text-orange-800 bg-orange-50/50 hover:bg-orange-50"
+                  >
+                    {t("playAsGuest")}
+                  </Button>
+                  <p className="text-center text-xs text-gray-400">{t("freeToJoin")}</p>
                 </>
               )}
             </div>

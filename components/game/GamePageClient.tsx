@@ -21,6 +21,7 @@ import {
   ChevronUp,
   Flag,
   Handshake,
+  Link2,
   X,
   XCircle,
 } from "lucide-react";
@@ -2124,6 +2125,28 @@ export function GamePageClient({ game, currentUser }: Props) {
   const timeControlType = game.time_control?.type;
   const hasTimer = timeControlType === "per_turn" || timeControlType === "per_game";
 
+  const showShareInvite =
+    gameStatus === "waiting" && !vsBotGame && canEditGameName;
+
+  const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
+  const [inviteLinkLoading, setInviteLinkLoading] = useState(false);
+
+  const copyInviteLink = useCallback(async () => {
+    setInviteLinkLoading(true);
+    try {
+      const res = await fetch(`/api/games/${game.id}/invite`);
+      const data = (await res.json()) as { inviteUrl?: string };
+      if (!res.ok || !data.inviteUrl) return;
+      await navigator.clipboard.writeText(data.inviteUrl);
+      setInviteLinkCopied(true);
+      window.setTimeout(() => setInviteLinkCopied(false), 2500);
+    } catch {
+      /* clipboard or network */
+    } finally {
+      setInviteLinkLoading(false);
+    }
+  }, [game.id]);
+
   const startEditingGameName = useCallback(() => {
     if (!canEditGameName || savingGameName) return;
     setDraftGameName(gameName);
@@ -2262,14 +2285,32 @@ export function GamePageClient({ game, currentUser }: Props) {
               </button>
 
               {atLivePosition ? (
-                <StatusBanner
-                  status={gameStatus as GamePageData["status"]}
-                  currentTurn={fenTurn}
-                  myColor={game.my_color}
-                  submitting={submitting}
-                  vsBot={vsBotGame}
-                  botThinking={botThinking}
-                />
+                <div className="flex flex-1 min-w-0 items-center gap-2 flex-wrap">
+                  <StatusBanner
+                    status={gameStatus as GamePageData["status"]}
+                    currentTurn={fenTurn}
+                    myColor={game.my_color}
+                    submitting={submitting}
+                    vsBot={vsBotGame}
+                    botThinking={botThinking}
+                  />
+                  {showShareInvite && (
+                    <button
+                      type="button"
+                      onClick={copyInviteLink}
+                      disabled={inviteLinkLoading}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 shrink-0 px-3 py-1.5 rounded-xl text-sm font-semibold border transition-colors disabled:opacity-50",
+                        inviteLinkCopied
+                          ? "border-green-200 bg-green-50 text-green-700"
+                          : "border-orange-200 bg-white text-orange-700 hover:bg-orange-50"
+                      )}
+                    >
+                      <Link2 className="w-4 h-4 shrink-0" aria-hidden />
+                      {inviteLinkCopied ? t("inviteLinkCopied") : t("shareInviteLink")}
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div className="flex-1 min-h-[36px]" aria-hidden />
               )}

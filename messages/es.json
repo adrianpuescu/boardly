@@ -61,6 +61,8 @@
     "botDifficultyMedium": "Medio",
     "botDifficultyHard": "Difícil",
     "waitingForOpponent": "Esperando al rival",
+    "shareInviteLink": "Compartir enlace de invitación",
+    "inviteLinkCopied": "¡Copiado! ✓",
     "gameEnded": "Partida terminada",
     "submitting": "Enviando…",
     "moves": "Jugadas",
@@ -381,7 +383,10 @@
     "signInInstead": "Iniciar sesión con una cuenta",
     "guestInviteRequiresSignIn": "Inicia sesión para aceptar la invitación — jugar aquí sin cuenta no está disponible en este servidor.",
     "guestLimitMessage": "¡Ya usaste tu partida gratis como invitado! Crea una cuenta gratis para jugar partidas ilimitadas y guardar tu progreso.",
-    "guestLimitCreateAccount": "Crear cuenta"
+    "guestLimitCreateAccount": "Crear cuenta",
+    "signInToPlay": "Inicia sesión para jugar",
+    "playAsGuest": "Jugar como invitado",
+    "gameTitle": "Partida"
   },
   "common": {
     "loading": "Cargando...",

@@ -61,6 +61,8 @@
     "botDifficultyMedium": "Mediu",
     "botDifficultyHard": "Greu",
     "waitingForOpponent": "Se așteaptă adversarul",
+    "shareInviteLink": "Distribuie linkul de invitație",
+    "inviteLinkCopied": "Copiat! ✓",
     "gameEnded": "Joc terminat",
     "submitting": "Se trimite…",
     "moves": "Mutări",
@@ -381,7 +383,10 @@
     "signInInstead": "Conectează-te cu un cont",
     "guestInviteRequiresSignIn": "Conectează-te pentru a accepta invitația — jocul fără cont nu este disponibil pe acest server.",
     "guestLimitMessage": "Ai folosit deja jocul gratuit de invitat! Creează un cont gratuit ca să joci nelimitat și să-ți salvezi progresul.",
-    "guestLimitCreateAccount": "Creează cont"
+    "guestLimitCreateAccount": "Creează cont",
+    "signInToPlay": "Conectează-te ca să joci",
+    "playAsGuest": "Joacă ca invitat",
+    "gameTitle": "Joc"
   },
   "common": {
     "loading": "Se încarcă...",

@@ -65,7 +65,7 @@ export default async function JoinPage({ params }: Props) {
   // Fetch game details for the preview
   const { data: game } = await adminClient
     .from("games")
-    .select("id, time_control")
+    .select("id, time_control, name")
     .eq("id", invite.game_id)
     .single();
 
@@ -107,6 +107,7 @@ export default async function JoinPage({ params }: Props) {
     <JoinPageClient
       token={token}
       gameId={invite.game_id}
+      gameName={(game?.name as string | null) ?? null}
       inviterName={inviter?.username ?? "Someone"}
       timeControl={timeControl}
       isLoggedIn={!!user}
