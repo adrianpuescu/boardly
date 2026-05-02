@@ -18,10 +18,10 @@ type TimeControlType = "unlimited" | "per_turn" | "per_game";
 type PlayMode = "friend" | "bot";
 
 const BOT_DIFFICULTY_PRESETS = [
+  { level: 1, labelKey: "botDifficultyBeginner" as const },
   { level: 3, labelKey: "botDifficultyEasy" as const },
   { level: 8, labelKey: "botDifficultyMedium" as const },
   { level: 15, labelKey: "botDifficultyHard" as const },
-  { level: 1, labelKey: "botDifficultyBeginner" as const },
 ];
 
 interface TimeControl {
@@ -177,7 +177,7 @@ export default function LobbyPage() {
   const [guestLimitReached, setGuestLimitReached] = useState(false);
   const [friends, setFriends] = useState<FriendChip[]>([]);
   const [playMode, setPlayMode] = useState<PlayMode>("friend");
-  const [botDifficulty, setBotDifficulty] = useState(8);
+  const [botDifficulty, setBotDifficulty] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
