@@ -54,7 +54,15 @@
     "showingGamesRange": "Mostrando {from}–{to} de {total}",
     "pageIndicator": "Página {page} de {totalPages}",
     "paginationPrevious": "Anterior",
-    "paginationNext": "Siguiente"
+    "paginationNext": "Siguiente",
+    "filterLabel": "Mostrar",
+    "filterAll": "Todas",
+    "filterAi": "vs IA",
+    "filterHuman": "Humano",
+    "noFilteredGamesAiTitle": "Aún no hay partidas contra la IA",
+    "noFilteredGamesHumanTitle": "Aún no hay partidas contra personas",
+    "noFilteredGamesDesc": "Nada coincide con este filtro. Prueba otra categoría o empieza una partida nueva.",
+    "showAllGames": "Ver todas las partidas"
   },
   "game": {
     "yourTurn": "¡Es tu turno!",

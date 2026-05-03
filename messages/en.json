@@ -54,7 +54,15 @@
     "showingGamesRange": "Showing {from}–{to} of {total}",
     "pageIndicator": "Page {page} of {totalPages}",
     "paginationPrevious": "Previous",
-    "paginationNext": "Next"
+    "paginationNext": "Next",
+    "filterLabel": "Show",
+    "filterAll": "All",
+    "filterAi": "vs AI",
+    "filterHuman": "Human",
+    "noFilteredGamesAiTitle": "No AI games yet",
+    "noFilteredGamesHumanTitle": "No human games yet",
+    "noFilteredGamesDesc": "Nothing matches this filter yet. Try another category or start a new game.",
+    "showAllGames": "Show all games"
   },
   "game": {
     "yourTurn": "Your turn!",

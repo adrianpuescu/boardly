@@ -54,7 +54,15 @@
     "showingGamesRange": "Se afișează {from}–{to} din {total}",
     "pageIndicator": "Pagina {page} din {totalPages}",
     "paginationPrevious": "Înapoi",
-    "paginationNext": "Înainte"
+    "paginationNext": "Înainte",
+    "filterLabel": "Afișează",
+    "filterAll": "Toate",
+    "filterAi": "vs AI",
+    "filterHuman": "Umani",
+    "noFilteredGamesAiTitle": "Încă nu ai jocuri cu AI",
+    "noFilteredGamesHumanTitle": "Încă nu ai jocuri cu adversari umani",
+    "noFilteredGamesDesc": "Nu există nimic în această categorie. Încearcă alt filtru sau începe un joc nou.",
+    "showAllGames": "Arată toate jocurile"
   },
   "game": {
     "yourTurn": "Rândul tău!",

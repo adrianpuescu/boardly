@@ -3,6 +3,21 @@ import type { DashboardGame } from "@/lib/types";
 
 export const DASHBOARD_GAMES_PAGE_SIZE = 12;
 
+/** Dashboard list: all games, vs Boardly bot only, or human opponents only. */
+export type DashboardGamesFilter = "all" | "ai" | "human";
+
+/** Query string for `/dashboard` links (page + optional filter). */
+export function dashboardHref(
+  page: number,
+  filter: DashboardGamesFilter
+): string {
+  const params = new URLSearchParams();
+  if (filter !== "all") params.set("filter", filter);
+  if (page > 1) params.set("page", String(page));
+  const q = params.toString();
+  return q ? `/dashboard?${q}` : "/dashboard";
+}
+
 type GameRowForDashboard = {
   id: string;
   name: string | null;
@@ -57,7 +72,8 @@ function mapRowsToDashboardGames(
 export async function loadDashboardGamesPage(
   admin: SupabaseClient,
   userId: string,
-  page: number
+  page: number,
+  filter: DashboardGamesFilter = "all"
 ): Promise<{
   games: DashboardGame[];
   totalCount: number;
@@ -68,15 +84,25 @@ export async function loadDashboardGamesPage(
   const safePage = Math.max(1, Math.floor(page));
   const offset = (safePage - 1) * pageSize;
 
+  let idQuery = admin
+    .from("games")
+    .select("id, game_players!inner(user_id)", { count: "exact" })
+    .eq("game_players.user_id", userId)
+    .in("status", ["waiting", "active", "completed", "abandoned"]);
+
+  if (filter === "ai") {
+    idQuery = idQuery.contains("state", { vs_bot: true });
+  } else if (filter === "human") {
+    // not() does not JSON-stringify objects — raw values become "[object Object]".
+    // PostgREST expects the same payload as contains(): cs.{"vs_bot":true}
+    idQuery = idQuery.not("state", "cs", JSON.stringify({ vs_bot: true }));
+  }
+
   const {
     data: idRows,
     error: idError,
     count,
-  } = await admin
-    .from("games")
-    .select("id, game_players!inner(user_id)", { count: "exact" })
-    .eq("game_players.user_id", userId)
-    .in("status", ["waiting", "active", "completed", "abandoned"])
+  } = await idQuery
     .order("updated_at", { ascending: false })
     .range(offset, offset + pageSize - 1);
 

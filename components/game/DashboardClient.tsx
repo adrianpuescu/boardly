@@ -11,6 +11,10 @@ import { GameCard } from "@/components/game/GameCard";
 import { MultiBoardView } from "@/components/game/MultiBoardView";
 import { Button } from "@/components/ui/button";
 import type { DashboardGame, CurrentUser } from "@/lib/types";
+import {
+  dashboardHref,
+  type DashboardGamesFilter,
+} from "@/lib/dashboard/loadDashboardGames";
 
 type ViewMode = "grid" | "multiboard";
 const VIEW_MODE_KEY = "boardly-dashboard-view";
@@ -25,6 +29,7 @@ export interface DashboardPagination {
 interface Props {
   games: DashboardGame[];
   currentUser: CurrentUser;
+  gamesFilter: DashboardGamesFilter;
   pagination: DashboardPagination | null;
 }
 
@@ -94,7 +99,54 @@ function EmptyState({ onNewGame }: { onNewGame: () => void }) {
   );
 }
 
-export function DashboardClient({ games, currentUser, pagination }: Props) {
+function FilteredEmptyState({
+  filter,
+  onNewGame,
+}: {
+  filter: Exclude<DashboardGamesFilter, "all">;
+  onNewGame: () => void;
+}) {
+  const t = useTranslations("dashboard");
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="flex flex-col items-center justify-center py-16 text-center px-4"
+    >
+      <p className="text-lg font-bold text-gray-800 mb-2" style={{ fontFamily: "var(--font-nunito), sans-serif" }}>
+        {filter === "ai" ? t("noFilteredGamesAiTitle") : t("noFilteredGamesHumanTitle")}
+      </p>
+      <p className="text-gray-500 mb-6 max-w-sm leading-relaxed text-base">
+        {t("noFilteredGamesDesc")}
+      </p>
+      <div className="flex flex-col sm:flex-row gap-3 items-center">
+        <Link
+          href="/dashboard"
+          scroll
+          className="text-sm font-semibold text-orange-600 hover:text-orange-700 underline underline-offset-2"
+        >
+          {t("showAllGames")}
+        </Link>
+        <Button
+          onClick={onNewGame}
+          className="rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold px-6 py-2.5 text-sm shadow-md shadow-orange-200"
+          style={{ fontFamily: "var(--font-nunito), sans-serif" }}
+        >
+          {t("newGame")}
+        </Button>
+      </div>
+    </motion.div>
+  );
+}
+
+export function DashboardClient({
+  games,
+  currentUser,
+  gamesFilter,
+  pagination,
+}: Props) {
   const router = useRouter();
   const t = useTranslations("dashboard");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -109,9 +161,9 @@ export function DashboardClient({ games, currentUser, pagination }: Props) {
       ? Math.min(pagination.page * pagination.pageSize, pagination.totalCount)
       : 0;
   const prevPageHref =
-    pagination && pagination.page > 2
-      ? `/dashboard?page=${pagination.page - 1}`
-      : "/dashboard";
+    pagination && pagination.page > 1
+      ? dashboardHref(pagination.page - 1, gamesFilter)
+      : dashboardHref(1, gamesFilter);
 
   // Hydrate from localStorage once on mount
   useEffect(() => {
@@ -216,9 +268,61 @@ export function DashboardClient({ games, currentUser, pagination }: Props) {
           </div>
         </motion.div>
 
+        {/* All / vs AI / vs human */}
+        <div className="flex flex-wrap items-center gap-2 mb-8">
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            {t("filterLabel")}
+          </span>
+          <div className="flex items-center bg-white border border-gray-200 rounded-xl p-0.5 shadow-sm">
+            <Link
+              href="/dashboard"
+              scroll
+              aria-current={gamesFilter === "all" ? "page" : undefined}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all min-h-[40px] inline-flex items-center ${
+                gamesFilter === "all"
+                  ? "bg-orange-500 text-white shadow-sm"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+              }`}
+            >
+              {t("filterAll")}
+            </Link>
+            <Link
+              href={dashboardHref(1, "ai")}
+              scroll
+              aria-current={gamesFilter === "ai" ? "page" : undefined}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all min-h-[40px] inline-flex items-center ${
+                gamesFilter === "ai"
+                  ? "bg-orange-500 text-white shadow-sm"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+              }`}
+            >
+              {t("filterAi")}
+            </Link>
+            <Link
+              href={dashboardHref(1, "human")}
+              scroll
+              aria-current={gamesFilter === "human" ? "page" : undefined}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all min-h-[40px] inline-flex items-center ${
+                gamesFilter === "human"
+                  ? "bg-orange-500 text-white shadow-sm"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+              }`}
+            >
+              {t("filterHuman")}
+            </Link>
+          </div>
+        </div>
+
         {/* Empty state */}
         {games.length === 0 ? (
-          <EmptyState onNewGame={() => router.push("/lobby")} />
+          gamesFilter === "all" ? (
+            <EmptyState onNewGame={() => router.push("/lobby")} />
+          ) : (
+            <FilteredEmptyState
+              filter={gamesFilter}
+              onNewGame={() => router.push("/lobby")}
+            />
+          )
         ) : viewMode === "multiboard" ? (
           /* Multi-board view */
           <MultiBoardView
@@ -283,7 +387,7 @@ export function DashboardClient({ games, currentUser, pagination }: Props) {
                 </span>
                 {pagination.page < pagination.totalPages ? (
                   <Link
-                    href={`/dashboard?page=${pagination.page + 1}`}
+                    href={dashboardHref(pagination.page + 1, gamesFilter)}
                     scroll
                     className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[44px]"
                   >

@@ -4,7 +4,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { DashboardClient } from "@/components/game/DashboardClient";
 import { isAnonymousAuthUser } from "@/lib/auth/isAnonymous";
 import type { CurrentUser } from "@/lib/types";
-import { loadDashboardGamesPage } from "@/lib/dashboard/loadDashboardGames";
+import {
+  dashboardHref,
+  loadDashboardGamesPage,
+  type DashboardGamesFilter,
+} from "@/lib/dashboard/loadDashboardGames";
 
 function parseDashboardPageParam(raw: string | string[] | undefined): number {
   const s = Array.isArray(raw) ? raw[0] : raw;
@@ -13,10 +17,18 @@ function parseDashboardPageParam(raw: string | string[] | undefined): number {
   return n;
 }
 
+function parseDashboardFilterParam(
+  raw: string | string[] | undefined
+): DashboardGamesFilter {
+  const s = Array.isArray(raw) ? raw[0] : raw;
+  if (s === "ai" || s === "human") return s;
+  return "all";
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: { page?: string | string[] };
+  searchParams: { page?: string | string[]; filter?: string | string[] };
 }) {
   const supabase = createClient();
   const admin = createAdminClient();
@@ -38,15 +50,17 @@ export default async function DashboardPage({
     .single();
 
   const requestedPage = parseDashboardPageParam(searchParams.page);
+  const gamesFilter = parseDashboardFilterParam(searchParams.filter);
   const { games, totalCount, page, pageSize } = await loadDashboardGamesPage(
     admin,
     user.id,
-    requestedPage
+    requestedPage,
+    gamesFilter
   );
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-  if (totalCount > 0 && requestedPage > totalPages) {
-    redirect(`/dashboard?page=${totalPages}`);
+  if (requestedPage > totalPages) {
+    redirect(dashboardHref(totalPages, gamesFilter));
   }
 
   const currentUser: CurrentUser = {
@@ -66,6 +80,7 @@ export default async function DashboardPage({
     <DashboardClient
       games={games}
       currentUser={currentUser}
+      gamesFilter={gamesFilter}
       pagination={
         totalCount > 0
           ? { page, pageSize, totalCount, totalPages }
