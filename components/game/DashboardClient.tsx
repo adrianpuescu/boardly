@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
-import { LayoutGrid, LayoutDashboard } from "lucide-react";
+import { ChevronLeft, ChevronRight, LayoutGrid, LayoutDashboard } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { GameCard } from "@/components/game/GameCard";
 import { MultiBoardView } from "@/components/game/MultiBoardView";
@@ -14,9 +15,17 @@ import type { DashboardGame, CurrentUser } from "@/lib/types";
 type ViewMode = "grid" | "multiboard";
 const VIEW_MODE_KEY = "boardly-dashboard-view";
 
+export interface DashboardPagination {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
+
 interface Props {
   games: DashboardGame[];
   currentUser: CurrentUser;
+  pagination: DashboardPagination | null;
 }
 
 function EmptyState({ onNewGame }: { onNewGame: () => void }) {
@@ -85,10 +94,24 @@ function EmptyState({ onNewGame }: { onNewGame: () => void }) {
   );
 }
 
-export function DashboardClient({ games, currentUser }: Props) {
+export function DashboardClient({ games, currentUser, pagination }: Props) {
   const router = useRouter();
   const t = useTranslations("dashboard");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+
+  const totalGamesListed = pagination?.totalCount ?? games.length;
+  const rangeFrom =
+    pagination && totalGamesListed > 0
+      ? (pagination.page - 1) * pagination.pageSize + 1
+      : 0;
+  const rangeTo =
+    pagination && totalGamesListed > 0
+      ? Math.min(pagination.page * pagination.pageSize, pagination.totalCount)
+      : 0;
+  const prevPageHref =
+    pagination && pagination.page > 2
+      ? `/dashboard?page=${pagination.page - 1}`
+      : "/dashboard";
 
   // Hydrate from localStorage once on mount
   useEffect(() => {
@@ -145,15 +168,15 @@ export function DashboardClient({ games, currentUser }: Props) {
               </h1>
             </div>
             <p className="text-gray-500 text-sm pl-8 sm:pl-9 truncate">
-              {games.length === 0
+              {totalGamesListed === 0
                 ? t("readyToPlay")
-                : t("yourGamesSubtitle", { count: games.length })}
+                : t("yourGamesSubtitle", { count: totalGamesListed })}
             </p>
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* View toggle — only shown when there are games */}
-            {games.length > 0 && (
+            {totalGamesListed > 0 && (
               <div className="flex items-center bg-white border border-gray-200 rounded-xl p-0.5 shadow-sm">
                 <button
                   onClick={() => switchView("grid")}
@@ -220,6 +243,64 @@ export function DashboardClient({ games, currentUser }: Props) {
               />
             ))}
           </motion.div>
+        )}
+
+        {pagination && (
+          <div className="mt-10 pt-6 border-t border-gray-200/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+            <p className="text-sm text-gray-500 order-2 sm:order-1 text-center sm:text-left tabular-nums">
+              {t("showingGamesRange", {
+                from: rangeFrom,
+                to: rangeTo,
+                total: pagination.totalCount,
+              })}
+            </p>
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 order-1 sm:order-2">
+                {pagination.page > 1 ? (
+                  <Link
+                    href={prevPageHref}
+                    scroll
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[44px]"
+                  >
+                    <ChevronLeft className="w-4 h-4 shrink-0" aria-hidden />
+                    {t("paginationPrevious")}
+                  </Link>
+                ) : (
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-400 min-h-[44px] cursor-not-allowed"
+                    aria-disabled
+                  >
+                    <ChevronLeft className="w-4 h-4 shrink-0" aria-hidden />
+                    {t("paginationPrevious")}
+                  </span>
+                )}
+                <span className="text-sm text-gray-600 font-medium tabular-nums px-2 min-w-[7rem] text-center">
+                  {t("pageIndicator", {
+                    page: pagination.page,
+                    totalPages: pagination.totalPages,
+                  })}
+                </span>
+                {pagination.page < pagination.totalPages ? (
+                  <Link
+                    href={`/dashboard?page=${pagination.page + 1}`}
+                    scroll
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 hover:border-gray-300 transition-colors min-h-[44px]"
+                  >
+                    {t("paginationNext")}
+                    <ChevronRight className="w-4 h-4 shrink-0" aria-hidden />
+                  </Link>
+                ) : (
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-400 min-h-[44px] cursor-not-allowed"
+                    aria-disabled
+                  >
+                    {t("paginationNext")}
+                    <ChevronRight className="w-4 h-4 shrink-0" aria-hidden />
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </main>
     </div>

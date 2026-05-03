@@ -50,7 +50,11 @@
     "gridView": "Grid view",
     "multiBoardView": "Multi-board view",
     "untitledGame": "Untitled game",
-    "gameNameLabel": "Game"
+    "gameNameLabel": "Game",
+    "showingGamesRange": "Showing {from}–{to} of {total}",
+    "pageIndicator": "Page {page} of {totalPages}",
+    "paginationPrevious": "Previous",
+    "paginationNext": "Next"
   },
   "game": {
     "yourTurn": "Your turn!",

@@ -50,7 +50,11 @@
     "gridView": "Vista en cuadrícula",
     "multiBoardView": "Vista multitable",
     "untitledGame": "Partida sin título",
-    "gameNameLabel": "Partida"
+    "gameNameLabel": "Partida",
+    "showingGamesRange": "Mostrando {from}–{to} de {total}",
+    "pageIndicator": "Página {page} de {totalPages}",
+    "paginationPrevious": "Anterior",
+    "paginationNext": "Siguiente"
   },
   "game": {
     "yourTurn": "¡Es tu turno!",

@@ -50,7 +50,11 @@
     "gridView": "Vizualizare grilă",
     "multiBoardView": "Vizualizare multi-tablă",
     "untitledGame": "Joc fără titlu",
-    "gameNameLabel": "Joc"
+    "gameNameLabel": "Joc",
+    "showingGamesRange": "Se afișează {from}–{to} din {total}",
+    "pageIndicator": "Pagina {page} din {totalPages}",
+    "paginationPrevious": "Înapoi",
+    "paginationNext": "Înainte"
   },
   "game": {
     "yourTurn": "Rândul tău!",
