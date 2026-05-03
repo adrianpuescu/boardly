@@ -60,6 +60,12 @@ const LAST_FROM = "rgba(255, 170, 0, 0.3)";
 const LAST_TO = "rgba(255, 170, 0, 0.5)";
 const IN_CHECK = "rgba(239, 68, 68, 0.45)";
 
+/** Legal-move targets (merged with last-move / check layers via backgroundImage). */
+export const LEGAL_MOVE_TARGET_DOT: CSSProperties = {
+  backgroundImage:
+    "radial-gradient(circle, rgba(0, 0, 0, 0.2) 25%, transparent 25%)",
+};
+
 export function getSquareStyles(
   lastMove: LastMoveSquares | null,
   inCheck: boolean,

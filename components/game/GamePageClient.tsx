@@ -8,6 +8,7 @@ import {
   useMemo,
   useReducer,
   useRef,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import { flushSync } from "react-dom";
@@ -16,6 +17,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { Chessboard } from "react-chessboard";
+import type { PieceHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import { Chess } from "chess.js";
 import type { Square, PieceSymbol } from "chess.js";
 import { motion, AnimatePresence, animate } from "framer-motion";
@@ -50,6 +52,7 @@ import {
   getLastMoveSquaresFromMoves,
   getSquareStyles,
   INITIAL_FEN,
+  LEGAL_MOVE_TARGET_DOT,
   type LastMoveSquares,
 } from "@/lib/chess/squareHighlight";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -1514,6 +1517,19 @@ export function GamePageClient({ game, currentUser }: Props) {
     from: string;
     to: string;
   } | null>(null);
+  /** Legal move target squares for the selected/dragged piece (verbose `to` includes castling, ep, promotion). */
+  const [moveSquares, setMoveSquares] = useState<Square[]>([]);
+  /**
+   * react-chessboard calls `onPieceDrop` on successful drag-end and off-board drops, but not on
+   * DnD cancel (e.g. Escape). We set this ref true at the start of `handlePieceDropBoard` so a
+   * deferred cleanup after pointer/key events does not clear dots when a drop was processed.
+   */
+  const pieceDropHandledForLegalHintsRef = useRef(false);
+  /** Bumped whenever legal-move highlights change; stale drag-end timeouts must not clear newer hints. */
+  const legalHintEpochRef = useRef(0);
+  const bumpLegalHintEpoch = useCallback(() => {
+    legalHintEpochRef.current += 1;
+  }, []);
   const [gameName, setGameName] = useState(game.name ?? "");
   const [draftGameName, setDraftGameName] = useState(game.name ?? "");
   const [isEditingGameName, setIsEditingGameName] = useState(false);
@@ -1639,10 +1655,15 @@ export function GamePageClient({ game, currentUser }: Props) {
     [displayFen]
   );
 
-  const squareStyles = useMemo(
-    () => getSquareStyles(effectiveLastMove, inCheck, kingSquare),
-    [effectiveLastMove, inCheck, kingSquare]
-  );
+  const squareStyles = useMemo(() => {
+    const base = getSquareStyles(effectiveLastMove, inCheck, kingSquare);
+    if (moveSquares.length === 0) return base;
+    const merged: Record<string, CSSProperties> = { ...base };
+    for (const sq of moveSquares) {
+      merged[sq] = { ...merged[sq], ...LEGAL_MOVE_TARGET_DOT };
+    }
+    return merged;
+  }, [effectiveLastMove, inCheck, kingSquare, moveSquares]);
 
   /** While browsing past moves, return to the live position (e.g. user tries to drag or clicks). */
   const snapToLiveIfBrowsingHistory = useCallback(() => {
@@ -1825,6 +1846,146 @@ export function GamePageClient({ game, currentUser }: Props) {
     submitting ||
     botThinking ||
     !isMyTurn;
+
+  const canShowLegalMoveHints =
+    isActiveGame &&
+    isMyTurn &&
+    !showModal &&
+    promotionAt == null &&
+    !submitting &&
+    !botThinking;
+
+  const updateMoveSquaresFromPieceSquare = useCallback(
+    (square: string | null) => {
+      if (!square) {
+        bumpLegalHintEpoch();
+        setMoveSquares([]);
+        return;
+      }
+      if (!canShowLegalMoveHints) {
+        bumpLegalHintEpoch();
+        setMoveSquares([]);
+        return;
+      }
+      const chess = new Chess(fenRef.current);
+      const sq = square as Square;
+      const pieceOn = chess.get(sq);
+      if (!pieceOn) {
+        bumpLegalHintEpoch();
+        setMoveSquares([]);
+        return;
+      }
+      const isMine =
+        game.my_color === "white"
+          ? pieceOn.color === "w"
+          : pieceOn.color === "b";
+      if (!isMine) {
+        bumpLegalHintEpoch();
+        setMoveSquares([]);
+        return;
+      }
+      if (chess.turn() !== pieceOn.color) {
+        bumpLegalHintEpoch();
+        setMoveSquares([]);
+        return;
+      }
+      const verbose = chess.moves({ square: sq, verbose: true });
+      bumpLegalHintEpoch();
+      setMoveSquares(verbose.map((m) => m.to as Square));
+    },
+    [bumpLegalHintEpoch, canShowLegalMoveHints, game.my_color]
+  );
+
+  const registerLegalHintsDragEndDetection = useCallback(() => {
+    pieceDropHandledForLegalHintsRef.current = false;
+    const epochWhenListenersAttached = legalHintEpochRef.current;
+    const finish = () => {
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+      window.removeEventListener("keydown", onKey);
+      setTimeout(() => {
+        if (legalHintEpochRef.current !== epochWhenListenersAttached) {
+          return;
+        }
+        if (!pieceDropHandledForLegalHintsRef.current) {
+          bumpLegalHintEpoch();
+          setMoveSquares([]);
+        }
+        pieceDropHandledForLegalHintsRef.current = false;
+      }, 0);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") finish();
+    };
+    window.addEventListener("pointerup", finish, { capture: true, passive: true });
+    window.addEventListener("pointercancel", finish, {
+      capture: true,
+      passive: true,
+    });
+    window.addEventListener("keydown", onKey, { capture: true });
+  }, [bumpLegalHintEpoch]);
+
+  const handleBoardPieceClickForLegalMoves = useCallback(
+    (args: PieceHandlerArgs) => {
+      snapToLiveIfBrowsingHistory();
+      const { square, piece, isSparePiece } = args;
+      if (isSparePiece || !square || !piece) {
+        bumpLegalHintEpoch();
+        setMoveSquares([]);
+        return;
+      }
+      updateMoveSquaresFromPieceSquare(square);
+    },
+    [
+      bumpLegalHintEpoch,
+      snapToLiveIfBrowsingHistory,
+      updateMoveSquaresFromPieceSquare,
+    ]
+  );
+
+  /** react-chessboard v5: `onPieceDrag` fires when a drag starts (no separate drag-begin hook). */
+  const handleBoardPieceDragForLegalMoves = useCallback(
+    (args: PieceHandlerArgs) => {
+      snapToLiveIfBrowsingHistory();
+      const { square, piece, isSparePiece } = args;
+      if (isSparePiece || !square || !piece) {
+        bumpLegalHintEpoch();
+        setMoveSquares([]);
+        return;
+      }
+      updateMoveSquaresFromPieceSquare(square);
+      registerLegalHintsDragEndDetection();
+    },
+    [
+      bumpLegalHintEpoch,
+      snapToLiveIfBrowsingHistory,
+      updateMoveSquaresFromPieceSquare,
+      registerLegalHintsDragEndDetection,
+    ]
+  );
+
+  const handleBoardSquareClickForLegalMoves = useCallback(
+    ({ piece }: SquareHandlerArgs) => {
+      snapToLiveIfBrowsingHistory();
+      if (!piece) {
+        bumpLegalHintEpoch();
+        setMoveSquares([]);
+      }
+    },
+    [bumpLegalHintEpoch, snapToLiveIfBrowsingHistory]
+  );
+
+  useEffect(() => {
+    if (!isActiveGame || !isMyTurn || showModal) setMoveSquares([]);
+  }, [isActiveGame, isMyTurn, showModal]);
+
+  useEffect(() => {
+    if (!atLivePosition) setMoveSquares([]);
+  }, [atLivePosition]);
+
+  useEffect(() => {
+    if (promotionAt != null) setMoveSquares([]);
+  }, [promotionAt]);
 
   const prevDisplay = prevDisplayFenRef.current;
   const displayChanged = displayFen !== prevDisplay;
@@ -2102,6 +2263,8 @@ export function GamePageClient({ game, currentUser }: Props) {
         return false;
       }
 
+      setMoveSquares([]);
+
       const prevFen = fen;
       /**
        * react-chessboard v5: defer `setFen` so `handleDragEnd` can set
@@ -2240,18 +2403,32 @@ export function GamePageClient({ game, currentUser }: Props) {
       sourceSquare: string;
       targetSquare: string | null;
     }) => {
+      pieceDropHandledForLegalHintsRef.current = true;
       shouldAnimateNextMoveRef.current = false;
-      if (!atLivePosition || !targetSquare) return false;
-      if (!canSubmitMove) return false;
+      if (targetSquare === null) {
+        setMoveSquares([]);
+        return false;
+      }
+      if (!atLivePosition) {
+        setMoveSquares([]);
+        return false;
+      }
+      if (!canSubmitMove) {
+        setMoveSquares([]);
+        return false;
+      }
 
       if (
         needsPromotionChoice(fen, sourceSquare as Square, targetSquare as Square)
       ) {
         setPromotionAt({ from: sourceSquare, to: targetSquare });
+        setMoveSquares([]);
         return false;
       }
 
-      return applyMove(sourceSquare, targetSquare);
+      const applied = applyMove(sourceSquare, targetSquare);
+      if (!applied) setMoveSquares([]);
+      return applied;
     },
     [atLivePosition, canSubmitMove, fen, applyMove]
   );
@@ -2716,11 +2893,9 @@ export function GamePageClient({ game, currentUser }: Props) {
                       return game.my_color === "white" ? isWhitePiece : !isWhitePiece;
                     },
                     onPieceDrop: handlePieceDropBoard,
-                    onSquareClick: snapToLiveIfBrowsingHistory,
-                    onPieceClick: snapToLiveIfBrowsingHistory,
-                    onPieceDrag: () => {
-                      snapToLiveIfBrowsingHistory();
-                    },
+                    onSquareClick: handleBoardSquareClickForLegalMoves,
+                    onPieceClick: handleBoardPieceClickForLegalMoves,
+                    onPieceDrag: handleBoardPieceDragForLegalMoves,
                     onSquareMouseDown: ({ piece }) => {
                       if (!atLivePosition && piece) {
                         setViewPlyIndex(moves.length);
