@@ -437,10 +437,22 @@ export async function POST(
       }
     }
 
-    await awardGameCompletedBadgesForPlayers({
+    const newBadges = await awardGameCompletedBadgesForPlayers({
       winnerId,
       botUserId,
       players,
+    });
+
+    return NextResponse.json({
+      success: true,
+      fen: newFen,
+      san: moveSan,
+      from,
+      to,
+      gameOver: isOver,
+      result,
+      winnerId,
+      newBadges,
     });
   }
 

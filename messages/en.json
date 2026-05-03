@@ -158,7 +158,8 @@
     "createAccount": "Create account",
     "guestPromptTitle": "Want to save your progress and play more games?",
     "guestPromptCreateAccount": "Create free account",
-    "guestPromptPlayAsGuest": "Play as guest"
+    "guestPromptPlayAsGuest": "Play as guest",
+    "badgesEarnedTitle": "Badges unlocked!"
   },
   "rematchOffer": {
     "opponentWantsRematch": "Opponent wants a rematch! Accept?",
@@ -284,7 +285,7 @@
     "badge_beat_the_bot_name": "Bot Slayer",
     "badge_beat_the_bot_description": "Beat the AI bot for the first time",
     "badge_beat_hard_bot_name": "Machine Breaker",
-    "badge_beat_hard_bot_description": "Beat the AI bot on Hard or Expert difficulty",
+    "badge_beat_hard_bot_description": "Beat the AI bot on Hard difficulty",
     "elo": "ELO",
     "location": "Location",
     "country": "Country (ISO code)",

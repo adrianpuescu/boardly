@@ -77,7 +77,7 @@ export async function POST(
       ? resignState.bot_user_id
       : undefined;
 
-  await awardGameCompletedBadgesForPlayers({
+  const newBadges = await awardGameCompletedBadgesForPlayers({
     winnerId,
     botUserId: resignBotUid ?? null,
     players,
@@ -145,5 +145,5 @@ export async function POST(
     })();
   }
 
-  return NextResponse.json({ success: true, winnerId });
+  return NextResponse.json({ success: true, winnerId, newBadges });
 }

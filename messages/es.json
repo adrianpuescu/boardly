@@ -158,7 +158,8 @@
     "createAccount": "Crear cuenta",
     "guestPromptTitle": "¿Quieres guardar tu progreso y jugar más partidas?",
     "guestPromptCreateAccount": "Crear cuenta gratis",
-    "guestPromptPlayAsGuest": "Seguir como invitado"
+    "guestPromptPlayAsGuest": "Seguir como invitado",
+    "badgesEarnedTitle": "¡Insignias desbloqueadas!"
   },
   "rematchOffer": {
     "opponentWantsRematch": "¡El rival quiere la revancha! ¿Aceptas?",
@@ -284,7 +285,7 @@
     "badge_beat_the_bot_name": "Cazabot",
     "badge_beat_the_bot_description": "Vence al bot de IA por primera vez",
     "badge_beat_hard_bot_name": "Rompemáquinas",
-    "badge_beat_hard_bot_description": "Vence al bot de IA en dificultad Difícil o Experto",
+    "badge_beat_hard_bot_description": "Vence al bot de IA en dificultad Difícil",
     "elo": "ELO",
     "location": "Ubicación",
     "country": "País (código ISO)",

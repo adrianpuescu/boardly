@@ -8,6 +8,12 @@ const bodySchema = z.object({
   action: z.enum(["offer", "accept", "decline"]),
 });
 
+function omitDrawOffer(state: Record<string, unknown>): Record<string, unknown> {
+  const next: Record<string, unknown> = { ...state };
+  delete next["draw_offered_by"];
+  return next;
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -71,10 +77,69 @@ export async function POST(
   const currentState = (game.state ?? {}) as Record<string, unknown>;
 
   if (action === "offer") {
+    const vsBot = !!(currentState as { vs_bot?: boolean }).vs_bot;
+
+    /** Bot games: resolve accept/decline in one DB write — no interim draw_offered_by (avoids realtime races). */
+    if (vsBot) {
+      const botDifficulty =
+        typeof (currentState as { bot_difficulty?: number }).bot_difficulty ===
+        "number"
+          ? (currentState as { bot_difficulty?: number }).bot_difficulty!
+          : 10;
+      /** Medium (8+) and Hard (15): always accept; Beginner/Easy: 50%. */
+      const botAccepts = botDifficulty >= 8 || Math.random() < 0.5;
+
+      if (!botAccepts) {
+        return NextResponse.json({
+          success: true,
+          action: "offer",
+          botResponse: "declined",
+          drawCompleted: false,
+        });
+      }
+
+      const stateWithoutOffer = omitDrawOffer(currentState);
+
+      const { error: completeError } = await adminClient
+        .from("games")
+        .update({
+          status: "completed",
+          winner_id: null,
+          state: { ...stateWithoutOffer, result: "draw" },
+        })
+        .eq("id", gameId);
+
+      if (completeError) {
+        return NextResponse.json({ error: completeError.message }, { status: 500 });
+      }
+
+      const drawState = stateWithoutOffer as {
+        vs_bot?: boolean;
+        bot_user_id?: string;
+      };
+      const drawBotUid =
+        typeof drawState.bot_user_id === "string" ? drawState.bot_user_id : null;
+
+      const newBadges = await awardGameCompletedBadgesForPlayers({
+        winnerId: null,
+        botUserId: drawBotUid,
+        players,
+      });
+
+      return NextResponse.json({
+        success: true,
+        action: "offer",
+        botResponse: "accepted",
+        drawCompleted: true,
+        newBadges,
+      });
+    }
+
+    const offeredState = { ...currentState, draw_offered_by: user.id };
     const { error } = await adminClient
       .from("games")
       .update({
-        state: { ...currentState, draw_offered_by: user.id },
+        state: offeredState,
       })
       .eq("id", gameId);
 
@@ -82,12 +147,15 @@ export async function POST(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, action: "offer" });
+    return NextResponse.json({
+      success: true,
+      action: "offer",
+      drawCompleted: false,
+    });
   }
 
   if (action === "decline") {
-    const stateWithoutOffer = { ...currentState };
-    delete stateWithoutOffer.draw_offered_by;
+    const stateWithoutOffer = omitDrawOffer(currentState);
     const { error } = await adminClient
       .from("games")
       .update({ state: stateWithoutOffer })
@@ -109,8 +177,7 @@ export async function POST(
     );
   }
 
-  const stateWithoutOffer = { ...currentState };
-  delete stateWithoutOffer.draw_offered_by;
+  const stateWithoutOffer = omitDrawOffer(currentState);
 
   const { error } = await adminClient
     .from("games")
@@ -129,11 +196,11 @@ export async function POST(
   const drawBotUid =
     typeof drawState.bot_user_id === "string" ? drawState.bot_user_id : null;
 
-  await awardGameCompletedBadgesForPlayers({
+  const newBadges = await awardGameCompletedBadgesForPlayers({
     winnerId: null,
     botUserId: drawBotUid,
     players,
   });
 
-  return NextResponse.json({ success: true, action: "accept" });
+  return NextResponse.json({ success: true, action: "accept", newBadges });
 }

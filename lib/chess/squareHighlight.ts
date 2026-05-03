@@ -21,9 +21,13 @@ export function getLastMoveSquaresFromMoves(
   const last = moves[moves.length - 1];
   const prevFen = moves.length < 2 ? fenBeforeFirst : moves[moves.length - 2].fen_after;
   const chess = new Chess(prevFen);
-  const played = chess.move(last.move_san);
-  if (!played) return null;
-  return { from: played.from as Square, to: played.to as Square };
+  try {
+    const played = chess.move(last.move_san);
+    if (!played) return null;
+    return { from: played.from as Square, to: played.to as Square };
+  } catch {
+    return null;
+  }
 }
 
 function findKingSquareForSideToMove(chess: Chess): Square | null {

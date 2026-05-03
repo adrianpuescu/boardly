@@ -4,10 +4,13 @@ import {
   useState,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
   type ReactNode,
 } from "react";
+import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -15,7 +18,7 @@ import Image from "next/image";
 import { Chessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import type { Square, PieceSymbol } from "chess.js";
-import { motion, AnimatePresence, useAnimation } from "framer-motion";
+import { motion, AnimatePresence, animate } from "framer-motion";
 import {
   ArrowLeft,
   ChevronUp,
@@ -65,6 +68,23 @@ import {
   getSharedStockfishEngine,
   parseUciMove,
 } from "@/lib/chess/stockfish";
+import type { AwardedBadge } from "@/lib/badges/types";
+
+function mergeEarnedBadges(
+  prev: AwardedBadge[],
+  incoming: AwardedBadge[] | undefined
+): AwardedBadge[] {
+  if (!incoming?.length) return prev;
+  const seen = new Set(prev.map((b) => b.id));
+  const out = [...prev];
+  for (const b of incoming) {
+    if (!seen.has(b.id)) {
+      seen.add(b.id);
+      out.push(b);
+    }
+  }
+  return out;
+}
 
 /** Tiled fractal noise for CRT-style static (SVG filter). */
 const REPLAY_TV_NOISE_DATA_URL =
@@ -496,6 +516,7 @@ function GameOverModal({
   onCreateAccount,
   onPlayAsGuest,
   vsBot,
+  badgesEarned,
 }: {
   result: GameResult | string | null;
   iWon: boolean;
@@ -518,6 +539,7 @@ function GameOverModal({
   onPlayAsGuest?: () => void;
   /** Bot opponent: rematch always available, no presence / invite UI. */
   vsBot?: boolean;
+  badgesEarned?: AwardedBadge[];
 }) {
   const t = useTranslations("gameOver");
   const rematchDisabled = vsBot
@@ -611,6 +633,28 @@ function GameOverModal({
             </p>
           </>
         )}
+
+        {/* Only badges newly awarded this game — omit section when API returned none */}
+        {badgesEarned && badgesEarned.length > 0 ? (
+          <div className="mb-6 rounded-2xl border border-violet-100 bg-violet-50/80 px-4 py-3 text-left">
+            <p className="text-xs font-semibold uppercase tracking-wide text-violet-700 mb-2">
+              {t("badgesEarnedTitle")}
+            </p>
+            <ul className="space-y-1.5">
+              {badgesEarned.map((b) => (
+                <li
+                  key={b.id}
+                  className="flex items-center gap-2 text-sm font-medium text-gray-800"
+                >
+                  <span className="text-lg shrink-0" aria-hidden>
+                    {b.icon}
+                  </span>
+                  <span>{b.name}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <div className="flex flex-col gap-3">
           {isGuest ? (
@@ -1051,7 +1095,9 @@ function MoveHistoryPanel({
   }, [moves.length, useExplicitHighlight, highlightHalfMoveIndex]);
 
   return (
-    <div className={`flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden ${className ?? ""}`}>
+    <div
+      className={`flex min-h-0 max-h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white ${className ?? ""}`}
+    >
       {!hideHeader && (
         <div
           className={cn(
@@ -1087,7 +1133,7 @@ function MoveHistoryPanel({
           )}
         </div>
       )}
-      <div className="flex-1 overflow-y-auto min-h-0 p-2">
+      <div className="min-h-0 max-h-full flex-1 overflow-x-hidden overflow-y-auto p-2">
         {pairs.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-6">{t("noMovesYet")}</p>
         ) : (
@@ -1299,14 +1345,27 @@ export function GamePageClient({ game, currentUser }: Props) {
   const t = useTranslations("game");
   const tGameOver = useTranslations("gameOver");
   const tDrawOffer = useTranslations("drawOffer");
-  const boardControls = useAnimation();
+  /** Box-shadow only (no translate) so @dnd-kit drag coordinates stay aligned with the board. */
+  const boardShakeHostRef = useRef<HTMLDivElement | null>(null);
 
   const shake = useCallback(async () => {
-    await boardControls.start({
-      x: [0, -10, 10, -10, 10, -6, 6, -3, 3, 0],
-      transition: { duration: 0.45, ease: "easeInOut" },
-    });
-  }, [boardControls]);
+    const el = boardShakeHostRef.current;
+    if (!el) return;
+    const base =
+      "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(254, 243, 199, 1)";
+    await animate(
+      el,
+      {
+        boxShadow: [
+          base,
+          "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 4px rgba(239, 68, 68, 0.45)",
+          "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 2px rgba(239, 68, 68, 0.25)",
+          base,
+        ],
+      },
+      { duration: 0.45, ease: "easeInOut" }
+    );
+  }, []);
 
   const shakeRef = useRef(shake);
   shakeRef.current = shake;
@@ -1446,6 +1505,9 @@ export function GamePageClient({ game, currentUser }: Props) {
   const [showResignDialog, setShowResignDialog] = useState(false);
   const [resignLoading, setResignLoading] = useState(false);
   const [drawLoading, setDrawLoading] = useState(false);
+  const [badgesEarnedThisGame, setBadgesEarnedThisGame] = useState<
+    AwardedBadge[]
+  >([]);
   const [rematchLoading, setRematchLoading] = useState(false);
   const [movesSheetOpen, setMovesSheetOpen] = useState(false);
   const [promotionAt, setPromotionAt] = useState<{
@@ -1462,6 +1524,25 @@ export function GamePageClient({ game, currentUser }: Props) {
    */
   const [viewPlyIndex, setViewPlyIndex] = useState(0);
   const prevMovesLenRef = useRef(0);
+  /** Bot POST path can force one animated ply (see chessboardAnimMs). */
+  const shouldAnimateNextMoveRef = useRef(false);
+  /** Last `displayFen` committed (updated in layout); used to detect external position changes. */
+  const prevDisplayFenRef = useRef(game.state.fen);
+  /** Optimistic local line: `setFen` is deferred; skip anim until React `fen` matches this. */
+  const playerPendingLocalFenRef = useRef<string | null>(null);
+  /**
+   * Supabase often delivers `games` UPDATE right after `moves` INSERT; a second React render
+   * would pass `animationDurationInMs: 0` for the same FEN and react-chessboard cancels the
+   * in-flight piece animation. Hold duration > 0 briefly for that stable `displayFen`.
+   */
+  const persistBoardAnimUntilRef = useRef(0);
+  const persistBoardAnimFenRef = useRef<string | null>(null);
+  /** Invalidates deferred `setFen` from `applyMove` if the server rejects before the microtask runs. */
+  const liveFenApplyGenRef = useRef(0);
+  /** Live-position board FEN passed to Chessboard; updated synchronously on legal drops (+ bump). */
+  const boardPositionRef = useRef(game.state.fen);
+  const [, bumpChessboardRender] = useReducer((x: number) => x + 1, 0);
+  const prevAtLivePositionRef = useRef(false);
 
   const [pendingLastMove, setPendingLastMove] = useState<LastMoveSquares | null>(
     null
@@ -1470,6 +1551,19 @@ export function GamePageClient({ game, currentUser }: Props) {
   useEffect(() => {
     prevMovesLenRef.current = 0;
     setViewPlyIndex(0);
+    prevDisplayFenRef.current = game.state.fen;
+    playerPendingLocalFenRef.current = null;
+    persistBoardAnimUntilRef.current = 0;
+    persistBoardAnimFenRef.current = null;
+    shouldAnimateNextMoveRef.current = false;
+    liveFenApplyGenRef.current++;
+    boardPositionRef.current = game.state.fen;
+    prevAtLivePositionRef.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset board only when switching games (avoid resetting mid-game on every fen tick)
+  }, [game.id]);
+
+  useEffect(() => {
+    setBadgesEarnedThisGame([]);
   }, [game.id]);
 
   useEffect(() => {
@@ -1515,8 +1609,20 @@ export function GamePageClient({ game, currentUser }: Props) {
     return moves[viewPlyIndex - 1]?.fen_after ?? INITIAL_FEN;
   }, [viewPlyIndex, moves]);
 
+  const awaitingPlayerFenCommit =
+    playerPendingLocalFenRef.current !== null &&
+    fen !== playerPendingLocalFenRef.current;
+
+  if (
+    atLivePosition &&
+    !awaitingPlayerFenCommit &&
+    fen !== boardPositionRef.current
+  ) {
+    boardPositionRef.current = fen;
+  }
+
   const displayFen =
-    moves.length > 0 && !atLivePosition ? historyFen : fen;
+    moves.length > 0 && !atLivePosition ? historyFen : boardPositionRef.current;
 
   const historyLastMove = useMemo(() => {
     if (atLivePosition || viewPlyIndex === 0) return null;
@@ -1701,11 +1807,90 @@ export function GamePageClient({ game, currentUser }: Props) {
   const fenRef = useRef(fen);
   fenRef.current = fen;
   const [botThinking, setBotThinking] = useState(false);
+  useEffect(() => {
+    setBotThinking(false);
+  }, [game.id]);
+
   /** One Stockfish reply per distinct `(game, FEN)` while side to move is the bot. */
   const botScheduledTriggerKeyRef = useRef<string | null>(null);
   /** Invalidates in-flight bot async when the effect cleans up (Strict Mode / deps churn). */
   const botTurnEffectSeqRef = useRef(0);
   const botSkillLevel = game.state.bot_difficulty ?? 10;
+
+  /** No piece drag while awaiting server/bot or on the opponent's clock (live position only). */
+  const boardPiecesLocked =
+    !atLivePosition ||
+    showModal ||
+    promotionAt != null ||
+    submitting ||
+    botThinking ||
+    !isMyTurn;
+
+  const prevDisplay = prevDisplayFenRef.current;
+  const displayChanged = displayFen !== prevDisplay;
+  const isPlayerOptimisticDisplay =
+    playerPendingLocalFenRef.current !== null &&
+    displayFen === playerPendingLocalFenRef.current;
+
+  const animateExternalMove =
+    atLivePosition && displayChanged && !isPlayerOptimisticDisplay;
+
+  const animClock =
+    typeof performance !== "undefined" ? performance.now() : Date.now();
+
+  if (
+    persistBoardAnimFenRef.current !== null &&
+    displayFen !== persistBoardAnimFenRef.current
+  ) {
+    persistBoardAnimUntilRef.current = 0;
+    persistBoardAnimFenRef.current = null;
+  }
+
+  const baseChessboardAnimMs =
+    sfx.respectReducedMotion
+      ? 0
+      : shouldAnimateNextMoveRef.current || animateExternalMove
+        ? 150
+        : 0;
+
+  if (baseChessboardAnimMs > 0) {
+    persistBoardAnimUntilRef.current = animClock + 175;
+    persistBoardAnimFenRef.current = displayFen;
+  }
+
+  const chessboardAnimMs =
+    sfx.respectReducedMotion
+      ? 0
+      : Math.max(
+          baseChessboardAnimMs,
+          animClock < persistBoardAnimUntilRef.current &&
+            persistBoardAnimFenRef.current === displayFen
+            ? 150
+            : 0
+        );
+
+  useLayoutEffect(() => {
+    if (
+      playerPendingLocalFenRef.current !== null &&
+      fen === playerPendingLocalFenRef.current
+    ) {
+      playerPendingLocalFenRef.current = null;
+    }
+    prevDisplayFenRef.current = displayFen;
+  }, [fen, displayFen]);
+
+  useLayoutEffect(() => {
+    const enteredLive = atLivePosition && !prevAtLivePositionRef.current;
+    prevAtLivePositionRef.current = atLivePosition;
+    if (enteredLive) {
+      boardPositionRef.current = fen;
+      bumpChessboardRender();
+    }
+  }, [atLivePosition, fen]);
+
+  useLayoutEffect(() => {
+    shouldAnimateNextMoveRef.current = false;
+  });
 
   useEffect(() => {
     return () => {
@@ -1784,6 +1969,7 @@ export function GamePageClient({ game, currentUser }: Props) {
           gameOver?: boolean;
           result?: string;
           winnerId?: string | null;
+          newBadges?: AwardedBadge[];
           error?: string;
         };
 
@@ -1798,7 +1984,15 @@ export function GamePageClient({ game, currentUser }: Props) {
           to: bt as Square,
         });
 
-        if (data.fen) setFen(data.fen);
+        const fenBeforeApply = fenRef.current;
+        if (data.fen && data.fen !== fenBeforeApply) {
+          shouldAnimateNextMoveRef.current = true;
+          boardPositionRef.current = data.fen;
+          flushSync(() => {
+            bumpChessboardRender();
+          });
+          setFen(data.fen);
+        }
 
         const api = sfxRef.current;
         if (data.san) {
@@ -1818,6 +2012,9 @@ export function GamePageClient({ game, currentUser }: Props) {
         }
 
         if (data.gameOver) {
+          setBadgesEarnedThisGame((prev) =>
+            mergeEarnedBadges(prev, data.newBadges)
+          );
           setGameOver(true);
           setGameResult(
             (data.result as import("@/hooks/useGameRealtime").GameResult) ?? null
@@ -1864,12 +2061,16 @@ export function GamePageClient({ game, currentUser }: Props) {
         const data = (await res.json()) as {
           winnerId?: string;
           loserId?: string;
+          newBadges?: AwardedBadge[];
         };
         if (!endSoundPlayedRef.current) {
           endSoundPlayedRef.current = true;
           const win = data.winnerId === currentUser.id;
           void sfxRef.current.playGameOver(win ? "win" : "loss");
         }
+        setBadgesEarnedThisGame((prev) =>
+          mergeEarnedBadges(prev, data.newBadges)
+        );
         setGameOver(true);
         setGameResult(null);
         setWinnerId(data.winnerId ?? null);
@@ -1883,6 +2084,8 @@ export function GamePageClient({ game, currentUser }: Props) {
   const applyMove = useCallback(
     (sourceSquare: string, targetSquare: string, promotion?: PromotionPiece) => {
       if (!canSubmitMove) return false;
+
+      shouldAnimateNextMoveRef.current = false;
 
       const chess = new Chess(fen);
       let newFen: string;
@@ -1900,8 +2103,33 @@ export function GamePageClient({ game, currentUser }: Props) {
       }
 
       const prevFen = fen;
-      setFen(newFen);
+      /**
+       * react-chessboard v5: defer `setFen` so `handleDragEnd` can set
+       * `manuallyDroppedPieceAndSquare` before the controlled `position` prop commits
+       * (see ChessboardProvider useEffect([position]) in react-chessboard).
+       * Separately: mutate `boardPositionRef` + `flushSync(bumpChessboardRender)` so this
+       * render reads the post-drop FEN from the ref in the same turn as `onPieceDrop`,
+       * avoiding a frame where React still passes the old position string.
+       */
+      const gen = ++liveFenApplyGenRef.current;
+      playerPendingLocalFenRef.current = newFen;
+      boardPositionRef.current = newFen;
+      flushSync(() => {
+        bumpChessboardRender();
+      });
+      queueMicrotask(() => {
+        if (gen !== liveFenApplyGenRef.current) return;
+        setFen(newFen);
+      });
       setSubmitting(true);
+
+      const chessAfter = new Chess(newFen);
+      if (vsBotGame && !chessAfter.isGameOver()) {
+        const stm = chessAfter.turn() === "w" ? "white" : "black";
+        if (stm === opponentColor) {
+          setBotThinking(true);
+        }
+      }
 
       fetch(`/api/moves/${game.id}`, {
         method: "POST",
@@ -1920,18 +2148,35 @@ export function GamePageClient({ game, currentUser }: Props) {
             gameOver?: boolean;
             result?: string;
             winnerId?: string | null;
+            newBadges?: AwardedBadge[];
             error?: string;
           };
 
           if (!res.ok) {
+            liveFenApplyGenRef.current++;
+            playerPendingLocalFenRef.current = null;
+            prevDisplayFenRef.current = prevFen;
+            boardPositionRef.current = prevFen;
+            flushSync(() => {
+              bumpChessboardRender();
+            });
             setFen(prevFen);
+            setBotThinking(false);
             void shake();
           } else {
             setPendingLastMove({
               from: sourceSquare as Square,
               to: targetSquare as Square,
             });
-            if (data.fen) setFen(data.fen);
+            if (data.fen && data.fen !== newFen) {
+              playerPendingLocalFenRef.current = null;
+              prevDisplayFenRef.current = data.fen;
+              boardPositionRef.current = data.fen;
+              flushSync(() => {
+                bumpChessboardRender();
+              });
+              setFen(data.fen);
+            }
 
             const api = sfxRef.current;
             if (data.san) {
@@ -1951,6 +2196,10 @@ export function GamePageClient({ game, currentUser }: Props) {
             }
 
             if (data.gameOver) {
+              setBotThinking(false);
+              setBadgesEarnedThisGame((prev) =>
+                mergeEarnedBadges(prev, data.newBadges)
+              );
               setGameOver(true);
               setGameResult(
                 (data.result as import("@/hooks/useGameRealtime").GameResult) ??
@@ -1961,7 +2210,15 @@ export function GamePageClient({ game, currentUser }: Props) {
           }
         })
         .catch(() => {
+          liveFenApplyGenRef.current++;
+          playerPendingLocalFenRef.current = null;
+          prevDisplayFenRef.current = prevFen;
+          boardPositionRef.current = prevFen;
+          flushSync(() => {
+            bumpChessboardRender();
+          });
           setFen(prevFen);
+          setBotThinking(false);
           setPendingLastMove(null);
           void shake();
         })
@@ -1975,8 +2232,16 @@ export function GamePageClient({ game, currentUser }: Props) {
     [canSubmitMove, fen, game.id]
   );
 
-  const handlePieceDrop = useCallback(
-    (sourceSquare: string, targetSquare: string): boolean => {
+  const handlePieceDropBoard = useCallback(
+    ({
+      sourceSquare,
+      targetSquare,
+    }: {
+      sourceSquare: string;
+      targetSquare: string | null;
+    }) => {
+      shouldAnimateNextMoveRef.current = false;
+      if (!atLivePosition || !targetSquare) return false;
       if (!canSubmitMove) return false;
 
       if (
@@ -1988,7 +2253,7 @@ export function GamePageClient({ game, currentUser }: Props) {
 
       return applyMove(sourceSquare, targetSquare);
     },
-    [canSubmitMove, fen, applyMove]
+    [atLivePosition, canSubmitMove, fen, applyMove]
   );
 
   // ── Resign ───────────────────────────────────────────────────────────────
@@ -1997,12 +2262,18 @@ export function GamePageClient({ game, currentUser }: Props) {
     try {
       const res = await fetch(`/api/games/${game.id}/resign`, { method: "POST" });
       if (res.ok) {
-        const data = (await res.json()) as { winnerId?: string | null };
+        const data = (await res.json()) as {
+          winnerId?: string | null;
+          newBadges?: AwardedBadge[];
+        };
         if (!endSoundPlayedRef.current) {
           endSoundPlayedRef.current = true;
           const win = data.winnerId === currentUser.id;
           void sfxRef.current.playGameOver(win ? "win" : "loss");
         }
+        setBadgesEarnedThisGame((prev) =>
+          mergeEarnedBadges(prev, data.newBadges)
+        );
         setShowResignDialog(false);
         setGameOver(true);
         setGameResult("resignation");
@@ -2090,18 +2361,50 @@ export function GamePageClient({ game, currentUser }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       });
-      if (res.ok && action === "accept") {
+      let data = {} as {
+        success?: boolean;
+        botResponse?: "accepted" | "declined";
+        drawCompleted?: boolean;
+        newBadges?: AwardedBadge[];
+      };
+      try {
+        data = (await res.json()) as typeof data;
+      } catch {
+        /* non-JSON error body */
+      }
+      if (!res.ok) return;
+
+      const drawFinished =
+        action === "accept" ||
+        (action === "offer" &&
+          data.drawCompleted &&
+          data.botResponse === "accepted");
+
+      if (drawFinished) {
         if (!endSoundPlayedRef.current) {
           endSoundPlayedRef.current = true;
           void sfxRef.current.playDraw();
         }
+        setBadgesEarnedThisGame((prev) =>
+          mergeEarnedBadges(prev, data.newBadges)
+        );
         setGameOver(true);
         setGameResult("draw");
         setWinnerId(null);
         setDrawOfferedBy(null);
-      } else if (res.ok && action === "decline") {
+        return;
+      }
+
+      if (action === "decline") {
         setDrawOfferedBy(null);
-      } else if (res.ok && action === "offer") {
+        return;
+      }
+
+      if (action === "offer") {
+        if (data.botResponse === "declined") {
+          setDrawOfferedBy(null);
+          return;
+        }
         setDrawOfferedBy(currentUser.id);
       }
     } catch (err) {
@@ -2268,9 +2571,9 @@ export function GamePageClient({ game, currentUser }: Props) {
 
       <main className="flex-1 flex flex-col items-center px-4 py-6 gap-4">
         {/* Board + move history: side-by-side on desktop, stacked on mobile */}
-        <div className="w-full max-w-[900px] flex flex-col lg:flex-row gap-4 items-start justify-center">
+        <div className="mx-auto flex w-full max-w-[900px] flex-col gap-4 lg:flex-row lg:items-stretch lg:justify-center">
           {/* Board column */}
-          <div className="w-full lg:max-w-[600px] flex flex-col gap-3">
+          <div className="flex min-h-0 w-full max-w-[600px] flex-col gap-3">
             {/* Back + status row — inside board column so it aligns with board edges */}
             <div className="flex items-center gap-3">
               <button
@@ -2384,9 +2687,9 @@ export function GamePageClient({ game, currentUser }: Props) {
               isBoardlyBot={vsBotGame}
               difficultyLabel={botDifficultyBadge}
             />
-            {/* Chess board with shake animation wrapper */}
-            <motion.div
-              animate={boardControls}
+            {/* Chess board — plain wrapper (no CSS translate on ancestor) so drag overlay stays aligned */}
+            <div
+              ref={boardShakeHostRef}
               className="w-full rounded-2xl overflow-hidden shadow-xl ring-1 ring-orange-100 relative"
             >
               <div
@@ -2399,24 +2702,25 @@ export function GamePageClient({ game, currentUser }: Props) {
               >
                 <Chessboard
                   options={{
+                    id: `board-${game.id}`,
                     position: displayFen,
                     boardOrientation: game.my_color,
                     pieces: customPieces,
-                    allowDragging: true,
+                    showAnimations: chessboardAnimMs > 0,
+                    animationDurationInMs: chessboardAnimMs,
+                    allowDragOffBoard: true,
+                    allowDragging: !boardPiecesLocked,
                     canDragPiece: ({ piece }) => {
-                      if (!atLivePosition) return false;
-                      if (promotionAt) return false;
+                      if (boardPiecesLocked) return false;
                       const isWhitePiece = piece.pieceType.startsWith("w");
                       return game.my_color === "white" ? isWhitePiece : !isWhitePiece;
                     },
-                    onPieceDrop: ({ sourceSquare, targetSquare }) => {
-                      if (!atLivePosition) return false;
-                      if (!targetSquare) return false;
-                      return handlePieceDrop(sourceSquare, targetSquare);
-                    },
+                    onPieceDrop: handlePieceDropBoard,
                     onSquareClick: snapToLiveIfBrowsingHistory,
                     onPieceClick: snapToLiveIfBrowsingHistory,
-                    onPieceDrag: snapToLiveIfBrowsingHistory,
+                    onPieceDrag: () => {
+                      snapToLiveIfBrowsingHistory();
+                    },
                     onSquareMouseDown: ({ piece }) => {
                       if (!atLivePosition && piece) {
                         setViewPlyIndex(moves.length);
@@ -2452,7 +2756,7 @@ export function GamePageClient({ game, currentUser }: Props) {
                 <div className="absolute inset-0 rounded-2xl [box-shadow:inset_0_0_56px_32px_rgba(0,0,0,0.22)] motion-reduce:[box-shadow:inset_0_0_48px_28px_rgba(0,0,0,0.14)]" />
                 <div className="absolute inset-0 rounded-2xl bg-[radial-gradient(ellipse_96%_90%_at_50%_50%,transparent_40%,rgba(0,0,0,0.2)_100%)] mix-blend-multiply opacity-90 motion-reduce:opacity-55" />
               </div>
-            </motion.div>
+            </div>
 
             {/* Current user strip — shown at bottom */}
             <PlayerStrip
@@ -2543,11 +2847,14 @@ export function GamePageClient({ game, currentUser }: Props) {
             </div>
           </div>
 
-          {/* Desktop: permanent move history sidebar */}
-          <div className="hidden lg:flex flex-col w-52 flex-shrink-0 self-stretch">
+          {/* Desktop: move history — stretch with column; scroll inside panel only */}
+          <div
+            className="hidden max-h-full min-h-0 w-52 shrink-0 flex-col overflow-hidden lg:flex"
+            style={{ maxHeight: "calc(100vh - 120px)" }}
+          >
             <MoveHistoryPanel
               moves={moves}
-              className="flex-1 min-h-[200px]"
+              className="flex h-full max-h-full min-h-0 flex-1 flex-col"
               highlightHalfMoveIndex={
                 !atLivePosition
                   ? viewPlyIndex === 0
@@ -2589,11 +2896,21 @@ export function GamePageClient({ game, currentUser }: Props) {
             rematchDeclined={rematchDeclined}
             rematchWaiting={rematchWaiting}
             vsBot={vsBotGame}
+            badgesEarned={
+              badgesEarnedThisGame.length > 0 ? badgesEarnedThisGame : undefined
+            }
             onRematch={handleRematch}
             rematchLoading={rematchLoading}
-            onDashboard={() =>
-              router.push(currentUser.isGuest ? "/login" : "/dashboard")
-            }
+            onDashboard={() => {
+              if (currentUser.isGuest) {
+                router.push("/login");
+                return;
+              }
+              router.push("/dashboard");
+              if (vsBotGame) {
+                queueMicrotask(() => router.refresh());
+              }
+            }}
             canReviewGame={moves.length > 0}
             onReviewGame={startReplay}
             reviewGameLabel={t("replayReview")}
@@ -2666,7 +2983,7 @@ export function GamePageClient({ game, currentUser }: Props) {
           </div>
           <MoveHistoryPanel
             moves={moves}
-            className="border-0 rounded-none flex min-h-0 flex-1 flex-col"
+            className="flex max-h-full min-h-0 flex-1 flex-col rounded-none border-0"
             headerVariant="sheet"
             highlightHalfMoveIndex={
               !atLivePosition

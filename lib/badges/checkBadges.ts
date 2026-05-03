@@ -1,4 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { AwardedBadge } from "@/lib/badges/types";
+
+export type { AwardedBadge };
 
 type BadgeTrigger = "game_completed" | "friend_added";
 function getLongestWinStreak(winsByGame: boolean[]): number {
@@ -22,7 +25,7 @@ export async function awardGameCompletedBadgesForPlayers(params: {
   winnerId: string | null;
   botUserId: string | null;
   players: Array<{ user_id: string }>;
-}): Promise<void> {
+}): Promise<AwardedBadge[]> {
   const { winnerId, botUserId, players } = params;
   const involvesBot =
     !!botUserId && players.some((p) => p.user_id === botUserId);
@@ -33,20 +36,21 @@ export async function awardGameCompletedBadgesForPlayers(params: {
   try {
     if (!involvesBot) {
       if (winnerId) {
-        await checkAndAwardBadges(winnerId, "game_completed");
+        return await checkAndAwardBadges(winnerId, "game_completed");
       }
     } else if (humanPlayerId) {
-      await checkAndAwardBadges(humanPlayerId, "game_completed");
+      return await checkAndAwardBadges(humanPlayerId, "game_completed");
     }
   } catch (error) {
     console.error("[badges] game completion badge check failed:", error);
   }
+  return [];
 }
 
 export async function checkAndAwardBadges(
   userId: string,
   trigger: BadgeTrigger
-): Promise<string[]> {
+): Promise<AwardedBadge[]> {
   const admin = createAdminClient();
 
   const { data: alreadyEarnedRows, error: earnedError } = await admin
@@ -56,7 +60,7 @@ export async function checkAndAwardBadges(
 
   if (earnedError) {
     console.error("[badges] failed to load current badges:", earnedError);
-    return [];
+    return [] as AwardedBadge[];
   }
 
   const earnedSet = new Set((alreadyEarnedRows ?? []).map((row) => row.badge_id));
@@ -70,7 +74,7 @@ export async function checkAndAwardBadges(
 
     if (gameCountError) {
       console.error("[badges] failed to count games:", gameCountError);
-      return [];
+      return [] as AwardedBadge[];
     }
 
     const playedGamesCount = (playerRows ?? []).length;
@@ -86,7 +90,7 @@ export async function checkAndAwardBadges(
 
     if (winsError) {
       console.error("[badges] failed to count wins:", winsError);
-      return [];
+      return [] as AwardedBadge[];
     }
 
     const winsCount = (winsRows ?? []).length;
@@ -110,7 +114,7 @@ export async function checkAndAwardBadges(
 
     if (streakError) {
       console.error("[badges] failed to calculate streak:", streakError);
-      return [];
+      return [] as AwardedBadge[];
     }
 
     const winsByGame = (completedGames ?? []).map((game) => game.winner_id === userId);
@@ -164,7 +168,7 @@ export async function checkAndAwardBadges(
 
     if (friendError) {
       console.error("[badges] failed to count friends:", friendError);
-      return [];
+      return [] as AwardedBadge[];
     }
 
     const friendsCount = (friendRows ?? []).length;
@@ -176,7 +180,7 @@ export async function checkAndAwardBadges(
     (badgeId) => !earnedSet.has(badgeId)
   );
   if (newBadgeIds.length === 0) {
-    return [];
+    return [] as AwardedBadge[];
   }
 
   const badgeRowsToInsert = newBadgeIds.map((badgeId) => ({
@@ -191,12 +195,12 @@ export async function checkAndAwardBadges(
 
   if (insertBadgesError) {
     console.error("[badges] failed to insert earned badges:", insertBadgesError);
-    return [];
+    return [] as AwardedBadge[];
   }
 
   const awardedBadgeIds = (insertedBadges ?? []).map((row) => row.badge_id);
   if (awardedBadgeIds.length === 0) {
-    return [];
+    return [] as AwardedBadge[];
   }
 
   const { data: badgeMetaRows, error: badgeMetaError } = await admin
@@ -206,10 +210,16 @@ export async function checkAndAwardBadges(
 
   if (badgeMetaError) {
     console.error("[badges] failed to load badge metadata:", badgeMetaError);
-    return awardedBadgeIds;
+    return awardedBadgeIds.map((id) => ({ id, name: id, icon: "🏅" }));
   }
 
-  const notifications = (badgeMetaRows ?? []).map((badge) => ({
+  const awardedMeta: AwardedBadge[] = (badgeMetaRows ?? []).map((row) => ({
+    id: row.id as string,
+    name: row.name as string,
+    icon: row.icon as string,
+  }));
+
+  const notifications = awardedMeta.map((badge) => ({
     user_id: userId,
     type: "badge_earned",
     payload: {
@@ -228,5 +238,5 @@ export async function checkAndAwardBadges(
     }
   }
 
-  return awardedBadgeIds;
+  return awardedMeta;
 }

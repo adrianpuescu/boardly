@@ -369,23 +369,31 @@ export default function LobbyPage() {
                 <RadioGroup
                   value={String(botDifficulty)}
                   onValueChange={(v) => setBotDifficulty(Number(v))}
-                  className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+                  className="grid w-full grid-cols-2 gap-2"
                 >
-                  {BOT_DIFFICULTY_PRESETS.map((preset) => (
-                    <label
-                      key={preset.level}
-                      className={`flex cursor-pointer items-center gap-2 rounded-xl border-2 px-3 py-2.5 transition-colors ${
-                        botDifficulty === preset.level
-                          ? "border-orange-400 bg-orange-50"
-                          : "border-gray-100 hover:border-orange-200 bg-white"
-                      }`}
-                    >
-                      <RadioGroupItem value={String(preset.level)} className="border-gray-300" />
-                      <span className="text-sm font-semibold text-gray-800">
-                        {t(preset.labelKey)}
-                      </span>
-                    </label>
-                  ))}
+                  {BOT_DIFFICULTY_PRESETS.map((preset) => {
+                    const isSelected = botDifficulty === preset.level;
+                    return (
+                      <motion.label
+                        key={preset.level}
+                        layout
+                        className={`flex w-full min-w-0 cursor-pointer items-center justify-center gap-1.5 rounded-2xl border-2 px-2 py-2 transition-colors select-none ${
+                          isSelected
+                            ? "border-orange-400 bg-orange-50"
+                            : "border-gray-100 hover:border-orange-200 hover:bg-orange-50/40"
+                        }`}
+                      >
+                        <RadioGroupItem
+                          value={String(preset.level)}
+                          className="size-4 shrink-0 border-2 border-gray-300 data-[checked]:border-orange-500 data-[checked]:bg-orange-500 dark:data-[checked]:bg-orange-500"
+                          aria-label={t(preset.labelKey)}
+                        />
+                        <span className="text-xs font-semibold text-gray-900 whitespace-nowrap">
+                          {t(preset.labelKey)}
+                        </span>
+                      </motion.label>
+                    );
+                  })}
                 </RadioGroup>
               </div>
             )}

@@ -158,7 +158,8 @@
     "createAccount": "Creează cont",
     "guestPromptTitle": "Vrei să-ți salvezi progresul și să joci mai multe partide?",
     "guestPromptCreateAccount": "Creează cont gratuit",
-    "guestPromptPlayAsGuest": "Joacă ca invitat"
+    "guestPromptPlayAsGuest": "Joacă ca invitat",
+    "badgesEarnedTitle": "Insigne deblocate!"
   },
   "rematchOffer": {
     "opponentWantsRematch": "Adversarul vrea revanșă! Accepți?",
@@ -284,7 +285,7 @@
     "badge_beat_the_bot_name": "Învingător de bot",
     "badge_beat_the_bot_description": "Învinge botul AI pentru prima dată",
     "badge_beat_hard_bot_name": "Spărgător de mașini",
-    "badge_beat_hard_bot_description": "Învinge botul AI la dificultate Greu sau Expert",
+    "badge_beat_hard_bot_description": "Învinge botul AI la dificultate Greu",
     "elo": "ELO",
     "location": "Locație",
     "country": "Țară (cod ISO)",

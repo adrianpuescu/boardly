@@ -160,7 +160,11 @@ export function useGameRealtime(
         },
         (payload) => {
           const move = payload.new as MoveRecord;
-          if (move.fen_after) setFen(move.fen_after);
+          if (move.fen_after) {
+            setFen((prev) =>
+              prev === move.fen_after ? prev : move.fen_after
+            );
+          }
           setMoves((prev) => {
             if (prev.some((m) => m.id === move.id)) return prev;
             return [...prev, move];
@@ -201,7 +205,7 @@ export function useGameRealtime(
 
           const nextFen = updated.state?.fen;
           if (typeof nextFen === "string" && nextFen.trim() !== "") {
-            setFen(nextFen);
+            setFen((prev) => (prev === nextFen ? prev : nextFen));
           }
 
           if (updated.status === "completed") {

@@ -120,7 +120,7 @@ export async function POST(
   const timeoutBotUid =
     typeof timeoutState.bot_user_id === "string" ? timeoutState.bot_user_id : null;
 
-  await awardGameCompletedBadgesForPlayers({
+  const newBadges = await awardGameCompletedBadgesForPlayers({
     winnerId: winnerRow.user_id,
     botUserId: timeoutBotUid,
     players,
@@ -170,5 +170,6 @@ export async function POST(
     result: "timeout",
     winnerId: winnerRow.user_id,
     loserId: loserRow.user_id,
+    newBadges,
   });
 }
