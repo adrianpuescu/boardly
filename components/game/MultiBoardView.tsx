@@ -22,6 +22,7 @@ import { useBoardTheme } from "@/hooks/useBoardTheme";
 import { buildPieces } from "@/lib/chess/pieces";
 import { getBoardThemeStyles } from "@/lib/chess/boardThemes";
 import type { DashboardGame } from "@/lib/types";
+import { getMyGameResult } from "@/lib/dashboard/myGameResult";
 import { isNextImageCompatibleSrc } from "@/lib/utils";
 
 const Chessboard = dynamic(
@@ -40,9 +41,10 @@ const MAX_BOARDS = 4;
 
 interface BoardItemProps {
   game: DashboardGame;
+  currentUserId: string;
 }
 
-function BoardItem({ game }: BoardItemProps) {
+function BoardItem({ game, currentUserId }: BoardItemProps) {
   const { pieceSet } = usePieceSet(game.id);
   const { boardTheme } = useBoardTheme(game.id);
   const boardStyles = getBoardThemeStyles(boardTheme);
@@ -115,6 +117,11 @@ function BoardItem({ game }: BoardItemProps) {
   const isActive = gameStatus === "active" && !gameOver && !isTerminalStatus;
   const isMyTurn = fenTurn === game.my_color && isActive;
   const canMove = isMyTurn && !submitting;
+
+  const myResult = useMemo(
+    () => getMyGameResult(game, currentUserId),
+    [game, currentUserId]
+  );
 
   const opponentName = game.opponent?.username ?? t("waitingForOpponent") + "…";
   const opponentInitials = game.opponent
@@ -316,8 +323,16 @@ function BoardItem({ game }: BoardItemProps) {
           isMyTurn
             ? "bg-green-50 text-green-600"
             : isActive
-            ? "bg-blue-50/60 text-blue-500"
-            : "bg-gray-50 text-gray-400"
+              ? "bg-blue-50/60 text-blue-500"
+              : isTerminalStatus && myResult === "win"
+                ? "bg-emerald-50 text-emerald-700"
+                : isTerminalStatus && myResult === "loss"
+                  ? "bg-red-50 text-red-700"
+                  : isTerminalStatus && myResult === "draw"
+                    ? "bg-slate-100 text-slate-800"
+                    : isTerminalStatus
+                      ? "bg-violet-50/80 text-violet-700"
+                      : "bg-gray-50 text-gray-400"
         }`}
       >
         {isMyTurn ? (
@@ -334,12 +349,33 @@ function BoardItem({ game }: BoardItemProps) {
             {t("opponentsTurn")}
           </>
         ) : isTerminalStatus ? (
-          <>
-            <span className="h-2 w-2 rounded-full bg-violet-300 flex-shrink-0 inline-block" />
-            {gameStatus === "abandoned"
-              ? tGameCard("abandoned")
-              : tGameCard("completed")}
-          </>
+          myResult ? (
+            <>
+              <span
+                className={`h-2 w-2 rounded-full flex-shrink-0 inline-block ${
+                  myResult === "win"
+                    ? "bg-emerald-500"
+                    : myResult === "loss"
+                      ? "bg-red-500"
+                      : "bg-slate-500"
+                }`}
+              />
+              <span className="font-black uppercase tracking-wide">
+                {myResult === "win"
+                  ? tGameCard("resultWon")
+                  : myResult === "loss"
+                    ? tGameCard("resultLost")
+                    : tGameCard("resultDraw")}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="h-2 w-2 rounded-full bg-violet-300 flex-shrink-0 inline-block" />
+              {gameStatus === "abandoned"
+                ? tGameCard("abandoned")
+                : tGameCard("completed")}
+            </>
+          )
         ) : (
           <>
             <span className="h-2 w-2 rounded-full bg-gray-300 flex-shrink-0 inline-block" />
@@ -353,10 +389,11 @@ function BoardItem({ game }: BoardItemProps) {
 
 interface MultiBoardViewProps {
   games: DashboardGame[];
+  currentUserId: string;
   onShowAll: () => void;
 }
 
-export function MultiBoardView({ games, onShowAll }: MultiBoardViewProps) {
+export function MultiBoardView({ games, currentUserId, onShowAll }: MultiBoardViewProps) {
   const tDashboard = useTranslations("dashboard");
 
   // Prioritise games where it's my turn
@@ -404,7 +441,11 @@ export function MultiBoardView({ games, onShowAll }: MultiBoardViewProps) {
       {/* ── Desktop: 2 × 2 grid ─────────────────────────────── */}
       <div className="hidden sm:grid sm:grid-cols-2 gap-6">
         {displayed.map((game) => (
-          <BoardItem key={game.id} game={game} />
+          <BoardItem
+            key={game.id}
+            game={game}
+            currentUserId={currentUserId}
+          />
         ))}
       </div>
 
@@ -425,6 +466,7 @@ export function MultiBoardView({ games, onShowAll }: MultiBoardViewProps) {
             {displayed[currentIndex] && (
               <BoardItem
                 game={displayed[currentIndex]}
+                currentUserId={currentUserId}
               />
             )}
           </motion.div>

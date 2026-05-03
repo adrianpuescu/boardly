@@ -360,7 +360,10 @@
     "timeBased": "Timed ⏱",
     "turnBased": "Turn based 🔄",
     "white": "White",
-    "black": "Black"
+    "black": "Black",
+    "resultWon": "Won",
+    "resultLost": "Lost",
+    "resultDraw": "Draw"
   },
   "join": {
     "invited": "You're invited!",

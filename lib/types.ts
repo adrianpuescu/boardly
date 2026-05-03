@@ -62,6 +62,8 @@ export interface DashboardGame {
   name?: string | null;
   created_by: string | null;
   status: "waiting" | "active" | "completed" | "abandoned";
+  /** Set when the game has a decisive outcome; null means draw (completed) or unscored (some abandoned). */
+  winner_id: string | null;
   game_type: string;
   time_control: { type: string };
   state: { turn?: "white" | "black"; fen?: string; vs_bot?: boolean };

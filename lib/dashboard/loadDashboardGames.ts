@@ -7,6 +7,7 @@ type GameRowForDashboard = {
   id: string;
   name: string | null;
   created_by: string | null;
+  winner_id: string | null;
   status: string;
   game_type: string;
   time_control: { type: string };
@@ -41,6 +42,7 @@ function mapRowsToDashboardGames(
       id: g.id,
       name: g.name ?? null,
       created_by: g.created_by ?? null,
+      winner_id: (g.winner_id as string | null | undefined) ?? null,
       status: g.status as DashboardGame["status"],
       game_type: g.game_type,
       time_control: g.time_control,
@@ -109,6 +111,7 @@ export async function loadDashboardGamesPage(
       id,
       name,
       created_by,
+      winner_id,
       status,
       game_type,
       time_control,

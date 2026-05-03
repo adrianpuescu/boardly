@@ -223,6 +223,7 @@ export function DashboardClient({ games, currentUser, pagination }: Props) {
           /* Multi-board view */
           <MultiBoardView
             games={games}
+            currentUserId={currentUser.id}
             onShowAll={() => switchView("grid")}
           />
         ) : (

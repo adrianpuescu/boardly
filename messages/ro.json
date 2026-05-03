@@ -360,7 +360,10 @@
     "timeBased": "Cronometrat ⏱",
     "turnBased": "Pe rând 🔄",
     "white": "Alb",
-    "black": "Negru"
+    "black": "Negru",
+    "resultWon": "Câștigat",
+    "resultLost": "Pierdut",
+    "resultDraw": "Remiză"
   },
   "join": {
     "invited": "Ești invitat!",

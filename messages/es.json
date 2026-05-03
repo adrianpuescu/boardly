@@ -360,7 +360,10 @@
     "timeBased": "Con tiempo ⏱",
     "turnBased": "Por turnos 🔄",
     "white": "Blancas",
-    "black": "Negras"
+    "black": "Negras",
+    "resultWon": "Ganaste",
+    "resultLost": "Perdiste",
+    "resultDraw": "Tablas"
   },
   "join": {
     "invited": "¡Estás invitado!",

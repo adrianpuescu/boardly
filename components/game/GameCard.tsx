@@ -10,6 +10,7 @@ import { formatDistanceToNow } from "date-fns";
 import { enUS, es, ro } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import type { CurrentUser, DashboardGame } from "@/lib/types";
+import { getMyGameResult } from "@/lib/dashboard/myGameResult";
 import { usePieceSet } from "@/hooks/usePieceSet";
 import { useBoardTheme } from "@/hooks/useBoardTheme";
 import { buildPieces } from "@/lib/chess/pieces";
@@ -183,6 +184,10 @@ export function GameCard({ game, currentUser }: Props) {
 
   const isTerminal =
     game.status === "completed" || game.status === "abandoned";
+  const myResult = useMemo(
+    () => getMyGameResult(game, currentUser.id),
+    [game, currentUser.id]
+  );
   const isMyTurn =
     !isTerminal &&
     game.status === "active" &&
@@ -328,39 +333,59 @@ export function GameCard({ game, currentUser }: Props) {
 
       {/* Card body */}
       <div className="px-4 pt-4 pb-2.5 flex-1 flex flex-col gap-3">
-        {/* Status badge */}
-        {isMyTurn ? (
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
-            </span>
-            <span className="text-sm font-semibold text-green-600">
-              {t("yourTurn")}
-            </span>
-          </div>
-        ) : isWaiting ? (
-          <Badge
-            variant="secondary"
-            className="text-xs bg-gray-100 text-gray-500 border-0 rounded-full"
-          >
-            {t("waitingForOpponent")}
-          </Badge>
-        ) : isTerminal ? (
-          <Badge
-            variant="secondary"
-            className="text-xs bg-violet-50 text-violet-700 border-0 rounded-full"
-          >
-            {game.status === "abandoned" ? t("abandoned") : t("completed")}
-          </Badge>
-        ) : (
-          <Badge
-            variant="secondary"
-            className="text-xs bg-blue-50 text-blue-500 border-0 rounded-full"
-          >
-            {t("opponentsTurn")}
-          </Badge>
-        )}
+        {/* Fixed-height slot so opponent row stays aligned across game states */}
+        <div className="min-h-[44px] flex items-center shrink-0">
+          {isMyTurn ? (
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+              </span>
+              <span className="text-sm font-semibold text-green-600 leading-snug">
+                {t("yourTurn")}
+              </span>
+            </div>
+          ) : isWaiting ? (
+            <Badge
+              variant="secondary"
+              className="text-xs bg-gray-100 text-gray-500 border-0 rounded-full"
+            >
+              {t("waitingForOpponent")}
+            </Badge>
+          ) : isTerminal ? (
+            myResult ? (
+              <span
+                className={
+                  myResult === "win"
+                    ? "inline-flex items-center text-[11px] font-black uppercase tracking-[0.12em] rounded-full px-3 py-1 border border-emerald-200 bg-emerald-50 text-emerald-800 leading-none"
+                    : myResult === "loss"
+                      ? "inline-flex items-center text-[11px] font-black uppercase tracking-[0.12em] rounded-full px-3 py-1 border border-red-200 bg-red-50 text-red-800 leading-none"
+                      : "inline-flex items-center text-[11px] font-black uppercase tracking-[0.12em] rounded-full px-3 py-1 border border-slate-200 bg-slate-100 text-slate-800 leading-none"
+                }
+              >
+                {myResult === "win"
+                  ? t("resultWon")
+                  : myResult === "loss"
+                    ? t("resultLost")
+                    : t("resultDraw")}
+              </span>
+            ) : (
+              <Badge
+                variant="secondary"
+                className="text-xs bg-violet-50 text-violet-700 border-0 rounded-full"
+              >
+                {game.status === "abandoned" ? t("abandoned") : t("completed")}
+              </Badge>
+            )
+          ) : (
+            <Badge
+              variant="secondary"
+              className="text-xs bg-blue-50 text-blue-500 border-0 rounded-full"
+            >
+              {t("opponentsTurn")}
+            </Badge>
+          )}
+        </div>
 
         {/* Opponent */}
         <div className="flex items-center gap-2.5">
